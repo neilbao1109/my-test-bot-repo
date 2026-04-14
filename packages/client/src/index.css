@@ -1,0 +1,74 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Base styles */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #373a40 transparent;
+}
+
+*::-webkit-scrollbar {
+  width: 6px;
+}
+
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+*::-webkit-scrollbar-thumb {
+  background-color: #373a40;
+  border-radius: 3px;
+}
+
+/* Markdown styles */
+.prose pre {
+  margin: 0.5rem 0;
+}
+
+.prose code {
+  font-size: 0.85em;
+}
+
+.prose p {
+  margin: 0.25rem 0;
+}
+
+.prose ul, .prose ol {
+  margin: 0.25rem 0;
+  padding-left: 1.5rem;
+}
+
+.prose blockquote {
+  border-left: 3px solid #0c8cff;
+  padding-left: 0.75rem;
+  margin: 0.5rem 0;
+  color: #909296;
+}
+
+.prose table {
+  border-collapse: collapse;
+  margin: 0.5rem 0;
+  font-size: 0.85em;
+}
+
+.prose th, .prose td {
+  border: 1px solid #373a40;
+  padding: 0.35rem 0.75rem;
+}
+
+.prose th {
+  background-color: #25262b;
+}
+
+/* Highlight.js theme overrides for dark mode */
+.hljs {
+  background: transparent !important;
+  color: #c1c2c5 !important;
+}
+
+/* Animation */
+@keyframes pulse-cursor {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
