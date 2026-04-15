@@ -276,8 +276,10 @@ export async function* streamBotResponse(content: string, context: BotContext): 
     // When RPC completes, push the full response if streaming didn't work
     sendPromise.then((result: any) => {
       clearTimeout(streamTimeout);
+      console.log('[BotBridge] sessions.send result:', JSON.stringify(result, null, 2)?.slice(0, 500));
       if (!yieldedAny) {
         const text = extractResponseText(result);
+        console.log('[BotBridge] Extracted text:', text?.slice(0, 200));
         if (text) {
           chunkQueue.push({ text, done: false });
         }
