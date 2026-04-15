@@ -6,7 +6,12 @@ class SocketService {
 
   connect() {
     if (this.socket?.connected) return this.socket;
-    this.socket = io(window.location.origin, {
+
+    // Priority: VITE_SERVER_URL env → same origin (works with Vite proxy in dev,
+    // and when client is served by the Express server in production)
+    const serverUrl = import.meta.env.VITE_SERVER_URL || window.location.origin;
+
+    this.socket = io(serverUrl, {
       transports: ['websocket', 'polling'],
     });
     return this.socket;

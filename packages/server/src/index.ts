@@ -13,6 +13,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PORT = process.env.PORT || 3001;
 
 const app = express();
+// CORS: allow any origin so the client can be deployed separately
 app.use(cors());
 app.use(express.json());
 
@@ -29,7 +30,7 @@ app.get('*', (_req, res) => {
 const httpServer = createServer(app);
 const io = new Server(httpServer, {
   cors: {
-    origin: process.env.CLIENT_URL || 'http://localhost:5173',
+    origin: process.env.CORS_ORIGIN || '*',
     methods: ['GET', 'POST'],
   },
 });
@@ -43,9 +44,11 @@ if (!fs.existsSync(dataDir)) {
   fs.mkdirSync(dataDir, { recursive: true });
 }
 
-httpServer.listen(PORT, () => {
+const HOST = process.env.HOST || '0.0.0.0';
+
+httpServer.listen(Number(PORT), HOST, () => {
   const mode = getConnectionMode();
-  console.log(`🚀 ClawChat Server running on http://localhost:${PORT}`);
+  console.log(`🚀 ClawChat Server running on http://${HOST}:${PORT}`);
   console.log(`🤖 Bot Bridge mode: ${mode}`);
 });
 
