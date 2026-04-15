@@ -59,8 +59,33 @@ export class OpenClawClient extends EventEmitter {
     return path.join(DATA_DIR, 'device-identity.json');
   }
 
+  /**
+   * Extract raw 32-byte ed25519 public key from SPKI DER.
+   * SPKI DER for ed25519 = 12-byte prefix + 32-byte raw key.
+   */
+  private static extractRawPublicKey(publicKey: crypto.KeyObject): Buffer {
+    const spki = publicKey.export({ type: 'spki', format: 'der' }) as Buffer;
+    // ed25519 SPKI prefix: 302a300506032b6570032100
+    const ED25519_SPKI_PREFIX = Buffer.from('302a300506032b6570032100', 'hex');
+    if (spki.length === ED25519_SPKI_PREFIX.length + 32 &&
+        spki.subarray(0, ED25519_SPKI_PREFIX.length).equals(ED25519_SPKI_PREFIX)) {
+      return spki.subarray(ED25519_SPKI_PREFIX.length);
+    }
+    return spki;
+  }
+
+  /** base64url encode (no padding) */
+  private static base64url(buf: Buffer): string {
+    return buf.toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '');
+  }
+
+  /** Derive deviceId the same way the Gateway does: sha256(raw_32_bytes).hex() */
+  private static deriveDeviceId(publicKey: crypto.KeyObject): string {
+    const raw = OpenClawClient.extractRawPublicKey(publicKey);
+    return crypto.createHash('sha256').update(raw).digest('hex');
+  }
+
   private loadOrCreateIdentity() {
-    // Ensure data dir exists
     if (!fs.existsSync(DATA_DIR)) {
       fs.mkdirSync(DATA_DIR, { recursive: true });
     }
@@ -74,7 +99,15 @@ export class OpenClawClient extends EventEmitter {
 
         this.publicKey = crypto.createPublicKey({ key: pubDer, format: 'der', type: 'spki' });
         this.privateKey = crypto.createPrivateKey({ key: privDer, format: 'der', type: 'pkcs8' });
+
+        // Re-derive deviceId to ensure it matches Gateway's algorithm
+        const correctId = OpenClawClient.deriveDeviceId(this.publicKey);
+        if (raw.deviceId !== correctId) {
+          console.warn(`[OpenClaw] Fixing deviceId: ${raw.deviceId} → ${correctId}`);
+          raw.deviceId = correctId;
+        }
         this.identity = raw;
+        this.saveIdentity();
 
         console.log(`[OpenClaw] Loaded device identity: ${raw.deviceId}`);
         return;
@@ -87,8 +120,7 @@ export class OpenClawClient extends EventEmitter {
     const { publicKey, privateKey } = crypto.generateKeyPairSync('ed25519');
     const pubDer = publicKey.export({ type: 'spki', format: 'der' }) as Buffer;
     const privDer = privateKey.export({ type: 'pkcs8', format: 'der' }) as Buffer;
-    const fingerprint = crypto.createHash('sha256').update(pubDer).digest('hex').slice(0, 16);
-    const deviceId = `clawchat-${fingerprint}`;
+    const deviceId = OpenClawClient.deriveDeviceId(publicKey);
 
     this.publicKey = publicKey;
     this.privateKey = privateKey;
@@ -199,7 +231,9 @@ export class OpenClawClient extends EventEmitter {
     connectReject?: (e: Error) => void
   ) {
     try {
-      const pubKeyB64 = this.identity.publicKeyDer;
+      // Send raw 32-byte public key as base64url (Gateway expects this format)
+      const rawPubKey = OpenClawClient.extractRawPublicKey(this.publicKey);
+      const pubKeyB64Url = OpenClawClient.base64url(rawPubKey);
       const now = Date.now();
 
       // Sign with v3 payload
@@ -248,7 +282,7 @@ export class OpenClawClient extends EventEmitter {
           userAgent: 'gateway-client/0.1.0',
           device: {
             id: this.identity.deviceId,
-            publicKey: pubKeyB64,
+            publicKey: pubKeyB64Url,
             signature,
             signedAt: now,
             nonce: challenge.nonce,
