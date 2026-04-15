@@ -1,6 +1,11 @@
 import { create } from 'zustand';
 import type { User, Room, Message, Thread, StreamingMessage, TypingUser } from '../types';
 
+interface ThreadInfo {
+  replyCount: number;
+  lastReplyAt: string;
+}
+
 interface AppState {
   // Auth
   user: User | null;
@@ -11,18 +16,20 @@ interface AppState {
   activeRoomId: string | null;
   setRooms: (rooms: Room[]) => void;
   addRoom: (room: Room) => void;
+  updateRoom: (room: Room) => void;
   setActiveRoom: (roomId: string) => void;
 
   // Messages
-  messages: Record<string, Message[]>; // roomId -> messages
+  messages: Record<string, Message[]>;
   setMessages: (roomId: string, messages: Message[]) => void;
   addMessage: (message: Message) => void;
   updateMessage: (message: Message) => void;
   removeMessage: (messageId: string, roomId: string) => void;
+  markMessageDeleted: (messageId: string, roomId: string) => void;
   updateReactions: (messageId: string, roomId: string, reactions: Record<string, string[]>) => void;
 
   // Streaming
-  streamingMessages: Record<string, StreamingMessage>; // messageId -> streaming state
+  streamingMessages: Record<string, StreamingMessage>;
   startStreaming: (messageId: string, roomId: string, threadId: string | null) => void;
   appendStreamChunk: (messageId: string, chunk: string) => void;
   finishStreaming: (messageId: string, finalMessage?: Message) => void;
@@ -30,24 +37,37 @@ interface AppState {
   // Threads
   activeThread: Thread | null;
   threadMessages: Message[];
+  threadInfo: Record<string, ThreadInfo>;
   setActiveThread: (thread: Thread | null) => void;
   setThreadMessages: (messages: Message[]) => void;
   addThreadMessage: (message: Message) => void;
+  updateThreadInfo: (parentMessageId: string, info: ThreadInfo) => void;
 
   // Members
   roomMembers: Record<string, User[]>;
   setRoomMembers: (roomId: string, members: User[]) => void;
 
+  // Online / Users
+  onlineUsers: Set<string>;
+  setOnlineUsers: (userIds: string[]) => void;
+  setUserOnline: (userId: string, isOnline: boolean) => void;
+  allUsers: User[];
+  setAllUsers: (users: User[]) => void;
+
   // Typing
-  typingUsers: Record<string, TypingUser[]>; // roomId -> typing users
-  setTyping: (roomId: string, userId: string, username: string, isTyping: boolean) => void;
+  typingUsers: Record<string, TypingUser[]>;
+  setTyping: (roomId: string, userId: string, username: string, isTyping: boolean, threadId?: string | null) => void;
 
   // UI
   showSidebar: boolean;
   showThread: boolean;
+  showMembers: boolean;
+  showCreateRoom: boolean;
   theme: 'dark' | 'light';
   toggleSidebar: () => void;
   toggleThread: () => void;
+  toggleMembers: () => void;
+  setShowCreateRoom: (show: boolean) => void;
   setTheme: (theme: 'dark' | 'light') => void;
 }
 
@@ -60,7 +80,13 @@ export const useAppStore = create<AppState>((set, get) => ({
   rooms: [],
   activeRoomId: null,
   setRooms: (rooms) => set({ rooms }),
-  addRoom: (room) => set((s) => ({ rooms: [...s.rooms, room] })),
+  addRoom: (room) => set((s) => {
+    if (s.rooms.some((r) => r.id === room.id)) return s;
+    return { rooms: [...s.rooms, room] };
+  }),
+  updateRoom: (room) => set((s) => ({
+    rooms: s.rooms.map((r) => r.id === room.id ? room : r),
+  })),
   setActiveRoom: (roomId) => set({ activeRoomId: roomId }),
 
   // Messages
@@ -70,7 +96,6 @@ export const useAppStore = create<AppState>((set, get) => ({
   addMessage: (message) =>
     set((s) => {
       const roomMessages = s.messages[message.roomId] || [];
-      // Avoid duplicates
       if (roomMessages.some((m) => m.id === message.id)) return s;
       return {
         messages: {
@@ -96,6 +121,15 @@ export const useAppStore = create<AppState>((set, get) => ({
       messages: {
         ...s.messages,
         [roomId]: (s.messages[roomId] || []).filter((m) => m.id !== messageId),
+      },
+    })),
+  markMessageDeleted: (messageId, roomId) =>
+    set((s) => ({
+      messages: {
+        ...s.messages,
+        [roomId]: (s.messages[roomId] || []).map((m) =>
+          m.id === messageId ? { ...m, isDeleted: true, content: '' } : m
+        ),
       },
     })),
   updateReactions: (messageId, roomId, reactions) =>
@@ -147,6 +181,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   // Threads
   activeThread: null,
   threadMessages: [],
+  threadInfo: {},
   setActiveThread: (thread) => set({ activeThread: thread, showThread: !!thread }),
   setThreadMessages: (messages) => set({ threadMessages: messages }),
   addThreadMessage: (message) =>
@@ -154,30 +189,47 @@ export const useAppStore = create<AppState>((set, get) => ({
       if (s.threadMessages.some((m) => m.id === message.id)) return s;
       return { threadMessages: [...s.threadMessages, message] };
     }),
+  updateThreadInfo: (parentMessageId, info) =>
+    set((s) => ({
+      threadInfo: { ...s.threadInfo, [parentMessageId]: info },
+    })),
 
   // Members
   roomMembers: {},
   setRoomMembers: (roomId, members) =>
     set((s) => ({ roomMembers: { ...s.roomMembers, [roomId]: members } })),
 
+  // Online / Users
+  onlineUsers: new Set<string>(),
+  setOnlineUsers: (userIds) => set({ onlineUsers: new Set(userIds) }),
+  setUserOnline: (userId, isOnline) =>
+    set((s) => {
+      const next = new Set(s.onlineUsers);
+      if (isOnline) next.add(userId); else next.delete(userId);
+      return { onlineUsers: next };
+    }),
+  allUsers: [],
+  setAllUsers: (users) => set({ allUsers: users }),
+
   // Typing
   typingUsers: {},
-  setTyping: (roomId, userId, username, isTyping) =>
+  setTyping: (roomId, userId, username, isTyping, threadId) =>
     set((s) => {
-      const current = s.typingUsers[roomId] || [];
+      const key = threadId ? `thread:${threadId}` : roomId;
+      const current = s.typingUsers[key] || [];
       if (isTyping) {
         if (current.some((u) => u.userId === userId)) return s;
         return {
           typingUsers: {
             ...s.typingUsers,
-            [roomId]: [...current, { userId, username }],
+            [key]: [...current, { userId, username }],
           },
         };
       } else {
         return {
           typingUsers: {
             ...s.typingUsers,
-            [roomId]: current.filter((u) => u.userId !== userId),
+            [key]: current.filter((u) => u.userId !== userId),
           },
         };
       }
@@ -186,8 +238,12 @@ export const useAppStore = create<AppState>((set, get) => ({
   // UI
   showSidebar: true,
   showThread: false,
+  showMembers: false,
+  showCreateRoom: false,
   theme: 'dark',
   toggleSidebar: () => set((s) => ({ showSidebar: !s.showSidebar })),
   toggleThread: () => set((s) => ({ showThread: !s.showThread })),
+  toggleMembers: () => set((s) => ({ showMembers: !s.showMembers })),
+  setShowCreateRoom: (show) => set({ showCreateRoom: show }),
   setTheme: (theme) => set({ theme }),
 }));

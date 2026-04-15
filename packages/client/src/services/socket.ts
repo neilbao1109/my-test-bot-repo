@@ -37,9 +37,33 @@ class SocketService {
     this.socket?.emit('room:leave', { roomId });
   }
 
-  createRoom(name: string, type: 'dm' | 'group'): Promise<Room> {
+  createRoom(name: string, type: 'dm' | 'group', memberIds?: string[]): Promise<Room> {
     return new Promise((resolve) => {
-      this.socket?.emit('room:create', { name, type }, resolve);
+      this.socket?.emit('room:create', { name, type, memberIds }, resolve);
+    });
+  }
+
+  inviteToRoom(roomId: string, userId: string): Promise<{ success: boolean }> {
+    return new Promise((resolve) => {
+      this.socket?.emit('room:invite', { roomId, userId }, resolve);
+    });
+  }
+
+  getRoomMembers(roomId: string): Promise<User[]> {
+    return new Promise((resolve) => {
+      this.socket?.emit('room:members', { roomId }, resolve);
+    });
+  }
+
+  renameRoom(roomId: string, name: string): Promise<Room | null> {
+    return new Promise((resolve) => {
+      this.socket?.emit('room:rename', { roomId, name }, resolve);
+    });
+  }
+
+  searchUsers(query: string): Promise<User[]> {
+    return new Promise((resolve) => {
+      this.socket?.emit('user:search', { query }, resolve);
     });
   }
 
@@ -74,12 +98,12 @@ class SocketService {
   }
 
   // Typing
-  startTyping(roomId: string) {
-    this.socket?.emit('typing:start', { roomId });
+  startTyping(roomId: string, threadId?: string) {
+    this.socket?.emit('typing:start', { roomId, threadId });
   }
 
-  stopTyping(roomId: string) {
-    this.socket?.emit('typing:stop', { roomId });
+  stopTyping(roomId: string, threadId?: string) {
+    this.socket?.emit('typing:stop', { roomId, threadId });
   }
 
   // Event listeners

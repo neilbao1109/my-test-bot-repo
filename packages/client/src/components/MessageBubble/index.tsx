@@ -18,18 +18,20 @@ interface MessageBubbleProps {
 const QUICK_REACTIONS = ['👍', '❤️', '😂', '🎉', '🤔', '👀'];
 
 export default function MessageBubble({ message, isStreaming, streamContent }: MessageBubbleProps) {
-  const { user, roomMembers, activeRoomId } = useAppStore();
+  const { user, roomMembers, activeRoomId, threadInfo } = useAppStore();
   const [showActions, setShowActions] = useState(false);
   const [showReactions, setShowReactions] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editContent, setEditContent] = useState(message.content);
   const editRef = useRef<HTMLTextAreaElement>(null);
+  const reactionRef = useRef<HTMLDivElement>(null);
 
   const members = activeRoomId ? roomMembers[activeRoomId] || [] : [];
   const sender = members.find((m) => m.id === message.userId);
   const isOwn = user?.id === message.userId;
   const isBot = sender?.isBot || message.userId === 'bot-clawchat';
   const displayContent = isStreaming ? (streamContent || '') : message.content;
+  const msgThreadInfo = threadInfo[message.id];
 
   useEffect(() => {
     if (isEditing && editRef.current) {
@@ -37,6 +39,18 @@ export default function MessageBubble({ message, isStreaming, streamContent }: M
       editRef.current.selectionStart = editRef.current.value.length;
     }
   }, [isEditing]);
+
+  // Close reaction picker on outside click
+  useEffect(() => {
+    if (!showReactions) return;
+    const handler = (e: MouseEvent) => {
+      if (reactionRef.current && !reactionRef.current.contains(e.target as Node)) {
+        setShowReactions(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [showReactions]);
 
   const handleEdit = () => {
     if (editContent.trim() && editContent !== message.content) {
@@ -66,10 +80,32 @@ export default function MessageBubble({ message, isStreaming, streamContent }: M
     useAppStore.getState().setThreadMessages(msgs);
   };
 
+  // Deleted message placeholder
+  if (message.isDeleted) {
+    return (
+      <div className="group flex gap-3 px-4 py-1.5 hover:bg-dark-hover/50 transition opacity-60">
+        <div className="flex-shrink-0 pt-0.5">
+          <UserAvatar username={sender?.username || 'Unknown'} isBot={isBot} size="md" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-baseline gap-2 mb-0.5">
+            <span className="text-sm font-semibold text-dark-muted">
+              {sender?.username || 'Unknown'}
+            </span>
+            <span className="text-xs text-dark-muted">
+              {formatDistanceToNow(new Date(message.createdAt), { addSuffix: true })}
+            </span>
+          </div>
+          <p className="text-sm text-dark-muted italic">This message was deleted</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div
       className={clsx(
-        'group flex gap-3 px-4 py-1.5 hover:bg-dark-hover/50 transition',
+        'group flex gap-3 px-4 py-1.5 hover:bg-dark-hover/50 transition relative',
         message.type === 'system' && 'opacity-80'
       )}
       onMouseEnter={() => setShowActions(true)}
@@ -153,7 +189,7 @@ export default function MessageBubble({ message, isStreaming, streamContent }: M
 
         {/* Reactions */}
         {Object.keys(message.reactions).length > 0 && (
-          <div className="flex flex-wrap gap-1 mt-1.5">
+          <div className="flex flex-wrap gap-1 mt-1.5 items-center">
             {Object.entries(message.reactions).map(([emoji, userIds]) => (
               <button
                 key={emoji}
@@ -169,7 +205,27 @@ export default function MessageBubble({ message, isStreaming, streamContent }: M
                 <span>{userIds.length}</span>
               </button>
             ))}
+            {/* Add reaction button */}
+            <button
+              onClick={() => setShowReactions(!showReactions)}
+              className="inline-flex items-center justify-center w-6 h-6 rounded-full border border-dark-border bg-dark-bg text-dark-muted hover:border-dark-muted hover:text-white transition text-xs"
+              title="Add reaction"
+            >
+              +
+            </button>
           </div>
+        )}
+
+        {/* Thread info / reply count */}
+        {msgThreadInfo && msgThreadInfo.replyCount > 0 && (
+          <button
+            onClick={handleStartThread}
+            className="mt-1 text-xs text-primary-400 hover:underline flex items-center gap-1"
+          >
+            <span>🧵</span>
+            <span>{msgThreadInfo.replyCount} {msgThreadInfo.replyCount === 1 ? 'reply' : 'replies'}</span>
+            <span className="text-dark-muted">— View thread</span>
+          </button>
         )}
       </div>
 
@@ -211,9 +267,12 @@ export default function MessageBubble({ message, isStreaming, streamContent }: M
         </div>
       )}
 
-      {/* Reaction picker */}
+      {/* Reaction picker — positioned relative to parent */}
       {showReactions && (
-        <div className="absolute mt-8 bg-dark-surface border border-dark-border rounded-lg shadow-xl p-2 flex gap-1 z-10">
+        <div
+          ref={reactionRef}
+          className="absolute right-4 top-0 mt-8 bg-dark-surface border border-dark-border rounded-lg shadow-xl p-2 flex gap-1 z-50"
+        >
           {QUICK_REACTIONS.map((emoji) => (
             <button
               key={emoji}

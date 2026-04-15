@@ -3,11 +3,12 @@ import { useAppStore } from '../../stores/appStore';
 import { socketService } from '../../services/socket';
 import MessageBubble from '../MessageBubble';
 import CommandBar from '../CommandBar';
+import UserAvatar from '../UserAvatar';
 
 export default function ThreadPanel() {
   const {
     activeThread, threadMessages, showThread, setActiveThread,
-    activeRoomId, messages, streamingMessages,
+    activeRoomId, messages, streamingMessages, typingUsers,
   } = useAppStore();
   const bottomRef = useRef<HTMLDivElement>(null);
 
@@ -20,6 +21,9 @@ export default function ThreadPanel() {
   const threadStreamingMsgs = activeThread
     ? Object.values(streamingMessages).filter((s) => s.threadId === activeThread.id)
     : [];
+
+  // Get typing users for this thread
+  const threadTyping = activeThread ? typingUsers[`thread:${activeThread.id}`] || [] : [];
 
   // Auto-scroll
   useEffect(() => {
@@ -81,6 +85,27 @@ export default function ThreadPanel() {
             streamContent={stream.content}
           />
         ))}
+
+        {/* Thread typing indicator */}
+        {threadTyping.length > 0 && (
+          <div className="px-4 py-1.5 flex items-center gap-2">
+            <div className="flex -space-x-1">
+              {threadTyping.slice(0, 3).map((u) => (
+                <UserAvatar
+                  key={u.userId}
+                  username={u.username}
+                  isBot={u.userId === 'bot-clawchat'}
+                  size="sm"
+                />
+              ))}
+            </div>
+            <span className="text-xs text-dark-muted animate-pulse">
+              {threadTyping.some((u) => u.userId === 'bot-clawchat')
+                ? 'ClawBot is thinking...'
+                : `${threadTyping.map((u) => u.username).join(', ')} ${threadTyping.length === 1 ? 'is' : 'are'} typing...`}
+            </span>
+          </div>
+        )}
 
         <div ref={bottomRef} />
       </div>

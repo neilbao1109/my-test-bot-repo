@@ -60,3 +60,34 @@ export function getRoom(roomId: string): Room | null {
   if (!row) return null;
   return { id: row.id, name: row.name, type: row.type, createdAt: row.created_at };
 }
+
+export function addMemberToRoom(roomId: string, userId: string): boolean {
+  const db = getDb();
+  const result = db.prepare('INSERT OR IGNORE INTO room_members (room_id, user_id) VALUES (?, ?)').run(roomId, userId);
+  return result.changes > 0;
+}
+
+export function removeMemberFromRoom(roomId: string, userId: string): boolean {
+  const db = getDb();
+  const result = db.prepare('DELETE FROM room_members WHERE room_id = ? AND user_id = ?').run(roomId, userId);
+  return result.changes > 0;
+}
+
+export function renameRoom(roomId: string, name: string): Room | null {
+  const db = getDb();
+  db.prepare('UPDATE rooms SET name = ? WHERE id = ?').run(name, roomId);
+  return getRoom(roomId);
+}
+
+export function searchUsers(query: string): User[] {
+  const db = getDb();
+  const rows = db.prepare('SELECT * FROM users WHERE username LIKE ? LIMIT 20').all(`%${query}%`) as any[];
+  return rows.map(r => ({
+    id: r.id,
+    username: r.username,
+    avatarUrl: r.avatar_url,
+    isBot: !!r.is_bot,
+    isOnline: !!r.is_online,
+    createdAt: r.created_at,
+  }));
+}

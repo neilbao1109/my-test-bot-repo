@@ -31,6 +31,18 @@ export function getUser(userId: string): User | null {
   return row ? rowToUser(row) : null;
 }
 
+export function getAllUsers(): User[] {
+  const db = getDb();
+  const rows = db.prepare('SELECT * FROM users ORDER BY username').all() as any[];
+  return rows.map(rowToUser);
+}
+
+export function getOnlineUsers(): string[] {
+  const db = getDb();
+  const rows = db.prepare('SELECT id FROM users WHERE is_online = 1').all() as any[];
+  return rows.map(r => r.id);
+}
+
 function rowToUser(row: any): User {
   return {
     id: row.id,

@@ -3,9 +3,18 @@ import { useAppStore } from '../../stores/appStore';
 import UserAvatar from '../UserAvatar';
 
 export default function Sidebar() {
-  const { rooms, activeRoomId, setActiveRoom, user, showSidebar, toggleSidebar } = useAppStore();
+  const { rooms, activeRoomId, setActiveRoom, user, showSidebar, toggleSidebar, roomMembers, onlineUsers, setShowCreateRoom } = useAppStore();
 
   if (!showSidebar) return null;
+
+  const getRoomOnlineCount = (roomId: string): number => {
+    const members = roomMembers[roomId] || [];
+    return members.filter((m) => onlineUsers.has(m.id) || m.isOnline).length;
+  };
+
+  const isRoomOnline = (roomId: string): boolean => {
+    return getRoomOnlineCount(roomId) > 0;
+  };
 
   return (
     <div className="w-64 bg-dark-surface border-r border-dark-border flex flex-col h-full">
@@ -40,39 +49,42 @@ export default function Sidebar() {
             Conversations
           </span>
         </div>
-        {rooms.map((room) => (
-          <button
-            key={room.id}
-            onClick={() => setActiveRoom(room.id)}
-            className={clsx(
-              'w-full text-left px-3 py-2.5 mx-1 rounded-lg flex items-center gap-2.5 transition',
-              activeRoomId === room.id
-                ? 'bg-primary-600/20 text-primary-400'
-                : 'text-dark-text hover:bg-dark-hover'
-            )}
-            style={{ width: 'calc(100% - 8px)' }}
-          >
-            <span className="text-lg">{room.type === 'dm' ? '💬' : '👥'}</span>
-            <span className="text-sm truncate">{room.name}</span>
-          </button>
-        ))}
+        {rooms.map((room) => {
+          const memberCount = (roomMembers[room.id] || []).length;
+          const online = isRoomOnline(room.id);
+          return (
+            <button
+              key={room.id}
+              onClick={() => setActiveRoom(room.id)}
+              className={clsx(
+                'w-full text-left px-3 py-2.5 mx-1 rounded-lg flex items-center gap-2.5 transition',
+                activeRoomId === room.id
+                  ? 'bg-primary-600/20 text-primary-400'
+                  : 'text-dark-text hover:bg-dark-hover'
+              )}
+              style={{ width: 'calc(100% - 8px)' }}
+            >
+              <div className="relative">
+                <span className="text-lg">{room.type === 'dm' ? '💬' : '👥'}</span>
+                {online && (
+                  <span className="absolute -bottom-0.5 -right-0.5 w-2 h-2 bg-green-500 rounded-full border border-dark-surface" />
+                )}
+              </div>
+              <span className="text-sm truncate flex-1">{room.name}</span>
+              {room.type === 'group' && memberCount > 0 && (
+                <span className="text-[10px] text-dark-muted bg-dark-hover px-1.5 py-0.5 rounded-full">
+                  {memberCount}
+                </span>
+              )}
+            </button>
+          );
+        })}
       </div>
 
       {/* New room button */}
       <div className="p-3 border-t border-dark-border">
         <button
-          onClick={() => {
-            const name = prompt('Room name:');
-            if (name) {
-              // Will be handled via socket
-              import('../../services/socket').then(({ socketService }) => {
-                socketService.createRoom(name, 'group').then((room) => {
-                  useAppStore.getState().addRoom(room);
-                  useAppStore.getState().setActiveRoom(room.id);
-                });
-              });
-            }
-          }}
+          onClick={() => setShowCreateRoom(true)}
           className="w-full py-2 px-3 text-sm text-dark-muted hover:text-white hover:bg-dark-hover rounded-lg transition flex items-center gap-2"
         >
           <span>＋</span>

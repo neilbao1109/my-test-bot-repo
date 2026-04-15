@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { socketService } from '../services/socket';
 import { useAppStore } from '../stores/appStore';
-import type { Message, User, Thread } from '../types';
+import type { Message, Room, User, Thread } from '../types';
 
 export function useSocket() {
   const store = useAppStore();
@@ -32,7 +32,7 @@ export function useSocket() {
     socket.on('message:deleted', (data: { messageId: string }) => {
       const activeRoomId = useAppStore.getState().activeRoomId;
       if (activeRoomId) {
-        store.removeMessage(data.messageId, activeRoomId);
+        store.markMessageDeleted(data.messageId, activeRoomId);
       }
     });
 
@@ -55,11 +55,12 @@ export function useSocket() {
       }
     });
 
-    socket.on('typing:update', (data: { roomId: string; userId: string; username: string; isTyping: boolean }) => {
-      store.setTyping(data.roomId, data.userId, data.username, data.isTyping);
+    socket.on('typing:update', (data: { roomId: string; userId: string; username: string; isTyping: boolean; threadId?: string | null }) => {
+      store.setTyping(data.roomId, data.userId, data.username, data.isTyping, data.threadId);
     });
 
     socket.on('user:online', (data: { userId: string; isOnline: boolean }) => {
+      store.setUserOnline(data.userId, data.isOnline);
       // Update member online status in all rooms
       const state = useAppStore.getState();
       Object.entries(state.roomMembers).forEach(([roomId, members]) => {
@@ -70,8 +71,34 @@ export function useSocket() {
       });
     });
 
+    socket.on('presence:snapshot', (data: { onlineUsers: string[] }) => {
+      store.setOnlineUsers(data.onlineUsers);
+    });
+
     socket.on('thread:created', (data: { thread: Thread }) => {
-      // Notification only; user opens thread explicitly
+      store.updateThreadInfo(data.thread.parentMessageId, {
+        replyCount: data.thread.replyCount,
+        lastReplyAt: data.thread.lastReplyAt,
+      });
+    });
+
+    socket.on('thread:updated', (data: { threadId: string; parentMessageId: string; replyCount: number; lastReplyAt: string }) => {
+      store.updateThreadInfo(data.parentMessageId, {
+        replyCount: data.replyCount,
+        lastReplyAt: data.lastReplyAt,
+      });
+    });
+
+    socket.on('room:member-joined', (data: { roomId: string; members: User[] }) => {
+      store.setRoomMembers(data.roomId, data.members);
+    });
+
+    socket.on('room:updated', (room: Room) => {
+      store.updateRoom(room);
+    });
+
+    socket.on('room:added', (room: Room) => {
+      store.addRoom(room);
     });
 
     socket.on('command:result', (data: { command: string; result: { data?: { action: string } } }) => {
@@ -93,7 +120,12 @@ export function useSocket() {
       socket.off('bot:stream');
       socket.off('typing:update');
       socket.off('user:online');
+      socket.off('presence:snapshot');
       socket.off('thread:created');
+      socket.off('thread:updated');
+      socket.off('room:member-joined');
+      socket.off('room:updated');
+      socket.off('room:added');
       socket.off('command:result');
     };
   }, []);

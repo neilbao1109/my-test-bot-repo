@@ -6,6 +6,8 @@ import LoginScreen from './components/LoginScreen';
 import Sidebar from './components/Sidebar';
 import ChatView from './components/ChatView';
 import ThreadPanel from './components/ThreadPanel';
+import MemberPanel from './components/MemberPanel';
+import CreateRoomModal from './components/CreateRoomModal';
 
 export default function App() {
   const { user, setUser, setRooms, setActiveRoom } = useAppStore();
@@ -40,6 +42,8 @@ export default function App() {
       <Sidebar />
       <ChatView />
       <ThreadPanel />
+      <MemberPanel />
+      <CreateRoomModal />
     </div>
   );
 }

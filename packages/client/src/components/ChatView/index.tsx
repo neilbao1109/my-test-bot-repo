@@ -3,17 +3,21 @@ import { useAppStore } from '../../stores/appStore';
 import { socketService } from '../../services/socket';
 import MessageBubble from '../MessageBubble';
 import CommandBar from '../CommandBar';
+import UserAvatar from '../UserAvatar';
 
 export default function ChatView() {
   const {
     activeRoomId, messages, rooms, streamingMessages,
-    typingUsers, showSidebar, toggleSidebar, user,
+    typingUsers, showSidebar, toggleSidebar, toggleMembers,
+    user, roomMembers, onlineUsers,
   } = useAppStore();
   const bottomRef = useRef<HTMLDivElement>(null);
 
   const activeRoom = rooms.find((r) => r.id === activeRoomId);
   const roomMessages = activeRoomId ? messages[activeRoomId] || [] : [];
   const roomTyping = activeRoomId ? typingUsers[activeRoomId] || [] : [];
+  const members = activeRoomId ? roomMembers[activeRoomId] || [] : [];
+  const onlineCount = members.filter((m) => onlineUsers.has(m.id) || m.isOnline).length;
 
   // Get streaming messages for this room (not in threads)
   const roomStreamingMsgs = Object.values(streamingMessages).filter(
@@ -59,12 +63,26 @@ export default function ChatView() {
           </button>
         )}
         <span className="text-lg">{activeRoom.type === 'dm' ? '💬' : '👥'}</span>
-        <div>
+        <div className="flex-1">
           <h2 className="font-semibold text-white text-sm">{activeRoom.name}</h2>
           <p className="text-xs text-dark-muted">
-            {activeRoom.type === 'dm' ? 'Direct message with ClawBot' : 'Group room'}
+            {activeRoom.type === 'dm'
+              ? 'Direct message with ClawBot'
+              : `${members.length} members, ${onlineCount} online`}
           </p>
         </div>
+
+        {/* Members button */}
+        <button
+          onClick={toggleMembers}
+          className="flex items-center gap-1.5 text-dark-muted hover:text-white px-2 py-1 rounded-lg hover:bg-dark-hover transition"
+          title="Members"
+        >
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z" />
+          </svg>
+          <span className="text-xs">{members.length}</span>
+        </button>
       </div>
 
       {/* Messages */}
@@ -105,11 +123,23 @@ export default function ChatView() {
           />
         ))}
 
-        {/* Typing indicator */}
+        {/* Typing indicator with avatars */}
         {roomTyping.length > 0 && (
-          <div className="px-4 py-1">
+          <div className="px-4 py-1.5 flex items-center gap-2">
+            <div className="flex -space-x-1">
+              {roomTyping.slice(0, 3).map((u) => (
+                <UserAvatar
+                  key={u.userId}
+                  username={u.username}
+                  isBot={u.userId === 'bot-clawchat'}
+                  size="sm"
+                />
+              ))}
+            </div>
             <span className="text-xs text-dark-muted animate-pulse">
-              {roomTyping.map((u) => u.username).join(', ')} {roomTyping.length === 1 ? 'is' : 'are'} typing...
+              {roomTyping.some((u) => u.userId === 'bot-clawchat')
+                ? 'ClawBot is thinking...'
+                : `${roomTyping.map((u) => u.username).join(', ')} ${roomTyping.length === 1 ? 'is' : 'are'} typing...`}
             </span>
           </div>
         )}
