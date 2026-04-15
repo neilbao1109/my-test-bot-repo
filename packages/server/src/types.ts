@@ -43,6 +43,15 @@ export interface Thread {
   lastReplyAt: string;
 }
 
+export interface FileAttachment {
+  id: string;
+  filename: string;
+  originalName: string;
+  mimeType: string;
+  size: number;
+  url: string;
+}
+
 export interface BotContext {
   roomId: string;
   userId: string;

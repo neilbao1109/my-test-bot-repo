@@ -4,9 +4,10 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeHighlight from 'rehype-highlight';
 import { formatDistanceToNow } from 'date-fns';
-import type { Message } from '../../types';
+import type { Message, FileAttachment } from '../../types';
 import { useAppStore } from '../../stores/appStore';
 import { socketService } from '../../services/socket';
+import { formatFileSize } from '../../utils/format';
 import UserAvatar from '../UserAvatar';
 
 interface MessageBubbleProps {
@@ -159,6 +160,41 @@ export default function MessageBubble({ message, isStreaming, streamContent }: M
               <button onClick={() => setIsEditing(false)} className="text-xs text-dark-muted hover:underline">Cancel</button>
             </div>
           </div>
+        ) : message.type === 'file' ? (
+          (() => {
+            let attachment: FileAttachment | null = null;
+            try { attachment = JSON.parse(displayContent); } catch {}
+            if (!attachment) return <p className="text-sm text-dark-muted italic">Invalid file</p>;
+            const isImage = attachment.mimeType.startsWith('image/');
+            const isPdf = attachment.mimeType === 'application/pdf';
+            if (isImage) {
+              return (
+                <a href={attachment.url} target="_blank" rel="noopener noreferrer" className="block mt-1">
+                  <img
+                    src={attachment.url}
+                    alt={attachment.originalName}
+                    className="max-w-xs max-h-64 rounded-lg border border-dark-border hover:opacity-90 transition cursor-pointer"
+                  />
+                  <span className="text-xs text-dark-muted mt-1 block">{attachment.originalName} · {formatFileSize(attachment.size)}</span>
+                </a>
+              );
+            }
+            return (
+              <a
+                href={attachment.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-3 mt-1 p-3 bg-dark-bg border border-dark-border rounded-lg hover:bg-dark-hover transition max-w-xs"
+              >
+                <span className="text-2xl flex-shrink-0">{isPdf ? '📄' : '📁'}</span>
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm text-white truncate">{attachment.originalName}</p>
+                  <p className="text-xs text-dark-muted">{formatFileSize(attachment.size)}</p>
+                </div>
+                <span className="text-dark-muted text-sm flex-shrink-0">⬇</span>
+              </a>
+            );
+          })()
         ) : (
           <div className="prose prose-invert prose-sm max-w-none break-words">
             <ReactMarkdown

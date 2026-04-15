@@ -1,6 +1,7 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import { useAppStore } from '../../stores/appStore';
 import { socketService } from '../../services/socket';
+import { uploadFile } from '../../services/upload';
 import MessageBubble from '../MessageBubble';
 import CommandBar from '../CommandBar';
 import UserAvatar from '../UserAvatar';
@@ -12,6 +13,7 @@ export default function ChatView() {
     user, roomMembers, onlineUsers,
   } = useAppStore();
   const bottomRef = useRef<HTMLDivElement>(null);
+  const [dragOver, setDragOver] = useState(false);
 
   const activeRoom = rooms.find((r) => r.id === activeRoomId);
   const roomMessages = activeRoomId ? messages[activeRoomId] || [] : [];
@@ -36,6 +38,21 @@ export default function ChatView() {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [roomMessages, roomStreamingMsgs]);
 
+  const handleDrop = useCallback(async (e: React.DragEvent) => {
+    e.preventDefault();
+    setDragOver(false);
+    if (!activeRoomId) return;
+    const files = Array.from(e.dataTransfer.files);
+    for (const file of files) {
+      try {
+        const attachment = await uploadFile(file);
+        socketService.sendMessage(activeRoomId, JSON.stringify(attachment), undefined, 'file');
+      } catch (err) {
+        console.error('Upload failed:', err);
+      }
+    }
+  }, [activeRoomId]);
+
   if (!activeRoomId || !activeRoom) {
     return (
       <div className="flex-1 flex items-center justify-center bg-dark-bg">
@@ -49,7 +66,18 @@ export default function ChatView() {
   }
 
   return (
-    <div className="flex-1 flex flex-col h-full bg-dark-bg">
+    <div
+      className="flex-1 flex flex-col h-full bg-dark-bg relative"
+      onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+      onDragLeave={() => setDragOver(false)}
+      onDrop={handleDrop}
+    >
+      {/* Drag overlay */}
+      {dragOver && (
+        <div className="absolute inset-0 bg-primary-600/20 border-2 border-dashed border-primary-400 rounded-lg z-50 flex items-center justify-center">
+          <p className="text-primary-400 text-lg font-semibold">Drop files to upload</p>
+        </div>
+      )}
       {/* Header */}
       <div className="flex items-center gap-3 px-4 py-3 border-b border-dark-border bg-dark-surface">
         {!showSidebar && (

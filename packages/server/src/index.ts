@@ -6,6 +6,7 @@ import cors from 'cors';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import apiRouter from './routes/api.js';
+import uploadRouter from './routes/upload.js';
 import { setupSocketHandlers } from './socket/handlers.js';
 import { shutdown, getConnectionMode } from './services/bot-bridge.js';
 
@@ -19,6 +20,7 @@ app.use(express.json());
 
 // API routes
 app.use('/api', apiRouter);
+app.use('/api', uploadRouter);
 
 // Serve static client files in production
 const clientDist = path.join(__dirname, '../../client/dist');

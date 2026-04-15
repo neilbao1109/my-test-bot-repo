@@ -48,3 +48,12 @@ export interface StreamingMessage {
   roomId: string;
   threadId: string | null;
 }
+
+export interface FileAttachment {
+  id: string;
+  filename: string;
+  originalName: string;
+  mimeType: string;
+  size: number;
+  url: string;
+}

@@ -139,7 +139,7 @@ export function setupSocketHandlers(io: Server) {
     });
 
     // --- Messages ---
-    socket.on('message:send', async (data: { roomId: string; content: string; threadId?: string; replyTo?: string }) => {
+    socket.on('message:send', async (data: { roomId: string; content: string; threadId?: string; replyTo?: string; type?: string }) => {
       if (!socket.userId) return;
 
       // Check if it's a command
@@ -188,6 +188,7 @@ export function setupSocketHandlers(io: Server) {
         roomId: data.roomId,
         userId: socket.userId,
         content: data.content,
+        type: (data.type as 'text' | 'file') || undefined,
         threadId: data.threadId,
         replyTo: data.replyTo,
       });

@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useAppStore } from '../../stores/appStore';
 import { socketService } from '../../services/socket';
+import { uploadFile } from '../../services/upload';
 
 const COMMANDS = [
   { name: 'help', description: 'Show available commands' },
@@ -21,7 +22,10 @@ export default function CommandBar({ roomId, threadId }: CommandBarProps) {
   const [input, setInput] = useState('');
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [selectedIdx, setSelectedIdx] = useState(0);
+  const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const typingRef = useRef(false);
 
   const suggestions = input.startsWith('/')
@@ -90,6 +94,33 @@ export default function CommandBar({ roomId, threadId }: CommandBarProps) {
     }
   };
 
+  const handleFileUpload = useCallback(async (file: File) => {
+    setUploading(true);
+    setUploadProgress(0);
+    try {
+      const attachment = await uploadFile(file, (pct) => setUploadProgress(pct));
+      socketService.sendMessage(roomId, JSON.stringify(attachment), threadId, 'file');
+    } catch (err) {
+      console.error('Upload failed:', err);
+    } finally {
+      setUploading(false);
+      setUploadProgress(0);
+    }
+  }, [roomId, threadId]);
+
+  const handlePaste = useCallback((e: React.ClipboardEvent) => {
+    const items = e.clipboardData?.items;
+    if (!items) return;
+    for (const item of items) {
+      if (item.type.startsWith('image/')) {
+        e.preventDefault();
+        const file = item.getAsFile();
+        if (file) handleFileUpload(file);
+        return;
+      }
+    }
+  }, [handleFileUpload]);
+
   // Auto-resize textarea
   useEffect(() => {
     const el = inputRef.current;
@@ -125,11 +156,31 @@ export default function CommandBar({ roomId, threadId }: CommandBarProps) {
 
       {/* Input area */}
       <div className="flex items-end gap-2 p-4 border-t border-dark-border bg-dark-surface">
+        <input
+          ref={fileInputRef}
+          type="file"
+          className="hidden"
+          accept="image/*,.pdf,.txt,.md,.doc,.docx,.zip"
+          onChange={(e) => {
+            const file = e.target.files?.[0];
+            if (file) handleFileUpload(file);
+            e.target.value = '';
+          }}
+        />
+        <button
+          onClick={() => fileInputRef.current?.click()}
+          disabled={uploading}
+          className="p-2.5 text-dark-muted hover:text-white hover:bg-dark-hover disabled:opacity-30 rounded-xl transition flex-shrink-0"
+          title="Attach file"
+        >
+          📎
+        </button>
         <textarea
           ref={inputRef}
           value={input}
           onChange={handleInput}
           onKeyDown={handleKeyDown}
+          onPaste={handlePaste}
           placeholder={threadId ? 'Reply in thread...' : 'Type a message... (/ for commands)'}
           rows={1}
           className="flex-1 bg-dark-bg border border-dark-border rounded-xl px-4 py-2.5 text-sm text-white placeholder-dark-muted resize-none focus:outline-none focus:ring-1 focus:ring-primary-500 focus:border-primary-500 transition"
@@ -144,6 +195,18 @@ export default function CommandBar({ roomId, threadId }: CommandBarProps) {
           </svg>
         </button>
       </div>
+      {/* Upload progress */}
+      {uploading && (
+        <div className="px-4 pb-2 bg-dark-surface">
+          <div className="w-full bg-dark-bg rounded-full h-1.5">
+            <div
+              className="bg-primary-500 h-1.5 rounded-full transition-all"
+              style={{ width: `${uploadProgress}%` }}
+            />
+          </div>
+          <p className="text-xs text-dark-muted mt-1">Uploading... {uploadProgress}%</p>
+        </div>
+      )}
     </div>
   );
 }

@@ -73,8 +73,17 @@ class SocketService {
   }
 
   // Messages
-  sendMessage(roomId: string, content: string, threadId?: string, replyTo?: string) {
-    this.socket?.emit('message:send', { roomId, content, threadId, replyTo });
+  sendMessage(roomId: string, content: string, threadId?: string, replyToOrType?: string, type?: string) {
+    // Support calling as (roomId, content, threadId, type) for file messages
+    let replyTo: string | undefined;
+    let msgType: string | undefined;
+    if (replyToOrType === 'file' || replyToOrType === 'text' || replyToOrType === 'command' || replyToOrType === 'system') {
+      msgType = replyToOrType;
+    } else {
+      replyTo = replyToOrType;
+      msgType = type;
+    }
+    this.socket?.emit('message:send', { roomId, content, threadId, replyTo, type: msgType });
   }
 
   editMessage(messageId: string, content: string) {
