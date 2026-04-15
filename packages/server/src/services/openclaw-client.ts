@@ -238,8 +238,11 @@ export class OpenClawClient extends EventEmitter {
 
       // Build v3 signature payload — pipe-delimited string (NOT JSON)
       // Format: v3|deviceId|clientId|clientMode|role|scopes|signedAtMs|token|nonce|platform|deviceFamily
+      // IMPORTANT: signatureToken must match what Gateway's resolveSignatureToken picks:
+      //   auth.token ?? auth.deviceToken ?? auth.bootstrapToken ?? null
+      // Since we always send auth.token, use that.
       const scopes = ['operator.read', 'operator.write'];
-      const signatureToken = this.identity.deviceToken || this.config.authToken || '';
+      const signatureToken = this.config.authToken || '';
       const signPayload = [
         'v3',
         this.identity.deviceId,
@@ -257,6 +260,21 @@ export class OpenClawClient extends EventEmitter {
       // Sign and encode as base64url
       const sigBuf = crypto.sign(null, Buffer.from(signPayload, 'utf8'), this.privateKey);
       const signature = OpenClawClient.base64url(sigBuf);
+
+      console.log(`[OpenClaw] Signing payload (token length=${signatureToken.length}, nonce=${challenge.nonce.slice(0,8)}...)`);
+      console.log(`[OpenClaw] Device ID: ${this.identity.deviceId}`);
+      console.log(`[OpenClaw] PubKey b64url: ${pubKeyB64Url}`);
+
+      // Self-verify before sending (debug)
+      const selfVerify = crypto.verify(null, Buffer.from(signPayload, 'utf8'), this.publicKey, sigBuf);
+      console.log(`[OpenClaw] Self-verify: ${selfVerify}`);
+
+      // Verify round-trip: Gateway will do base64UrlDecode(pubKeyB64Url) to get raw, then prepend SPKI prefix
+      const ED25519_SPKI_PREFIX = Buffer.from('302a300506032b6570032100', 'hex');
+      const decodedRaw = Buffer.from(pubKeyB64Url.replace(/-/g, '+').replace(/_/g, '/') + '='.repeat((4 - pubKeyB64Url.length % 4) % 4), 'base64');
+      const reconstructedKey = crypto.createPublicKey({ key: Buffer.concat([ED25519_SPKI_PREFIX, decodedRaw]), type: 'spki', format: 'der' });
+      const crossVerify = crypto.verify(null, Buffer.from(signPayload, 'utf8'), reconstructedKey, sigBuf);
+      console.log(`[OpenClaw] Cross-verify (reconstructed key): ${crossVerify}, raw length: ${decodedRaw.length}`);
 
       const connectId = this.genId();
 
