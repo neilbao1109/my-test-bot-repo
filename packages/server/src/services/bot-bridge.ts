@@ -246,68 +246,67 @@ export async function* streamBotResponse(content: string, context: BotContext): 
   activeStreams.set(runId, stream);
 
   try {
-    const chunkQueue: Array<{ text: string; done: boolean }> = [];
-    let chunkResolve: (() => void) | null = null;
-
-    const listener = (text: string, done: boolean) => {
-      chunkQueue.push({ text, done });
-      if (chunkResolve) {
-        chunkResolve();
-        chunkResolve = null;
-      }
-    };
-    stream.listeners.add(listener);
-
-    // Send message (triggers AI response)
-    const sendPromise = gw.rpc('sessions.send', {
-      key: sessionKey,
+    // Send message via chat.send (triggers AI response)
+    const sendResult = await gw.rpc('chat.send', {
+      sessionKey,
       message: content,
-      agentId: AGENT_ID,
-    }, 120000);
+      idempotencyKey: crypto.randomBytes(16).toString('hex'),
+    }, 10000);
 
-    let yieldedAny = false;
+    console.log('[BotBridge] chat.send result:', JSON.stringify(sendResult)?.slice(0, 300));
+    const chatRunId = sendResult?.runId;
 
-    // Timeout: if no streaming events arrive in 30s, fall back to RPC result
-    const streamTimeout = setTimeout(() => {
-      stream.done = true;
-      listener('', true);
-    }, 30000);
-
-    // When RPC completes, push the full response if streaming didn't work
-    sendPromise.then((result: any) => {
-      clearTimeout(streamTimeout);
-      console.log('[BotBridge] sessions.send result:', JSON.stringify(result, null, 2)?.slice(0, 500));
-      if (!yieldedAny) {
-        const text = extractResponseText(result);
-        console.log('[BotBridge] Extracted text:', text?.slice(0, 200));
-        if (text) {
-          chunkQueue.push({ text, done: false });
-        }
-      }
-      chunkQueue.push({ text: '', done: true });
-      if (chunkResolve) { chunkResolve(); chunkResolve = null; }
-    }).catch((err: Error) => {
-      clearTimeout(streamTimeout);
-      console.error('[BotBridge] sessions.send failed:', err.message);
-      chunkQueue.push({ text: `⚠️ Error: ${err.message}`, done: false });
-      chunkQueue.push({ text: '', done: true });
-      if (chunkResolve) { chunkResolve(); chunkResolve = null; }
-    });
-
-    // Yield loop
-    while (true) {
-      if (chunkQueue.length === 0) {
-        await new Promise<void>(r => { chunkResolve = r; });
-      }
-      while (chunkQueue.length > 0) {
-        const item = chunkQueue.shift()!;
-        if (item.done) return;
-        if (item.text) {
-          yieldedAny = true;
-          yield item.text;
-        }
-      }
+    if (!chatRunId) {
+      console.error('[BotBridge] No runId from chat.send');
+      yield '⚠️ Failed to start AI response';
+      return;
     }
+
+    // Wait for the AI to finish
+    let waitResult: any;
+    try {
+      waitResult = await gw.rpc('agent.wait', {
+        runId: chatRunId,
+        timeoutMs: 120000,
+      }, 130000);
+      console.log('[BotBridge] agent.wait result:', JSON.stringify(waitResult)?.slice(0, 300));
+    } catch (err: any) {
+      console.error('[BotBridge] agent.wait failed:', err.message);
+    }
+
+    // Fetch the chat history to get the bot's response
+    try {
+      const history = await gw.rpc('chat.history', { sessionKey, limit: 5 });
+      console.log('[BotBridge] chat.history:', JSON.stringify(history)?.slice(0, 500));
+      if (history?.messages) {
+        // Find the last assistant message
+        const assistantMsgs = history.messages.filter((m: any) => m.role === 'assistant');
+        if (assistantMsgs.length > 0) {
+          const last = assistantMsgs[assistantMsgs.length - 1];
+          const text = typeof last.content === 'string' ? last.content : JSON.stringify(last.content);
+          if (text) {
+            yield text;
+            return;
+          }
+        }
+      }
+      // Fallback: try history as array directly
+      if (Array.isArray(history)) {
+        const assistantMsgs = history.filter((m: any) => m.role === 'assistant');
+        if (assistantMsgs.length > 0) {
+          const last = assistantMsgs[assistantMsgs.length - 1];
+          const text = typeof last.content === 'string' ? last.content : JSON.stringify(last.content);
+          if (text) {
+            yield text;
+            return;
+          }
+        }
+      }
+    } catch (err: any) {
+      console.error('[BotBridge] chat.history failed:', err.message);
+    }
+
+    yield '⚠️ AI responded but could not extract the response text';
   } finally {
     activeStreams.delete(runId);
   }
