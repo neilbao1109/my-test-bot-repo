@@ -283,7 +283,7 @@ export async function* streamBotResponse(content: string, context: BotContext): 
         const assistantMsgs = history.messages.filter((m: any) => m.role === 'assistant');
         if (assistantMsgs.length > 0) {
           const last = assistantMsgs[assistantMsgs.length - 1];
-          const text = typeof last.content === 'string' ? last.content : JSON.stringify(last.content);
+          const text = extractContentValue(last.content);
           if (text) {
             yield text;
             return;
@@ -295,7 +295,7 @@ export async function* streamBotResponse(content: string, context: BotContext): 
         const assistantMsgs = history.filter((m: any) => m.role === 'assistant');
         if (assistantMsgs.length > 0) {
           const last = assistantMsgs[assistantMsgs.length - 1];
-          const text = typeof last.content === 'string' ? last.content : JSON.stringify(last.content);
+          const text = extractContentValue(last.content);
           if (text) {
             yield text;
             return;
@@ -346,17 +346,30 @@ export function shutdown() {
 function extractResponseText(result: any): string | null {
   if (!result) return null;
   if (result.summary) return result.summary;
-  if (result.content) return result.content;
-  if (result.text) return result.text;
+  if (typeof result.content === 'string') return result.content;
+  if (typeof result.text === 'string') return result.text;
   if (result.messages) {
     const assistant = result.messages.filter((m: any) => m.role === 'assistant');
     if (assistant.length > 0) {
-      return assistant.map((m: any) =>
-        typeof m.content === 'string' ? m.content : JSON.stringify(m.content)
-      ).join('\n');
+      return assistant.map((m: any) => extractContentValue(m.content)).join('\n');
     }
   }
   return null;
+}
+
+/** Extract text from various content formats (string, array of parts, etc.) */
+function extractContentValue(content: any): string {
+  if (typeof content === 'string') return content;
+  // Array of content parts: [{type: "text", text: "..."}]
+  if (Array.isArray(content)) {
+    return content
+      .filter((part: any) => part.type === 'text' && typeof part.text === 'string')
+      .map((part: any) => part.text)
+      .join('\n');
+  }
+  // Object with text field
+  if (content && typeof content.text === 'string') return content.text;
+  return JSON.stringify(content);
 }
 
 // ── Fallback mock ──
