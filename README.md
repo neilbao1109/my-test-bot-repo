@@ -53,45 +53,75 @@ Open http://localhost:5173 in your browser.
 
 ## OpenClaw Integration
 
-ClawChat connects to your local OpenClaw Gateway for real AI responses.
+ClawChat connects to an OpenClaw Gateway for real AI responses. Three connection modes are supported:
 
-### Setup
+### Mode 1 — Local (simplest)
 
-1. Make sure OpenClaw Gateway is running:
-   ```bash
-   openclaw gateway status
-   ```
+Run ClawChat on the same machine as OpenClaw Gateway.
 
-2. Get your auth token:
-   ```bash
-   openclaw config get gateway.auth.token
-   ```
+```bash
+# .env
+OPENCLAW_AUTH_TOKEN=your_token
+```
 
-3. Set it in `packages/server/.env`:
-   ```
-   OPENCLAW_AUTH_TOKEN=your_token_here
-   ```
+Get your token: `openclaw config get gateway.auth.token`
+
+### Mode 2 — Remote (direct URL)
+
+Connect to a remote Gateway directly. Requires the Gateway port to be reachable (via Tailscale, VPN, or exposed port).
+
+```bash
+# .env
+OPENCLAW_GATEWAY_URL=ws://your-server:18789
+OPENCLAW_AUTH_TOKEN=your_token
+```
+
+### Mode 3 — Remote (auto SSH tunnel)
+
+ClawChat automatically creates an SSH tunnel to the remote Gateway. No need to manually manage tunnels or expose ports.
+
+```bash
+# .env
+OPENCLAW_SSH_HOST=user@your-server
+OPENCLAW_AUTH_TOKEN=your_token
+
+# Optional:
+# OPENCLAW_SSH_KEY=~/.ssh/id_ed25519
+# OPENCLAW_SSH_PORT=22
+# OPENCLAW_REMOTE_GW_PORT=18789
+```
+
+The SSH tunnel auto-reconnects if the connection drops.
+
+### Mode 4 — Mock (no token)
+
+Without `OPENCLAW_AUTH_TOKEN`, the bot returns demo responses. Useful for frontend development.
 
 ### How It Works
 
-The Bot Bridge (`packages/server/src/services/bot-bridge.ts`) connects to the OpenClaw Gateway via WebSocket:
-
-1. **Handshake** — Authenticates with the Gateway using ed25519 device identity
-2. **Session Management** — Creates a dedicated OpenClaw session per ClawChat room
-3. **Message Streaming** — Sends user messages via `sessions.send` and subscribes to `session.message` events for real-time streaming
-4. **Fallback** — If the Gateway is unavailable, falls back to demo mode with mock responses
+```
+┌──────────┐     Socket.IO     ┌───────────────┐     WS      ┌──────────────────┐
+│ Browser  │ ◄──────────────── │ ClawChat      │ ◄────────── │ OpenClaw Gateway │
+│ (React)  │ ──────────────▶   │ Server        │ ──────────▶ │ (local/remote)   │
+└──────────┘                   │               │             └──────────────────┘
+                               │  SSH tunnel?  │──── ssh ───▶ (auto if Mode 3)
+                               └───────────────┘
+```
 
 ### Environment Variables
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `OPENCLAW_GATEWAY_URL` | `ws://127.0.0.1:18789` | Gateway WebSocket URL |
-| `OPENCLAW_AUTH_TOKEN` | _(none)_ | Gateway auth token (required) |
-| `OPENCLAW_AGENT_ID` | `default` | Which agent to use |
-| `PORT` | `3001` | Server port |
+| `OPENCLAW_AUTH_TOKEN` | _(none)_ | Gateway auth token (required for AI) |
+| `OPENCLAW_GATEWAY_URL` | `ws://127.0.0.1:18789` | Direct Gateway URL (Mode 2) |
+| `OPENCLAW_SSH_HOST` | _(none)_ | SSH host for tunnel (Mode 3) |
+| `OPENCLAW_SSH_PORT` | `22` | SSH port |
+| `OPENCLAW_SSH_KEY` | _(default)_ | Path to SSH private key |
+| `OPENCLAW_REMOTE_GW_PORT` | `18789` | Gateway port on remote host |
+| `OPENCLAW_LOCAL_GW_PORT` | `0` (auto) | Local port for SSH tunnel |
+| `OPENCLAW_AGENT_ID` | `default` | Which OpenClaw agent to use |
+| `PORT` | `3001` | ClawChat server port |
 | `CLIENT_URL` | `http://localhost:5173` | Client URL for CORS |
-
-> Without `OPENCLAW_AUTH_TOKEN`, the bot runs in demo mode with mock responses.
 
 ## Project Structure
 
@@ -109,8 +139,9 @@ packages/
 │       ├── db/              # SQLite schema
 │       ├── routes/          # REST API
 │       ├── services/        # Business logic
-│       │   ├── bot-bridge.ts      # OpenClaw Bot Bridge
-│       │   └── openclaw-client.ts # Gateway WS client
+│       │   ├── bot-bridge.ts      # OpenClaw Bot Bridge (4 modes)
+│       │   ├── openclaw-client.ts # Gateway WS client
+│       │   └── ssh-tunnel.ts      # Auto SSH tunnel manager
 │       └── socket/          # WebSocket handlers
 docs/
 ├── PRD.md                   # Product requirements

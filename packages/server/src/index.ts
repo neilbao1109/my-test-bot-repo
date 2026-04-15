@@ -7,6 +7,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import apiRouter from './routes/api.js';
 import { setupSocketHandlers } from './socket/handlers.js';
+import { shutdown, getConnectionMode } from './services/bot-bridge.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PORT = process.env.PORT || 3001;
@@ -43,5 +44,18 @@ if (!fs.existsSync(dataDir)) {
 }
 
 httpServer.listen(PORT, () => {
+  const mode = getConnectionMode();
   console.log(`🚀 ClawChat Server running on http://localhost:${PORT}`);
+  console.log(`🤖 Bot Bridge mode: ${mode}`);
+});
+
+// Graceful shutdown
+process.on('SIGINT', () => {
+  console.log('\n🛑 Shutting down...');
+  shutdown();
+  process.exit(0);
+});
+process.on('SIGTERM', () => {
+  shutdown();
+  process.exit(0);
 });

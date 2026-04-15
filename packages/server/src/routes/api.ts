@@ -3,6 +3,7 @@ import { getRooms } from '../services/room.js';
 import { getMessages } from '../services/message.js';
 import { getCommands } from '../services/command.js';
 import { getBotStatus } from '../services/bot-bridge.js';
+import { getConnectionMode } from '../services/bot-bridge.js';
 
 const router = Router();
 
@@ -16,7 +17,7 @@ router.get('/commands', (_req, res) => {
 
 router.get('/bot/status', async (_req, res) => {
   const status = await getBotStatus();
-  res.json(status);
+  res.json({ ...status, mode: getConnectionMode() });
 });
 
 router.get('/rooms/:roomId/messages', (req, res) => {
