@@ -236,20 +236,27 @@ export class OpenClawClient extends EventEmitter {
       const pubKeyB64Url = OpenClawClient.base64url(rawPubKey);
       const now = Date.now();
 
-      // Sign with v3 payload
-      const signPayload = JSON.stringify({
-        version: 'v3',
-        deviceId: this.identity.deviceId,
-        clientId: 'gateway-client',
-        role: 'operator',
-        scopes: ['operator.read', 'operator.write'],
-        token: this.config.authToken,
-        nonce: challenge.nonce,
-        signedAt: now,
-        platform: 'linux',
-        deviceFamily: 'server',
-      });
-      const signature = crypto.sign(null, Buffer.from(signPayload), this.privateKey).toString('base64');
+      // Build v3 signature payload — pipe-delimited string (NOT JSON)
+      // Format: v3|deviceId|clientId|clientMode|role|scopes|signedAtMs|token|nonce|platform|deviceFamily
+      const scopes = ['operator.read', 'operator.write'];
+      const signatureToken = this.identity.deviceToken || this.config.authToken || '';
+      const signPayload = [
+        'v3',
+        this.identity.deviceId,
+        'gateway-client',   // client.id
+        'backend',          // client.mode
+        'operator',         // role
+        scopes.join(','),   // scopes comma-separated
+        String(now),        // signedAtMs
+        signatureToken,     // token
+        challenge.nonce,    // nonce
+        'linux',            // platform (lowercased)
+        'server',           // deviceFamily (lowercased)
+      ].join('|');
+
+      // Sign and encode as base64url
+      const sigBuf = crypto.sign(null, Buffer.from(signPayload, 'utf8'), this.privateKey);
+      const signature = OpenClawClient.base64url(sigBuf);
 
       const connectId = this.genId();
 
