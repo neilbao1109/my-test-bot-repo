@@ -130,7 +130,7 @@ export class OpenClawClient extends EventEmitter {
       const signPayload = JSON.stringify({
         version: 'v3',
         deviceId: this.deviceId,
-        clientId: 'clawchat-server',
+        clientId: 'gateway-client',
         role: 'operator',
         scopes: ['operator.read', 'operator.write'],
         token: this.config.authToken,
@@ -150,10 +150,10 @@ export class OpenClawClient extends EventEmitter {
           minProtocol: 3,
           maxProtocol: 3,
           client: {
-            id: 'clawchat-server',
+            id: 'gateway-client',
             version: '0.1.0',
             platform: 'linux',
-            mode: 'operator',
+            mode: 'backend',
           },
           role: 'operator',
           scopes: ['operator.read', 'operator.write'],
@@ -162,7 +162,7 @@ export class OpenClawClient extends EventEmitter {
           permissions: {},
           auth: { token: this.config.authToken },
           locale: 'en-US',
-          userAgent: 'clawchat-server/0.1.0',
+          userAgent: 'gateway-client/0.1.0',
           device: {
             id: this.deviceId,
             publicKey: pubKeyB64,

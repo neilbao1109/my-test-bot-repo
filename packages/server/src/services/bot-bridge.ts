@@ -148,7 +148,7 @@ async function reconnectClient(newUrl: string) {
     // Re-subscribe sessions
     for (const sessionKey of subscribedSessions) {
       try {
-        await client.rpc('sessions.messages.subscribe', { sessionKey });
+        await client.rpc('sessions.messages.subscribe', { key: sessionKey });
       } catch { /* best effort */ }
     }
 
@@ -208,7 +208,7 @@ async function getSessionForRoom(roomId: string): Promise<string> {
   // Subscribe to session events
   if (!subscribedSessions.has(sessionKey)) {
     try {
-      await gw.rpc('sessions.messages.subscribe', { sessionKey });
+      await gw.rpc('sessions.messages.subscribe', { key: sessionKey });
       subscribedSessions.add(sessionKey);
       console.log(`[BotBridge] Subscribed to session: ${sessionKey}`);
     } catch (err: any) {
@@ -260,7 +260,7 @@ export async function* streamBotResponse(content: string, context: BotContext): 
 
     // Send message (triggers AI response)
     const sendPromise = gw.rpc('sessions.send', {
-      sessionKey,
+      key: sessionKey,
       message: content,
       agentId: AGENT_ID,
     }, 120000);
