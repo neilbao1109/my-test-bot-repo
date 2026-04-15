@@ -63,8 +63,10 @@ export function executeCommand(command: string, args: string, roomId: string): C
       state.systemPrompt = args;
       return { success: true, output: `📝 System prompt updated.` };
     }
-    case 'status':
-      return { success: true, output: `✅ **Bot Status:**\n- Model: ${state.model}\n- System Prompt: ${state.systemPrompt || '(none)'}\n- Status: Online` };
+    case 'status': {
+      const mode = process.env.OPENCLAW_AUTH_TOKEN ? 'OpenClaw Gateway' : 'Demo (mock)';
+      return { success: true, output: `✅ **Bot Status:**\n- Mode: ${mode}\n- Gateway: ${process.env.OPENCLAW_GATEWAY_URL || 'ws://127.0.0.1:18789'}\n- Model: ${state.model}\n- System Prompt: ${state.systemPrompt || '(none)'}\n- Status: Online` };
+    }
     case 'export':
       return { success: true, output: '📦 Export triggered.', data: { action: 'export', format: args || 'json' } };
     case 'thread':
