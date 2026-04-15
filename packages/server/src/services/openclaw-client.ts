@@ -296,6 +296,7 @@ export class OpenClawClient extends EventEmitter {
             version: '0.1.0',
             platform: 'linux',
             mode: 'backend',
+            deviceFamily: 'server',
           },
           role: 'operator',
           scopes: ['operator.read', 'operator.write'],
