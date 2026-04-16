@@ -10,6 +10,12 @@
   --safe-area-right: env(safe-area-inset-right, 0px);
 }
 
+/* Mobile viewport fix: 100dvh fallback */
+html, body, #root {
+  height: 100%;
+  overflow: hidden;
+}
+
 /* Base styles */
 * {
   scrollbar-width: thin;

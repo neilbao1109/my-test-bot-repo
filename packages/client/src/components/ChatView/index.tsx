@@ -39,6 +39,17 @@ export default function ChatView() {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [roomMessages, roomStreamingMsgs]);
 
+  // Mobile keyboard: scroll to bottom when viewport resizes
+  useEffect(() => {
+    const vv = window.visualViewport;
+    if (!vv) return;
+    const onResize = () => {
+      bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+    };
+    vv.addEventListener('resize', onResize);
+    return () => vv.removeEventListener('resize', onResize);
+  }, []);
+
   const handleDrop = useCallback(async (e: React.DragEvent) => {
     e.preventDefault();
     setDragOver(false);
@@ -68,7 +79,7 @@ export default function ChatView() {
 
   return (
     <div
-      className="flex-1 flex flex-col h-full bg-dark-bg relative"
+      className="flex-1 flex flex-col h-full min-h-0 bg-dark-bg relative"
       onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
       onDragLeave={() => setDragOver(false)}
       onDrop={handleDrop}
@@ -117,7 +128,7 @@ export default function ChatView() {
       </div>
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto py-4">
+      <div className="flex-1 overflow-y-auto py-4 min-h-0">
         {roomMessages.length === 0 && (
           <div className="text-center py-12">
             <div className="text-4xl mb-3">🤖</div>

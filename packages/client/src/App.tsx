@@ -38,7 +38,7 @@ export default function App() {
   }
 
   return (
-    <div className="h-screen flex overflow-hidden bg-dark-bg">
+    <div className="h-screen h-[100dvh] flex overflow-hidden bg-dark-bg">
       <Sidebar />
       <ChatView />
       <ThreadPanel />
