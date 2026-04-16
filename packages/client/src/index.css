@@ -11,14 +11,12 @@
 }
 
 /* Mobile viewport fix */
-html, body, #root {
-  height: 100%;
-  overflow: hidden;
-}
-
 #app-shell {
-  height: 100vh;
-  height: 100dvh; /* override for browsers that support dvh */
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
 }
 
 /* Base styles */
