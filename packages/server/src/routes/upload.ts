@@ -34,10 +34,13 @@ router.post('/upload', upload.single('file'), (req, res) => {
     return;
   }
 
+  // multer decodes filenames as latin1 by default; re-decode as UTF-8
+  const originalName = Buffer.from(file.originalname, 'latin1').toString('utf-8');
+
   const result = {
     id: randomUUID(),
     filename: file.filename,
-    originalName: file.originalname,
+    originalName,
     mimeType: file.mimetype,
     size: file.size,
     url: `/api/uploads/${file.filename}`,
