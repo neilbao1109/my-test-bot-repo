@@ -132,7 +132,7 @@ export default function CommandBar({ roomId, threadId }: CommandBarProps) {
   }, [input]);
 
   return (
-    <div className="relative">
+    <div className="relative flex-shrink-0">
       {/* Command suggestions */}
       {showSuggestions && (
         <div className="absolute bottom-full left-0 right-0 mb-1 bg-dark-surface border border-dark-border rounded-lg shadow-xl overflow-hidden z-10">

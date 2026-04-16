@@ -10,9 +10,10 @@
   --safe-area-right: env(safe-area-inset-right, 0px);
 }
 
-/* Mobile viewport fix: 100dvh fallback */
+/* Mobile viewport fix */
 html, body, #root {
   height: 100%;
+  height: 100dvh;
   overflow: hidden;
 }
 

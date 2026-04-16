@@ -91,7 +91,7 @@ export default function ChatView() {
         </div>
       )}
       {/* Header */}
-      <div className="flex items-center gap-3 px-4 py-3 border-b border-dark-border bg-dark-surface">
+      <div className="flex items-center gap-3 px-4 py-3 border-b border-dark-border bg-dark-surface flex-shrink-0">
         {/* Hamburger: always on mobile, only when sidebar hidden on desktop */}
         <button
           onClick={toggleSidebar}
@@ -128,7 +128,7 @@ export default function ChatView() {
       </div>
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto py-4 min-h-0">
+      <div className="flex-1 overflow-y-auto py-4 min-h-0 overscroll-contain">
         {roomMessages.length === 0 && (
           <div className="text-center py-12">
             <div className="text-4xl mb-3">🤖</div>
