@@ -10,13 +10,11 @@
   --safe-area-right: env(safe-area-inset-right, 0px);
 }
 
-/* Mobile viewport fix */
-#app-shell {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
+/* Mobile viewport fix — progressive: fixed is most reliable on mobile */
+@supports (height: 100dvh) {
+  #app-shell {
+    height: 100dvh;
+  }
 }
 
 /* Base styles */
