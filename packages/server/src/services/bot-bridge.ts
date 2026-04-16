@@ -192,15 +192,29 @@ async function getSessionForRoom(roomId: string): Promise<string> {
   }
 
   const gw = await ensureClient();
+  const label = `ClawChat room: ${roomId}`;
 
-  const result = await gw.rpc('sessions.create', {
-    label: `ClawChat room: ${roomId}`,
-    agentId: AGENT_ID,
-  });
+  // Try to find existing session with this label first (survives server restarts)
+  let sessionKey: string | undefined;
+  try {
+    const list = await gw.rpc('sessions.list', { label });
+    const sessions = list?.sessions || list || [];
+    if (Array.isArray(sessions) && sessions.length > 0) {
+      sessionKey = sessions[0].sessionKey || sessions[0].key || sessions[0].id;
+    }
+  } catch (err: any) {
+    console.warn(`[BotBridge] sessions.list failed: ${err.message}`);
+  }
 
-  const sessionKey = result.sessionKey || result.key || result.id;
   if (!sessionKey) {
-    throw new Error('No sessionKey in sessions.create response');
+    const result = await gw.rpc('sessions.create', {
+      label,
+      agentId: AGENT_ID,
+    });
+    sessionKey = result.sessionKey || result.key || result.id;
+    if (!sessionKey) {
+      throw new Error('No sessionKey in sessions.create response');
+    }
   }
 
   roomSessions.set(roomId, sessionKey);
