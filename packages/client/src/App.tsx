@@ -38,7 +38,7 @@ export default function App() {
   }
 
   return (
-    <div className="flex overflow-hidden bg-dark-bg" style={{ height: '100dvh' }}>
+    <div className="h-screen flex overflow-hidden bg-dark-bg" id="app-shell">
       <Sidebar />
       <ChatView />
       <ThreadPanel />
