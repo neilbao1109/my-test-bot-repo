@@ -14,7 +14,7 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-dark-bg">
+    <div className="min-h-screen flex items-center justify-center bg-dark-bg px-4 md:px-0">
       <div className="bg-dark-surface rounded-2xl p-8 w-full max-w-md shadow-2xl border border-dark-border">
         {/* Logo */}
         <div className="text-center mb-8">

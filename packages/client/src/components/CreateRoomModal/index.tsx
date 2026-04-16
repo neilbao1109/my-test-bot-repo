@@ -57,7 +57,7 @@ export default function CreateRoomModal() {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
-      <div className="bg-dark-surface border border-dark-border rounded-xl shadow-2xl w-full max-w-md mx-4">
+      <div className="bg-dark-surface border border-dark-border rounded-xl shadow-2xl w-full max-w-md mx-4 max-h-[90vh] overflow-y-auto">
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-dark-border">
           <h2 className="text-lg font-semibold text-white">Create Room</h2>

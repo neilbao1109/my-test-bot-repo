@@ -7,6 +7,8 @@ export default function Sidebar() {
 
   if (!showSidebar) return null;
 
+  const isMobile = window.innerWidth < 768;
+
   const getRoomOnlineCount = (roomId: string): number => {
     const members = roomMembers[roomId] || [];
     return members.filter((m) => onlineUsers.has(m.id) || m.isOnline).length;
@@ -16,10 +18,19 @@ export default function Sidebar() {
     return getRoomOnlineCount(roomId) > 0;
   };
 
-  return (
-    <div className="w-64 bg-dark-surface border-r border-dark-border flex flex-col h-full">
+  const handleRoomSelect = (roomId: string) => {
+    setActiveRoom(roomId);
+    if (isMobile) toggleSidebar();
+  };
+
+  const sidebar = (
+    <div className={clsx(
+      'bg-dark-surface border-r border-dark-border flex flex-col h-full',
+      'fixed inset-0 z-40 w-full md:static md:w-64 md:z-auto'
+    )}>
       {/* Header */}
-      <div className="p-4 border-b border-dark-border flex items-center justify-between">
+      <div className="p-4 border-b border-dark-border flex items-center justify-between"
+           style={{ paddingTop: `max(1rem, var(--safe-area-top))` }}>
         <div className="flex items-center gap-2">
           <div className="w-8 h-8 bg-primary-600 rounded-lg flex items-center justify-center">
             <span className="text-sm font-bold text-white">CC</span>
@@ -28,7 +39,7 @@ export default function Sidebar() {
         </div>
         <button
           onClick={toggleSidebar}
-          className="text-dark-muted hover:text-white p-1 rounded lg:hidden"
+          className="text-dark-muted hover:text-white p-1 rounded md:hidden"
         >
           ✕
         </button>
@@ -55,7 +66,7 @@ export default function Sidebar() {
           return (
             <button
               key={room.id}
-              onClick={() => setActiveRoom(room.id)}
+              onClick={() => handleRoomSelect(room.id)}
               className={clsx(
                 'w-full text-left px-3 py-2.5 mx-1 rounded-lg flex items-center gap-2.5 transition',
                 activeRoomId === room.id
@@ -82,7 +93,8 @@ export default function Sidebar() {
       </div>
 
       {/* New room button */}
-      <div className="p-3 border-t border-dark-border">
+      <div className="p-3 border-t border-dark-border"
+           style={{ paddingBottom: `max(0.75rem, var(--safe-area-bottom))` }}>
         <button
           onClick={() => setShowCreateRoom(true)}
           className="w-full py-2 px-3 text-sm text-dark-muted hover:text-white hover:bg-dark-hover rounded-lg transition flex items-center gap-2"
@@ -93,4 +105,16 @@ export default function Sidebar() {
       </div>
     </div>
   );
+
+  // On mobile, wrap with backdrop
+  if (isMobile) {
+    return (
+      <>
+        <div className="fixed inset-0 z-30 bg-black/50" onClick={toggleSidebar} />
+        {sidebar}
+      </>
+    );
+  }
+
+  return sidebar;
 }

@@ -22,6 +22,8 @@ export default function MessageBubble({ message, isStreaming, streamContent }: M
   const { user, roomMembers, activeRoomId, threadInfo } = useAppStore();
   const [showActions, setShowActions] = useState(false);
   const [showReactions, setShowReactions] = useState(false);
+  const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
   const [isEditing, setIsEditing] = useState(false);
   const [editContent, setEditContent] = useState(message.content);
   const editRef = useRef<HTMLTextAreaElement>(null);
@@ -41,17 +43,22 @@ export default function MessageBubble({ message, isStreaming, streamContent }: M
     }
   }, [isEditing]);
 
-  // Close reaction picker on outside click
+  // Close reaction picker / mobile actions on outside click
   useEffect(() => {
-    if (!showReactions) return;
-    const handler = (e: MouseEvent) => {
+    if (!showReactions && !(isMobile && showActions)) return;
+    const handler = (e: MouseEvent | TouchEvent) => {
       if (reactionRef.current && !reactionRef.current.contains(e.target as Node)) {
         setShowReactions(false);
       }
+      if (isMobile) setShowActions(false);
     };
     document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
-  }, [showReactions]);
+    document.addEventListener('touchstart', handler);
+    return () => {
+      document.removeEventListener('mousedown', handler);
+      document.removeEventListener('touchstart', handler);
+    };
+  }, [showReactions, showActions]);
 
   const handleEdit = () => {
     if (editContent.trim() && editContent !== message.content) {
@@ -109,8 +116,19 @@ export default function MessageBubble({ message, isStreaming, streamContent }: M
         'group flex gap-3 px-4 py-1.5 hover:bg-dark-hover/50 transition relative',
         message.type === 'system' && 'opacity-80'
       )}
-      onMouseEnter={() => setShowActions(true)}
-      onMouseLeave={() => { setShowActions(false); setShowReactions(false); }}
+      onMouseEnter={() => !isMobile && setShowActions(true)}
+      onMouseLeave={() => { !isMobile && setShowActions(false); setShowReactions(false); }}
+      onTouchStart={() => {
+        if (isMobile) {
+          longPressTimer.current = setTimeout(() => { setShowActions(true); }, 500);
+        }
+      }}
+      onTouchEnd={() => {
+        if (longPressTimer.current) { clearTimeout(longPressTimer.current); longPressTimer.current = null; }
+      }}
+      onTouchMove={() => {
+        if (longPressTimer.current) { clearTimeout(longPressTimer.current); longPressTimer.current = null; }
+      }}
     >
       {/* Avatar */}
       <div className="flex-shrink-0 pt-0.5">
@@ -173,7 +191,7 @@ export default function MessageBubble({ message, isStreaming, streamContent }: M
                   <img
                     src={attachment.url}
                     alt={attachment.originalName}
-                    className="max-w-xs max-h-64 rounded-lg border border-dark-border hover:opacity-90 transition cursor-pointer"
+                    className="max-w-[70vw] md:max-w-xs max-h-64 rounded-lg border border-dark-border hover:opacity-90 transition cursor-pointer"
                   />
                   <span className="text-xs text-dark-muted mt-1 block">{attachment.originalName} · {formatFileSize(attachment.size)}</span>
                 </a>

@@ -236,7 +236,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     }),
 
   // UI
-  showSidebar: true,
+  showSidebar: window.innerWidth >= 768,
   showThread: false,
   showMembers: false,
   showCreateRoom: false,

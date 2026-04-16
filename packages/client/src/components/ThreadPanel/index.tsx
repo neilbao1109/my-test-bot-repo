@@ -33,7 +33,7 @@ export default function ThreadPanel() {
   if (!showThread || !activeThread) return null;
 
   return (
-    <div className="w-80 border-l border-dark-border bg-dark-surface flex flex-col h-full">
+    <div className="fixed inset-0 z-30 w-full bg-dark-surface flex flex-col h-full md:static md:inset-auto md:z-auto md:w-80 md:border-l md:border-dark-border">
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-dark-border">
         <div className="flex items-center gap-2">

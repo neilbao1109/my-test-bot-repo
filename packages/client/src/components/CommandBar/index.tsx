@@ -183,7 +183,7 @@ export default function CommandBar({ roomId, threadId }: CommandBarProps) {
           onPaste={handlePaste}
           placeholder={threadId ? 'Reply in thread...' : 'Type a message... (/ for commands)'}
           rows={1}
-          className="flex-1 bg-dark-bg border border-dark-border rounded-xl px-4 py-2.5 text-sm text-white placeholder-dark-muted resize-none focus:outline-none focus:ring-1 focus:ring-primary-500 focus:border-primary-500 transition"
+          className="flex-1 bg-dark-bg border border-dark-border rounded-xl px-4 py-3 md:py-2.5 text-sm text-white placeholder-dark-muted resize-none focus:outline-none focus:ring-1 focus:ring-primary-500 focus:border-primary-500 transition"
         />
         <button
           onClick={handleSend}
