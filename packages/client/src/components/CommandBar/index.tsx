@@ -75,10 +75,7 @@ export default function CommandBar({ roomId, threadId }: CommandBarProps) {
       }
     }
 
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      handleSend();
-    }
+    // Enter key inserts newline (default behavior), no send on Enter
   };
 
   const handleInput = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
