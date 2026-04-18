@@ -1,5 +1,6 @@
 import { v4 as uuid } from 'uuid';
 import { getDb } from '../db/schema.js';
+import { getAutoJoinBotIds } from '../services/bot-registry.js';
 import type { Room, User } from '../types.js';
 
 export function createRoom(name: string, type: 'dm' | 'group', memberIds: string[]): Room {
@@ -13,8 +14,11 @@ export function createRoom(name: string, type: 'dm' | 'group', memberIds: string
   for (const userId of memberIds) {
     insertMember.run(id, userId);
   }
-  // Always add bot to the room
-  insertMember.run(id, 'bot-clawchat');
+  // Add auto-join bots to the room
+  const autoJoinBots = getAutoJoinBotIds();
+  for (const botId of autoJoinBots) {
+    insertMember.run(id, botId);
+  }
 
   return { id, name, type, createdAt: now };
 }

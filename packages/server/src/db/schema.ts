@@ -69,12 +69,4 @@ function initSchema(db: Database.Database) {
     CREATE INDEX IF NOT EXISTS idx_room_members_user ON room_members(user_id);
   `);
 
-  // Ensure bot user exists
-  const botExists = db.prepare('SELECT id FROM users WHERE id = ?').get('bot-clawchat');
-  if (!botExists) {
-    db.prepare(`
-      INSERT INTO users (id, username, avatar_url, is_bot, is_online)
-      VALUES (?, ?, ?, 1, 1)
-    `).run('bot-clawchat', 'ClawBot', '/bot-avatar.svg');
-  }
 }

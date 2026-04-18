@@ -43,8 +43,8 @@ export function useSocket() {
       }
     });
 
-    socket.on('bot:stream:start', (data: { messageId: string; roomId: string; threadId: string | null }) => {
-      store.startStreaming(data.messageId, data.roomId, data.threadId);
+    socket.on('bot:stream:start', (data: { messageId: string; roomId: string; threadId: string | null; botId?: string }) => {
+      store.startStreaming(data.messageId, data.roomId, data.threadId, data.botId);
     });
 
     socket.on('bot:stream', (data: { messageId: string; chunk: string; done: boolean; finalMessage?: Message }) => {

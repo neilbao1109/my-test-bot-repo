@@ -177,14 +177,17 @@ export default function ChatView() {
         })}
 
         {/* Streaming messages */}
-        {roomStreamingMsgs.map((stream) => (
+        {roomStreamingMsgs.map((stream) => {
+          // Determine bot userId from the stream (botId field or fallback)
+          const streamBotId = stream.botId || members.find(m => m.isBot)?.id || 'bot-clawchat';
+          return (
           <MessageBubble
             key={stream.messageId}
             message={{
               id: stream.messageId,
               roomId: stream.roomId,
               threadId: stream.threadId,
-              userId: 'bot-clawchat',
+              userId: streamBotId,
               content: stream.content,
               type: 'text',
               replyTo: null,
@@ -197,7 +200,8 @@ export default function ChatView() {
             isStreaming={true}
             streamContent={stream.content}
           />
-        ))}
+          );
+        })}
 
         {/* Typing indicator with avatars */}
         {roomTyping.length > 0 && (
@@ -213,8 +217,8 @@ export default function ChatView() {
               ))}
             </div>
             <span className="text-xs text-dark-muted animate-pulse">
-              {roomTyping.some((u) => u.userId === 'bot-clawchat')
-                ? 'ClawBot is thinking...'
+              {roomTyping.some((u) => members.find(m => m.id === u.userId)?.isBot)
+                ? `${roomTyping.filter(u => members.find(m => m.id === u.userId)?.isBot).map(u => u.username).join(', ')} ${roomTyping.filter(u => members.find(m => m.id === u.userId)?.isBot).length === 1 ? 'is' : 'are'} thinking...`
                 : `${roomTyping.map((u) => u.username).join(', ')} ${roomTyping.length === 1 ? 'is' : 'are'} typing...`}
             </span>
           </div>

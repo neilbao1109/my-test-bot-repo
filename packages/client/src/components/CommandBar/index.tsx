@@ -24,9 +24,19 @@ export default function CommandBar({ roomId, threadId }: CommandBarProps) {
   const [selectedIdx, setSelectedIdx] = useState(0);
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
+  const [showMentions, setShowMentions] = useState(false);
+  const [mentionQuery, setMentionQuery] = useState('');
+  const [mentionIdx, setMentionIdx] = useState(0);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const typingRef = useRef(false);
+
+  const { roomMembers, activeRoomId } = useAppStore();
+  const members = activeRoomId ? roomMembers[activeRoomId] || [] : [];
+  const botMembers = members.filter(m => m.isBot);
+  const filteredBots = mentionQuery
+    ? botMembers.filter(b => b.username.toLowerCase().includes(mentionQuery.toLowerCase()))
+    : botMembers;
 
   const suggestions = input.startsWith('/')
     ? COMMANDS.filter((c) => `/${c.name}`.startsWith(input.split(' ')[0]))
@@ -50,6 +60,37 @@ export default function CommandBar({ roomId, threadId }: CommandBarProps) {
   }, [input, roomId, threadId]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
+    // Mention autocomplete
+    if (showMentions && filteredBots.length > 0) {
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        setMentionIdx((i) => Math.min(i + 1, filteredBots.length - 1));
+        return;
+      }
+      if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        setMentionIdx((i) => Math.max(i - 1, 0));
+        return;
+      }
+      if (e.key === 'Tab' || e.key === 'Enter') {
+        e.preventDefault();
+        const bot = filteredBots[mentionIdx];
+        if (bot) {
+          const cursorPos = inputRef.current?.selectionStart || input.length;
+          const textBefore = input.slice(0, cursorPos);
+          const textAfter = input.slice(cursorPos);
+          const newBefore = textBefore.replace(/@\w*$/, `@${bot.username} `);
+          setInput(newBefore + textAfter);
+        }
+        setShowMentions(false);
+        return;
+      }
+      if (e.key === 'Escape') {
+        setShowMentions(false);
+        return;
+      }
+    }
+
     if (showSuggestions) {
       if (e.key === 'ArrowDown') {
         e.preventDefault();
@@ -78,14 +119,27 @@ export default function CommandBar({ roomId, threadId }: CommandBarProps) {
   };
 
   const handleInput = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    setInput(e.target.value);
+    const val = e.target.value;
+    setInput(val);
+
+    // Detect @mention
+    const cursorPos = e.target.selectionStart || 0;
+    const textBeforeCursor = val.slice(0, cursorPos);
+    const mentionMatch = textBeforeCursor.match(/@(\w*)$/);
+    if (mentionMatch && botMembers.length > 0) {
+      setMentionQuery(mentionMatch[1]);
+      setShowMentions(true);
+      setMentionIdx(0);
+    } else {
+      setShowMentions(false);
+    }
 
     // Typing indicator
-    if (!typingRef.current && e.target.value.trim()) {
+    if (!typingRef.current && val.trim()) {
       socketService.startTyping(roomId);
       typingRef.current = true;
     }
-    if (!e.target.value.trim() && typingRef.current) {
+    if (!val.trim() && typingRef.current) {
       socketService.stopTyping(roomId);
       typingRef.current = false;
     }
@@ -129,6 +183,32 @@ export default function CommandBar({ roomId, threadId }: CommandBarProps) {
 
   return (
     <div className="relative flex-shrink-0">
+      {/* Mention autocomplete */}
+      {showMentions && filteredBots.length > 0 && (
+        <div className="absolute bottom-full left-0 right-0 mb-1 bg-dark-surface border border-dark-border rounded-lg shadow-xl overflow-hidden z-10">
+          {filteredBots.map((bot, i) => (
+            <button
+              key={bot.id}
+              onClick={() => {
+                const cursorPos = inputRef.current?.selectionStart || input.length;
+                const textBefore = input.slice(0, cursorPos);
+                const textAfter = input.slice(cursorPos);
+                const newBefore = textBefore.replace(/@\w*$/, `@${bot.username} `);
+                setInput(newBefore + textAfter);
+                setShowMentions(false);
+                inputRef.current?.focus();
+              }}
+              className={`w-full text-left px-4 py-2.5 flex items-center gap-3 transition ${
+                i === mentionIdx ? 'bg-primary-600/20 text-primary-400' : 'text-dark-text hover:bg-dark-hover'
+              }`}
+            >
+              <span className="text-sm font-semibold">@{bot.username}</span>
+              <span className="text-[10px] px-1.5 py-0.5 bg-primary-600/20 text-primary-400 rounded font-medium">BOT</span>
+            </button>
+          ))}
+        </div>
+      )}
+
       {/* Command suggestions */}
       {showSuggestions && (
         <div className="absolute bottom-full left-0 right-0 mb-1 bg-dark-surface border border-dark-border rounded-lg shadow-xl overflow-hidden z-10">

@@ -47,6 +47,7 @@ export interface StreamingMessage {
   content: string;
   roomId: string;
   threadId: string | null;
+  botId?: string;
 }
 
 export interface FileAttachment {

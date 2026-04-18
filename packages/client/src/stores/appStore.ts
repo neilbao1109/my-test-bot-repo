@@ -30,7 +30,7 @@ interface AppState {
 
   // Streaming
   streamingMessages: Record<string, StreamingMessage>;
-  startStreaming: (messageId: string, roomId: string, threadId: string | null) => void;
+  startStreaming: (messageId: string, roomId: string, threadId: string | null, botId?: string) => void;
   appendStreamChunk: (messageId: string, chunk: string) => void;
   finishStreaming: (messageId: string, finalMessage?: Message) => void;
 
@@ -157,11 +157,11 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   // Streaming
   streamingMessages: {},
-  startStreaming: (messageId, roomId, threadId) =>
+  startStreaming: (messageId, roomId, threadId, botId) =>
     set((s) => ({
       streamingMessages: {
         ...s.streamingMessages,
-        [messageId]: { messageId, content: '', roomId, threadId },
+        [messageId]: { messageId, content: '', roomId, threadId, botId },
       },
     })),
   appendStreamChunk: (messageId, chunk) =>

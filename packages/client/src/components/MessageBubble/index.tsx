@@ -34,7 +34,7 @@ export default function MessageBubble({ message, isStreaming, streamContent, hig
   const members = activeRoomId ? roomMembers[activeRoomId] || [] : [];
   const sender = members.find((m) => m.id === message.userId);
   const isOwn = user?.id === message.userId;
-  const isBot = sender?.isBot || message.userId === 'bot-clawchat';
+  const isBot = sender?.isBot || false;
   const displayContent = isStreaming ? (streamContent || '') : message.content;
   const msgThreadInfo = threadInfo[message.id];
 

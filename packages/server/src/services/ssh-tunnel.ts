@@ -229,8 +229,8 @@ export class SshTunnel extends EventEmitter {
  * Build tunnel config from environment variables.
  * Returns null if SSH tunneling is not configured.
  */
-export function tunnelConfigFromEnv(): TunnelConfig | null {
-  const sshHost = process.env.OPENCLAW_SSH_HOST;
+export function tunnelConfigFromEnv(overrideSshHost?: string): TunnelConfig | null {
+  const sshHost = overrideSshHost || process.env.OPENCLAW_SSH_HOST;
   if (!sshHost) return null;
 
   return {

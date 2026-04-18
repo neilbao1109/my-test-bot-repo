@@ -3,7 +3,7 @@ import { createMessage, getMessages, editMessage, deleteMessage, addReaction, se
 import { createRoom, getRooms, getRoomMembers, addMemberToRoom, removeMemberFromRoom, renameRoom, searchUsers, getRoom } from '../services/room.js';
 import { createThread, getThread, getThreadByMessage } from '../services/thread.js';
 import { parseCommand, executeCommand } from '../services/command.js';
-import { streamBotResponse } from '../services/bot-bridge.js';
+import { initBotRegistry, getRespondingBots, isBotUser, getAutoJoinBotIds, getAllBots, streamBotResponse as registryStreamBotResponse } from '../services/bot-registry.js';
 import { createOrGetUser, setOnline, getOnlineUsers } from '../services/user.js';
 import { v4 as uuid } from 'uuid';
 
@@ -154,10 +154,11 @@ export function setupSocketHandlers(io: Server) {
         });
         io.to(data.roomId).emit('message:new', userMsg);
 
+        const firstBot = getAllBots()[0];
         const result = executeCommand(cmd.command, cmd.args, data.roomId);
         const botMsg = createMessage({
           roomId: data.roomId,
-          userId: 'bot-clawchat',
+          userId: firstBot?.id || 'bot-clawchat',
           content: result.output,
           type: 'system',
           threadId: data.threadId,
@@ -199,53 +200,54 @@ export function setupSocketHandlers(io: Server) {
         updateThreadReplyCount(data.threadId, io, data.roomId);
       }
 
-      // Bot streaming response
-      const botMessageId = uuid();
-      const now = new Date().toISOString();
-      let fullContent = '';
+      // Bot streaming responses — determine which bots should respond
+      const respondingBots = getRespondingBots(data.content, data.roomId, socket.userId);
 
-      // Send start of stream
-      io.to(data.roomId).emit('bot:stream:start', {
-        messageId: botMessageId,
-        roomId: data.roomId,
-        threadId: data.threadId || null,
-      });
+      // Process bots sequentially to avoid interleaving
+      for (const bot of respondingBots) {
+        const botMessageId = uuid();
+        let fullContent = '';
 
-      const context = {
-        roomId: data.roomId,
-        userId: socket.userId,
-        threadId: data.threadId,
-        history: [],
-      };
+        io.to(data.roomId).emit('bot:stream:start', {
+          messageId: botMessageId,
+          roomId: data.roomId,
+          threadId: data.threadId || null,
+          botId: bot.id,
+        });
 
-      for await (const chunk of streamBotResponse(data.content, context)) {
-        fullContent += chunk;
+        const context = {
+          roomId: data.roomId,
+          userId: socket.userId,
+          threadId: data.threadId,
+          history: [],
+        };
+
+        for await (const chunk of registryStreamBotResponse(bot.id, data.content, context)) {
+          fullContent += chunk;
+          io.to(data.roomId).emit('bot:stream', {
+            messageId: botMessageId,
+            chunk,
+            done: false,
+          });
+        }
+
+        const botMsg = createMessage({
+          roomId: data.roomId,
+          userId: bot.id,
+          content: fullContent,
+          threadId: data.threadId,
+        });
+
         io.to(data.roomId).emit('bot:stream', {
           messageId: botMessageId,
-          chunk,
-          done: false,
+          chunk: '',
+          done: true,
+          finalMessage: botMsg,
         });
-      }
 
-      // Save complete message
-      const botMsg = createMessage({
-        roomId: data.roomId,
-        userId: 'bot-clawchat',
-        content: fullContent,
-        threadId: data.threadId,
-      });
-
-      // Send done with the real saved message
-      io.to(data.roomId).emit('bot:stream', {
-        messageId: botMessageId,
-        chunk: '',
-        done: true,
-        finalMessage: botMsg,
-      });
-
-      // Update thread reply count if bot replied in a thread
-      if (data.threadId) {
-        updateThreadReplyCount(data.threadId, io, data.roomId);
+        if (data.threadId) {
+          updateThreadReplyCount(data.threadId, io, data.roomId);
+        }
       }
     });
 

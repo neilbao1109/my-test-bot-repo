@@ -9,6 +9,7 @@ import apiRouter from './routes/api.js';
 import uploadRouter from './routes/upload.js';
 import { setupSocketHandlers } from './socket/handlers.js';
 import { shutdown, getConnectionMode } from './services/bot-bridge.js';
+import { initBotRegistry } from './services/bot-registry.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PORT = process.env.PORT || 3001;
@@ -36,6 +37,9 @@ const io = new Server(httpServer, {
     methods: ['GET', 'POST'],
   },
 });
+
+// Initialize bot registry (upserts bot users in DB, creates bridges)
+initBotRegistry();
 
 setupSocketHandlers(io);
 
