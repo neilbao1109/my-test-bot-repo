@@ -3,7 +3,7 @@ import { useAppStore } from '../../stores/appStore';
 import UserAvatar from '../UserAvatar';
 
 export default function Sidebar() {
-  const { rooms, activeRoomId, setActiveRoom, user, showSidebar, toggleSidebar, roomMembers, onlineUsers, setShowCreateRoom } = useAppStore();
+  const { rooms, activeRoomId, setActiveRoom, user, showSidebar, toggleSidebar, roomMembers, onlineUsers, setShowCreateRoom, logout } = useAppStore();
 
   if (!showSidebar) return null;
 
@@ -49,7 +49,8 @@ export default function Sidebar() {
       {user && (
         <div className="px-4 py-3 border-b border-dark-border flex items-center gap-2">
           <UserAvatar username={user.username} isOnline={true} size="sm" />
-          <span className="text-sm text-dark-text truncate">{user.username}</span>
+          <span className="text-sm text-dark-text truncate flex-1">{user.username}</span>
+          <button onClick={logout} className="text-xs text-dark-muted hover:text-red-400 transition" title="Logout">⏻</button>
         </div>
       )}
 

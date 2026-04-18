@@ -20,7 +20,9 @@ function initSchema(db: Database.Database) {
   db.exec(`
     CREATE TABLE IF NOT EXISTS users (
       id TEXT PRIMARY KEY,
-      username TEXT NOT NULL UNIQUE,
+      username TEXT NOT NULL,
+      email TEXT UNIQUE,
+      password_hash TEXT,
       avatar_url TEXT,
       is_bot INTEGER NOT NULL DEFAULT 0,
       is_online INTEGER NOT NULL DEFAULT 0,

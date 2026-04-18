@@ -1,23 +1,10 @@
-import { v4 as uuid } from 'uuid';
 import { getDb } from '../db/schema.js';
 import type { User } from '../types.js';
 
-export function createOrGetUser(username: string): User {
+export function getUserByEmail(email: string): User | null {
   const db = getDb();
-
-  const existing = db.prepare('SELECT * FROM users WHERE username = ?').get(username) as any;
-  if (existing) {
-    return rowToUser(existing);
-  }
-
-  const id = uuid();
-  const now = new Date().toISOString();
-  db.prepare(`
-    INSERT INTO users (id, username, is_bot, is_online, created_at)
-    VALUES (?, ?, 0, 1, ?)
-  `).run(id, username, now);
-
-  return { id, username, isBot: false, isOnline: true, createdAt: now };
+  const row = db.prepare('SELECT * FROM users WHERE email = ?').get(email) as any;
+  return row ? rowToUser(row) : null;
 }
 
 export function setOnline(userId: string, online: boolean) {

@@ -7,6 +7,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import apiRouter from './routes/api.js';
 import uploadRouter from './routes/upload.js';
+import authRouter from './routes/auth.js';
 import { setupSocketHandlers } from './socket/handlers.js';
 import { shutdown, getConnectionMode } from './services/bot-bridge.js';
 import { initBotRegistry } from './services/bot-registry.js';
@@ -20,6 +21,7 @@ app.use(cors());
 app.use(express.json());
 
 // API routes
+app.use('/api', authRouter);
 app.use('/api', apiRouter);
 app.use('/api', uploadRouter);
 

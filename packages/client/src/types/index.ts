@@ -1,6 +1,7 @@
 export interface User {
   id: string;
   username: string;
+  email?: string;
   avatarUrl?: string;
   isBot: boolean;
   isOnline: boolean;

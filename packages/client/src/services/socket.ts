@@ -27,9 +27,9 @@ class SocketService {
   }
 
   // Auth
-  auth(username: string): Promise<{ user: User; rooms: Room[] }> {
+  auth(token: string): Promise<{ user: User; rooms: Room[]; error?: string }> {
     return new Promise((resolve) => {
-      this.socket?.emit('auth', { username }, resolve);
+      this.socket?.emit('auth', { token }, resolve);
     });
   }
 

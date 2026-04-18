@@ -4,7 +4,8 @@ import { createRoom, getRooms, getRoomMembers, addMemberToRoom, removeMemberFrom
 import { createThread, getThread, getThreadByMessage } from '../services/thread.js';
 import { parseCommand, executeCommand } from '../services/command.js';
 import { initBotRegistry, getRespondingBots, isBotUser, getAutoJoinBotIds, getAllBots, streamBotResponse as registryStreamBotResponse } from '../services/bot-registry.js';
-import { createOrGetUser, setOnline, getOnlineUsers } from '../services/user.js';
+import { getUser, setOnline, getOnlineUsers } from '../services/user.js';
+import { verifyToken } from '../services/auth.js';
 import { v4 as uuid } from 'uuid';
 
 interface AuthenticatedSocket extends Socket {
@@ -33,8 +34,17 @@ export function setupSocketHandlers(io: Server) {
     console.log(`[Socket] Connected: ${socket.id}`);
 
     // --- Auth ---
-    socket.on('auth', (data: { username: string }, callback) => {
-      const user = createOrGetUser(data.username);
+    socket.on('auth', (data: { token: string }, callback) => {
+      const payload = verifyToken(data.token);
+      if (!payload) {
+        callback({ error: 'Invalid token' });
+        return;
+      }
+      const user = getUser(payload.userId);
+      if (!user) {
+        callback({ error: 'User not found' });
+        return;
+      }
       socket.userId = user.id;
       socket.username = user.username;
 

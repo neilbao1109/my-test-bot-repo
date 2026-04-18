@@ -10,6 +10,7 @@ interface AppState {
   // Auth
   user: User | null;
   setUser: (user: User | null) => void;
+  logout: () => void;
 
   // Rooms
   rooms: Room[];
@@ -88,6 +89,10 @@ export const useAppStore = create<AppState>((set, get) => ({
   // Auth
   user: null,
   setUser: (user) => set({ user }),
+  logout: () => {
+    import('../services/auth').then(({ clearToken }) => clearToken());
+    set({ user: null, rooms: [], activeRoomId: null, messages: {} });
+  },
 
   // Rooms
   rooms: [],
