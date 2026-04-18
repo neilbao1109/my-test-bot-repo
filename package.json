@@ -7,7 +7,8 @@
     "dev": "concurrently \"npm run dev:server\" \"npm run dev:client\"",
     "dev:server": "npm -w packages/server run dev",
     "dev:client": "npm -w packages/client run dev",
-    "build": "npm -w packages/server run build && npm -w packages/client run build"
+    "build": "npm -w packages/server run build && npm -w packages/client run build",
+    "start": "npm -w packages/server run start"
   },
   "devDependencies": {
     "concurrently": "^9.1.0",
