@@ -1,6 +1,12 @@
 import { getDb } from '../db/schema.js';
 import type { BotContext, BotStatus } from '../types.js';
 import { BotBridge } from './bot-bridge.js';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const DATA_DIR = path.join(__dirname, '../../data');
 
 // ── Types ──
 
@@ -29,6 +35,9 @@ const bridges = new Map<string, BotBridge>();
  * to single-bot mode using legacy env vars.
  */
 export function loadBotConfigs(): BotConfig[] {
+  // Priority: 1) BOTS_CONFIG env var  2) data/bots.json file  3) legacy single-bot env vars
+
+  // 1) Env var
   const raw = process.env.BOTS_CONFIG;
   if (raw) {
     try {
@@ -36,6 +45,21 @@ export function loadBotConfigs(): BotConfig[] {
       if (Array.isArray(parsed) && parsed.length > 0) return parsed;
     } catch (e) {
       console.error('[BotRegistry] Failed to parse BOTS_CONFIG:', e);
+    }
+  }
+
+  // 2) Config file: data/bots.json
+  const configPath = path.join(DATA_DIR, 'bots.json');
+  if (fs.existsSync(configPath)) {
+    try {
+      const fileContent = fs.readFileSync(configPath, 'utf-8');
+      const parsed = JSON.parse(fileContent) as BotConfig[];
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        console.log(`[BotRegistry] Loaded ${parsed.length} bot(s) from ${configPath}`);
+        return parsed;
+      }
+    } catch (e) {
+      console.error(`[BotRegistry] Failed to parse ${configPath}:`, e);
     }
   }
 
