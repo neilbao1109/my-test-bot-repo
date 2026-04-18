@@ -289,7 +289,7 @@ export default function MessageBubble({ message, isStreaming, streamContent, hig
 
       {/* Action buttons */}
       {showActions && !isEditing && !isStreaming && (
-        <div className="flex-shrink-0 flex items-start gap-0.5 -mt-3 bg-dark-surface border border-dark-border rounded-lg shadow-lg p-0.5">
+        <div className="absolute right-4 -top-3 flex items-center gap-0.5 bg-dark-surface border border-dark-border rounded-lg shadow-lg p-0.5 z-40">
           <button
             onClick={() => setShowReactions(!showReactions)}
             className="p-1.5 text-dark-muted hover:text-white hover:bg-dark-hover rounded transition text-xs"
