@@ -14,11 +14,13 @@ interface MessageBubbleProps {
   message: Message;
   isStreaming?: boolean;
   streamContent?: string;
+  highlight?: string | null;
+  isSearchActive?: boolean;
 }
 
 const QUICK_REACTIONS = ['👍', '❤️', '😂', '🎉', '🤔', '👀'];
 
-export default function MessageBubble({ message, isStreaming, streamContent }: MessageBubbleProps) {
+export default function MessageBubble({ message, isStreaming, streamContent, highlight, isSearchActive }: MessageBubbleProps) {
   const { user, roomMembers, activeRoomId, threadInfo } = useAppStore();
   const [showActions, setShowActions] = useState(false);
   const [showReactions, setShowReactions] = useState(false);
@@ -114,7 +116,9 @@ export default function MessageBubble({ message, isStreaming, streamContent }: M
     <div
       className={clsx(
         'group flex gap-3 px-4 py-1.5 hover:bg-dark-hover/50 transition relative',
-        message.type === 'system' && 'opacity-80'
+        message.type === 'system' && 'opacity-80',
+        isSearchActive && 'bg-primary-600/20 ring-1 ring-primary-500/40',
+        highlight && !isSearchActive && 'bg-yellow-500/5',
       )}
       onMouseEnter={() => !isMobile && setShowActions(true)}
       onMouseLeave={() => { !isMobile && setShowActions(false); setShowReactions(false); }}

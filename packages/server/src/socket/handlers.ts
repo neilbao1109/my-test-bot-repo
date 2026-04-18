@@ -1,5 +1,5 @@
 import { Server, Socket } from 'socket.io';
-import { createMessage, getMessages, editMessage, deleteMessage, addReaction } from '../services/message.js';
+import { createMessage, getMessages, editMessage, deleteMessage, addReaction, searchMessages } from '../services/message.js';
 import { createRoom, getRooms, getRoomMembers, addMemberToRoom, removeMemberFromRoom, renameRoom, searchUsers, getRoom } from '../services/room.js';
 import { createThread, getThread, getThreadByMessage } from '../services/thread.js';
 import { parseCommand, executeCommand } from '../services/command.js';
@@ -285,6 +285,30 @@ export function setupSocketHandlers(io: Server) {
     socket.on('thread:messages', (data: { threadId: string; roomId: string }, callback) => {
       const messages = getMessages(data.roomId, { threadId: data.threadId, limit: 100 });
       callback(messages);
+    });
+
+    // --- Search ---
+    socket.on('message:search', (data: { query: string; roomId?: string; global?: boolean; limit?: number }, callback) => {
+      if (!socket.userId || !data.query?.trim()) {
+        if (callback) callback({ results: [], total: 0 });
+        return;
+      }
+
+      let searchOpts: { roomId?: string; roomIds?: string[]; limit?: number };
+
+      if (data.global) {
+        // Search across all rooms the user has joined
+        const rooms = getRooms(socket.userId);
+        searchOpts = { roomIds: rooms.map(r => r.id), limit: data.limit };
+      } else if (data.roomId) {
+        searchOpts = { roomId: data.roomId, limit: data.limit };
+      } else {
+        if (callback) callback({ results: [], total: 0 });
+        return;
+      }
+
+      const result = searchMessages(data.query.trim(), searchOpts);
+      if (callback) callback(result);
     });
 
     // --- Typing ---

@@ -5,15 +5,17 @@ import { socketService } from '../../services/socket';
 import { uploadFile } from '../../services/upload';
 import MessageBubble from '../MessageBubble';
 import CommandBar from '../CommandBar';
+import SearchBar from '../SearchBar';
 import UserAvatar from '../UserAvatar';
 
 export default function ChatView() {
   const {
     activeRoomId, messages, rooms, streamingMessages,
     typingUsers, showSidebar, toggleSidebar, toggleMembers,
-    user, roomMembers, onlineUsers,
+    user, roomMembers, onlineUsers, toggleSearch, searchResults, searchActiveIdx, searchQuery,
   } = useAppStore();
   const bottomRef = useRef<HTMLDivElement>(null);
+  const messageRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const [dragOver, setDragOver] = useState(false);
 
   const activeRoom = rooms.find((r) => r.id === activeRoomId);
@@ -49,6 +51,14 @@ export default function ChatView() {
     vv.addEventListener('resize', onResize);
     return () => vv.removeEventListener('resize', onResize);
   }, []);
+
+  // Scroll to active search result
+  const activeSearchMsg = searchResults[searchActiveIdx];
+  useEffect(() => {
+    if (activeSearchMsg && messageRefs.current[activeSearchMsg.id]) {
+      messageRefs.current[activeSearchMsg.id]?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  }, [activeSearchMsg?.id, searchActiveIdx]);
 
   const handleDrop = useCallback(async (e: React.DragEvent) => {
     e.preventDefault();
@@ -114,6 +124,17 @@ export default function ChatView() {
           </p>
         </div>
 
+        {/* Search button */}
+        <button
+          onClick={toggleSearch}
+          className="text-dark-muted hover:text-white px-2 py-1 rounded-lg hover:bg-dark-hover transition"
+          title="Search"
+        >
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+          </svg>
+        </button>
+
         {/* Members button */}
         <button
           onClick={toggleMembers}
@@ -127,6 +148,9 @@ export default function ChatView() {
         </button>
       </div>
 
+      {/* Search bar */}
+      <SearchBar />
+
       {/* Messages */}
       <div className="flex-1 overflow-y-auto py-4 min-h-0 overscroll-contain">
         {roomMessages.length === 0 && (
@@ -138,9 +162,19 @@ export default function ChatView() {
           </div>
         )}
 
-        {roomMessages.map((msg) => (
-          <MessageBubble key={msg.id} message={msg} />
-        ))}
+        {roomMessages.map((msg) => {
+          const isSearchHit = searchQuery && searchResults.some(r => r.id === msg.id);
+          const isActiveHit = activeSearchMsg?.id === msg.id;
+          return (
+            <div key={msg.id} ref={(el) => { messageRefs.current[msg.id] = el; }}>
+              <MessageBubble
+                message={msg}
+                highlight={isSearchHit ? searchQuery : undefined}
+                isSearchActive={!!isActiveHit}
+              />
+            </div>
+          );
+        })}
 
         {/* Streaming messages */}
         {roomStreamingMsgs.map((stream) => (

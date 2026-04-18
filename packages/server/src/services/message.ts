@@ -110,6 +110,39 @@ export function addReaction(messageId: string, emoji: string, userId: string): R
   return reactions;
 }
 
+export function searchMessages(query: string, options: {
+  roomId?: string;
+  roomIds?: string[];
+  limit?: number;
+}): { results: Message[]; total: number } {
+  const db = getDb();
+  const limit = options.limit || 50;
+  const searchTerm = `%${query}%`;
+
+  let countQuery: string;
+  let dataQuery: string;
+  const params: any[] = [];
+
+  if (options.roomId) {
+    countQuery = `SELECT COUNT(*) as total FROM messages WHERE room_id = ? AND is_deleted = 0 AND type = 'text' AND thread_id IS NULL AND content LIKE ? COLLATE NOCASE`;
+    dataQuery = `SELECT * FROM messages WHERE room_id = ? AND is_deleted = 0 AND type = 'text' AND thread_id IS NULL AND content LIKE ? COLLATE NOCASE ORDER BY created_at DESC LIMIT ?`;
+    params.push(options.roomId, searchTerm);
+  } else if (options.roomIds && options.roomIds.length > 0) {
+    const placeholders = options.roomIds.map(() => '?').join(',');
+    countQuery = `SELECT COUNT(*) as total FROM messages WHERE room_id IN (${placeholders}) AND is_deleted = 0 AND type = 'text' AND thread_id IS NULL AND content LIKE ? COLLATE NOCASE`;
+    dataQuery = `SELECT * FROM messages WHERE room_id IN (${placeholders}) AND is_deleted = 0 AND type = 'text' AND thread_id IS NULL AND content LIKE ? COLLATE NOCASE ORDER BY created_at DESC LIMIT ?`;
+    params.push(...options.roomIds, searchTerm);
+  } else {
+    return { results: [], total: 0 };
+  }
+
+  const totalRow = db.prepare(countQuery).get(...params) as any;
+  const total = totalRow?.total || 0;
+
+  const rows = db.prepare(dataQuery).all(...params, limit) as any[];
+  return { results: rows.map(rowToMessage), total };
+}
+
 function rowToMessage(row: any): Message {
   return {
     id: row.id,

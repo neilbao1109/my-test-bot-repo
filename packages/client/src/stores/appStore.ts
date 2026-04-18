@@ -58,6 +58,19 @@ interface AppState {
   typingUsers: Record<string, TypingUser[]>;
   setTyping: (roomId: string, userId: string, username: string, isTyping: boolean, threadId?: string | null) => void;
 
+  // Search
+  searchQuery: string | null;
+  searchResults: Message[];
+  searchTotal: number;
+  searchActiveIdx: number;
+  searchGlobal: boolean;
+  setSearchQuery: (query: string | null) => void;
+  setSearchResults: (results: Message[], total: number) => void;
+  setSearchActiveIdx: (idx: number) => void;
+  setSearchGlobal: (global: boolean) => void;
+  showSearch: boolean;
+  toggleSearch: () => void;
+
   // UI
   showSidebar: boolean;
   showThread: boolean;
@@ -234,6 +247,24 @@ export const useAppStore = create<AppState>((set, get) => ({
         };
       }
     }),
+
+  // Search
+  searchQuery: null,
+  searchResults: [],
+  searchTotal: 0,
+  searchActiveIdx: 0,
+  searchGlobal: false,
+  setSearchQuery: (query) => set({ searchQuery: query, searchActiveIdx: 0 }),
+  setSearchResults: (results, total) => set({ searchResults: results, searchTotal: total }),
+  setSearchActiveIdx: (idx) => set({ searchActiveIdx: idx }),
+  setSearchGlobal: (global) => set({ searchGlobal: global }),
+  showSearch: false,
+  toggleSearch: () => set((s) => {
+    if (s.showSearch) {
+      return { showSearch: false, searchQuery: null, searchResults: [], searchTotal: 0, searchActiveIdx: 0 };
+    }
+    return { showSearch: true };
+  }),
 
   // UI
   showSidebar: window.innerWidth >= 768,

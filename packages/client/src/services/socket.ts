@@ -111,6 +111,13 @@ class SocketService {
     });
   }
 
+  // Search
+  searchMessages(query: string, roomId?: string, global?: boolean, limit?: number): Promise<{ results: Message[]; total: number }> {
+    return new Promise((resolve) => {
+      this.socket?.emit('message:search', { query, roomId, global, limit }, resolve);
+    });
+  }
+
   // Typing
   startTyping(roomId: string, threadId?: string) {
     this.socket?.emit('typing:start', { roomId, threadId });
