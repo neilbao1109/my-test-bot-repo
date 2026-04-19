@@ -30,7 +30,7 @@ export default function Sidebar() {
     )}>
       {/* Header */}
       <div className="p-4 border-b border-dark-border flex items-center justify-between"
-           style={{ paddingTop: `max(1rem, env(safe-area-inset-top, 0px))` }}>
+           style={{ paddingTop: `max(1rem, var(--safe-area-top))` }}>
         <div className="flex items-center gap-2">
           <div className="w-8 h-8 bg-primary-600 rounded-lg flex items-center justify-center">
             <span className="text-sm font-bold text-white">CC</span>
