@@ -118,6 +118,13 @@ class SocketService {
     });
   }
 
+  // History pagination
+  loadHistory(roomId: string, before: string, limit = 50): Promise<{ messages: Message[]; hasMore: boolean }> {
+    return new Promise((resolve) => {
+      this.socket?.emit('message:history', { roomId, before, limit }, resolve);
+    });
+  }
+
   // Typing
   startTyping(roomId: string, threadId?: string) {
     this.socket?.emit('typing:start', { roomId, threadId });

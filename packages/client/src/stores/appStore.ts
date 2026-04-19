@@ -44,6 +44,13 @@ interface AppState {
   addThreadMessage: (message: Message) => void;
   updateThreadInfo: (parentMessageId: string, info: ThreadInfo) => void;
 
+  // Pagination
+  hasMore: Record<string, boolean>;
+  loadingHistory: Record<string, boolean>;
+  setHasMore: (roomId: string, hasMore: boolean) => void;
+  setLoadingHistory: (roomId: string, loading: boolean) => void;
+  prependMessages: (roomId: string, messages: Message[]) => void;
+
   // Members
   roomMembers: Record<string, User[]>;
   setRoomMembers: (roomId: string, members: User[]) => void;
@@ -212,6 +219,18 @@ export const useAppStore = create<AppState>((set, get) => ({
     set((s) => ({
       threadInfo: { ...s.threadInfo, [parentMessageId]: info },
     })),
+
+  // Pagination
+  hasMore: {},
+  loadingHistory: {},
+  setHasMore: (roomId, hasMore) => set((s) => ({ hasMore: { ...s.hasMore, [roomId]: hasMore } })),
+  setLoadingHistory: (roomId, loading) => set((s) => ({ loadingHistory: { ...s.loadingHistory, [roomId]: loading } })),
+  prependMessages: (roomId, messages) => set((s) => ({
+    messages: {
+      ...s.messages,
+      [roomId]: [...messages, ...(s.messages[roomId] || [])],
+    },
+  })),
 
   // Members
   roomMembers: {},

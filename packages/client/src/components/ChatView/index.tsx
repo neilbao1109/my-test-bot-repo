@@ -13,8 +13,10 @@ export default function ChatView() {
     activeRoomId, messages, rooms, streamingMessages,
     typingUsers, showSidebar, toggleSidebar, toggleMembers,
     user, roomMembers, onlineUsers, toggleSearch, searchResults, searchActiveIdx, searchQuery,
+    hasMore, loadingHistory, setLoadingHistory, setHasMore, prependMessages,
   } = useAppStore();
   const bottomRef = useRef<HTMLDivElement>(null);
+  const messageListRef = useRef<HTMLDivElement>(null);
   const messageRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const [dragOver, setDragOver] = useState(false);
 
@@ -28,6 +30,41 @@ export default function ChatView() {
   const roomStreamingMsgs = Object.values(streamingMessages).filter(
     (s) => s.roomId === activeRoomId && !s.threadId
   );
+
+  // Load older messages on scroll
+  const loadMoreMessages = useCallback(async () => {
+    if (!activeRoomId || loadingHistory[activeRoomId] || !hasMore[activeRoomId]) return;
+    const roomMsgs = messages[activeRoomId] || [];
+    if (roomMsgs.length === 0) return;
+
+    const oldestCreatedAt = roomMsgs[0].createdAt;
+    setLoadingHistory(activeRoomId, true);
+
+    const el = messageListRef.current;
+    const prevScrollHeight = el?.scrollHeight || 0;
+
+    try {
+      const result = await socketService.loadHistory(activeRoomId, oldestCreatedAt, 50);
+      prependMessages(activeRoomId, result.messages);
+      setHasMore(activeRoomId, result.hasMore);
+
+      requestAnimationFrame(() => {
+        if (el) {
+          el.scrollTop = el.scrollHeight - prevScrollHeight;
+        }
+      });
+    } finally {
+      setLoadingHistory(activeRoomId, false);
+    }
+  }, [activeRoomId, messages, loadingHistory, hasMore]);
+
+  const handleScroll = useCallback(() => {
+    const el = messageListRef.current;
+    if (!el || !activeRoomId) return;
+    if (el.scrollTop < 100) {
+      loadMoreMessages();
+    }
+  }, [activeRoomId, loadMoreMessages]);
 
   // Join room on selection
   useEffect(() => {
@@ -149,7 +186,19 @@ export default function ChatView() {
       <SearchBar />
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto py-4 min-h-0 overscroll-contain">
+      <div ref={messageListRef} onScroll={handleScroll} className="flex-1 overflow-y-auto py-4 min-h-0 overscroll-contain">
+        {activeRoomId && loadingHistory[activeRoomId] && (
+          <div className="text-center py-2">
+            <span className="text-xs text-dark-muted animate-pulse">Loading...</span>
+          </div>
+        )}
+
+        {activeRoomId && !hasMore[activeRoomId] && roomMessages.length > 0 && (
+          <div className="text-center py-2">
+            <span className="text-xs text-dark-muted">Beginning of conversation</span>
+          </div>
+        )}
+
         {roomMessages.length === 0 && (
           <div className="text-center py-12">
             <div className="text-4xl mb-3">🤖</div>

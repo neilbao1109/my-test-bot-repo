@@ -13,9 +13,10 @@ export function useSocket() {
     const socket = socketService.getSocket();
     if (!socket) return;
 
-    socket.on('room:history', (data: { roomId: string; messages: Message[]; members: User[] }) => {
+    socket.on('room:history', (data: { roomId: string; messages: Message[]; members: User[]; hasMore?: boolean }) => {
       store.setMessages(data.roomId, data.messages);
       store.setRoomMembers(data.roomId, data.members);
+      store.setHasMore(data.roomId, data.hasMore ?? false);
     });
 
     socket.on('message:new', (message: Message) => {
