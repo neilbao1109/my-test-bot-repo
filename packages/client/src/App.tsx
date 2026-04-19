@@ -78,13 +78,16 @@ export default function App() {
   }
 
   return (
-    <div className="h-screen flex overflow-hidden bg-dark-bg max-w-[100vw]" id="app-shell"
-         style={{ paddingTop: 'var(--safe-area-top)', paddingLeft: 'var(--safe-area-left)', paddingRight: 'var(--safe-area-right)' }}>
+    <div className="h-screen flex flex-col overflow-hidden bg-dark-bg max-w-[100vw]" id="app-shell">
+      {/* iOS safe area spacer */}
+      <div className="flex-shrink-0 bg-dark-surface" style={{ height: 'env(safe-area-inset-top, 0px)' }} />
+      <div className="flex-1 flex min-h-0 overflow-hidden">
       <Sidebar />
       <ChatView />
       <ThreadPanel />
       <MemberPanel />
       <CreateRoomModal />
+      </div>
     </div>
   );
 }
