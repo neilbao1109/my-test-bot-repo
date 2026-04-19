@@ -73,19 +73,14 @@ export default function App() {
     );
   }
 
-  // Fix iOS 100vh issue: use actual viewport height
+  // Fix iOS 100vh issue: set --app-height CSS variable to actual viewport height
   useEffect(() => {
-    const setVh = () => {
-      const vh = window.innerHeight;
-      document.getElementById('app-shell')?.style.setProperty('height', `${vh}px`);
+    const setAppHeight = () => {
+      document.documentElement.style.setProperty('--app-height', `${window.innerHeight}px`);
     };
-    setVh();
-    window.addEventListener('resize', setVh);
-    window.visualViewport?.addEventListener('resize', setVh);
-    return () => {
-      window.removeEventListener('resize', setVh);
-      window.visualViewport?.removeEventListener('resize', setVh);
-    };
+    setAppHeight();
+    window.addEventListener('resize', setAppHeight);
+    return () => window.removeEventListener('resize', setAppHeight);
   }, []);
 
   if (!user) {
