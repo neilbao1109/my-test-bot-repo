@@ -78,7 +78,8 @@ export default function App() {
   }
 
   return (
-    <div className="h-screen flex overflow-hidden bg-dark-bg max-w-[100vw]" id="app-shell">
+    <div className="h-screen flex overflow-hidden bg-dark-bg max-w-[100vw]" id="app-shell"
+         style={{ paddingTop: 'var(--safe-area-top)', paddingLeft: 'var(--safe-area-left)', paddingRight: 'var(--safe-area-right)' }}>
       <Sidebar />
       <ChatView />
       <ThreadPanel />
