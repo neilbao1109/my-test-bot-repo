@@ -102,13 +102,10 @@ export default function ChatView() {
       )}
       {/* Header */}
       <div className="flex items-center gap-3 px-4 py-3 border-b border-dark-border bg-dark-surface flex-shrink-0">
-        {/* Hamburger: always on mobile, only when sidebar hidden on desktop */}
+        {/* Hamburger: toggle sidebar on all screen sizes */}
         <button
           onClick={toggleSidebar}
-          className={clsx(
-            'text-dark-muted hover:text-white p-1',
-            showSidebar ? 'md:hidden' : ''
-          )}
+          className="text-dark-muted hover:text-white p-1"
         >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
