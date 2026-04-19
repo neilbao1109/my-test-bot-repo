@@ -73,16 +73,6 @@ export default function App() {
     );
   }
 
-  // Fix iOS 100vh issue: set --app-height CSS variable to actual viewport height
-  useEffect(() => {
-    const setAppHeight = () => {
-      document.documentElement.style.setProperty('--app-height', `${window.innerHeight}px`);
-    };
-    setAppHeight();
-    window.addEventListener('resize', setAppHeight);
-    return () => window.removeEventListener('resize', setAppHeight);
-  }, []);
-
   if (!user) {
     return <LoginScreen onLogin={handleLogin} />;
   }
