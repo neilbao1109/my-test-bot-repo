@@ -78,7 +78,7 @@ export default function App() {
   }
 
   return (
-    <div className="h-screen flex overflow-hidden bg-dark-bg" id="app-shell">
+    <div className="h-screen flex overflow-hidden bg-dark-bg max-w-[100vw]" id="app-shell">
       <Sidebar />
       <ChatView />
       <ThreadPanel />

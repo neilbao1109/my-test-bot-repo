@@ -89,7 +89,7 @@ export default function ChatView() {
 
   return (
     <div
-      className="flex-1 flex flex-col h-full min-h-0 bg-dark-bg relative"
+      className="flex-1 flex flex-col h-full min-h-0 min-w-0 bg-dark-bg relative overflow-hidden"
       onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
       onDragLeave={() => setDragOver(false)}
       onDrop={handleDrop}
