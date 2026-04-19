@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import clsx from 'clsx';
 import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
+import remarkGfmSafe from '../../utils/remarkGfmSafe';
 import rehypeHighlight from 'rehype-highlight';
 import { formatDistanceToNow } from 'date-fns';
 import type { Message, FileAttachment } from '../../types';
@@ -220,7 +220,7 @@ export default function MessageBubble({ message, isStreaming, streamContent, hig
         ) : (
           <div className="prose prose-invert prose-sm max-w-none break-words">
             <ReactMarkdown
-              remarkPlugins={[remarkGfm]}
+              remarkPlugins={[remarkGfmSafe]}
               rehypePlugins={[rehypeHighlight]}
               components={{
                 pre: ({ children }) => (
