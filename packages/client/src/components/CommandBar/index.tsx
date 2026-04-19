@@ -257,6 +257,12 @@ export default function CommandBar({ roomId, threadId }: CommandBarProps) {
           value={input}
           onChange={handleInput}
           onKeyDown={handleKeyDown}
+          onFocus={() => {
+            // iOS: wait for keyboard, then scroll input into view
+            setTimeout(() => {
+              inputRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }, 400);
+          }}
           onPaste={handlePaste}
           placeholder={threadId ? 'Reply in thread...' : 'Type a message... (/ for commands)'}
           rows={1}

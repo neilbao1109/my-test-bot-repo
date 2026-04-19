@@ -6,17 +6,12 @@
     <title>ClawChat</title>
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <script>
-      // Fix iOS 100vh + keyboard: use visualViewport for accurate height
+      // Fix iOS 100vh: set --vh to actual viewport height (without keyboard adjustment)
       function setVh(){
-        var h = window.visualViewport ? window.visualViewport.height : window.innerHeight;
-        document.documentElement.style.setProperty('--vh', h + 'px');
+        document.documentElement.style.setProperty('--vh', window.innerHeight + 'px');
       }
       setVh();
       window.addEventListener('resize', setVh);
-      if(window.visualViewport){
-        window.visualViewport.addEventListener('resize', setVh);
-        window.visualViewport.addEventListener('scroll', setVh);
-      }
     </script>
   </head>
   <body class="bg-dark-bg text-dark-text">
