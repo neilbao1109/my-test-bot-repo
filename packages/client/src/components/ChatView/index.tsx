@@ -101,7 +101,8 @@ export default function ChatView() {
         </div>
       )}
       {/* Header */}
-      <div className="flex items-center gap-3 px-4 py-3 border-b border-dark-border bg-dark-surface flex-shrink-0">
+      <div className="flex items-center gap-3 px-4 py-3 border-b border-dark-border bg-dark-surface flex-shrink-0"
+           style={{ paddingTop: `max(0.75rem, var(--safe-area-top))` }}>
         {/* Hamburger: always on mobile, only when sidebar hidden on desktop */}
         <button
           onClick={toggleSidebar}
