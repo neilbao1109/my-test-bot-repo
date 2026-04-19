@@ -91,7 +91,8 @@ export const useAppStore = create<AppState>((set, get) => ({
   setUser: (user) => set({ user }),
   logout: () => {
     import('../services/auth').then(({ clearToken }) => clearToken());
-    set({ user: null, rooms: [], activeRoomId: null, messages: {} });
+    import('../services/socket').then(({ socketService }) => socketService.disconnect());
+    set({ user: null, rooms: [], activeRoomId: null, messages: {}, roomMembers: {}, threadInfo: {}, streamingMessages: {}, typingUsers: {}, onlineUsers: new Set<string>() });
   },
 
   // Rooms

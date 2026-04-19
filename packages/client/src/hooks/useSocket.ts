@@ -5,9 +5,13 @@ import type { Message, Room, User, Thread } from '../types';
 
 export function useSocket() {
   const store = useAppStore();
+  const user = useAppStore((s) => s.user);
 
   useEffect(() => {
-    const socket = socketService.connect();
+    if (!user) return; // Don't set up listeners until logged in
+
+    const socket = socketService.getSocket();
+    if (!socket) return;
 
     socket.on('room:history', (data: { roomId: string; messages: Message[]; members: User[] }) => {
       store.setMessages(data.roomId, data.messages);
@@ -128,5 +132,5 @@ export function useSocket() {
       socket.off('room:added');
       socket.off('command:result');
     };
-  }, []);
+  }, [user]);
 }
