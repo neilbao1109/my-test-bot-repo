@@ -73,6 +73,21 @@ export default function App() {
     );
   }
 
+  // Fix iOS 100vh issue: use actual viewport height
+  useEffect(() => {
+    const setVh = () => {
+      const vh = window.innerHeight;
+      document.getElementById('app-shell')?.style.setProperty('height', `${vh}px`);
+    };
+    setVh();
+    window.addEventListener('resize', setVh);
+    window.visualViewport?.addEventListener('resize', setVh);
+    return () => {
+      window.removeEventListener('resize', setVh);
+      window.visualViewport?.removeEventListener('resize', setVh);
+    };
+  }, []);
+
   if (!user) {
     return <LoginScreen onLogin={handleLogin} />;
   }
