@@ -10,11 +10,21 @@
   --safe-area-right: env(safe-area-inset-right, 0px);
 }
 
-/* Mobile viewport fix — progressive: fixed is most reliable on mobile */
-@supports (height: 100dvh) {
-  #app-shell {
-    height: 100dvh;
-  }
+/* Mobile viewport fix */
+#app-shell {
+  height: 100vh;
+  height: 100dvh;
+}
+
+/* iOS safe area bottom for fixed elements */
+.safe-bottom {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/* Prevent iOS overscroll bounce on the shell */
+#app-shell {
+  overscroll-behavior: none;
+  -webkit-overflow-scrolling: touch;
 }
 
 /* Base styles */
