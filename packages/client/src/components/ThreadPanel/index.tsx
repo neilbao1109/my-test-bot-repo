@@ -1,16 +1,21 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import { useAppStore } from '../../stores/appStore';
 import { socketService } from '../../services/socket';
+import { uploadFile } from '../../services/upload';
 import MessageBubble from '../MessageBubble';
 import CommandBar from '../CommandBar';
 import UserAvatar from '../UserAvatar';
 
 export default function ThreadPanel() {
   const {
-    activeThread, threadMessages, showThread, setActiveThread,
+    activeThread, threadMessages, setActiveThread,
     activeRoomId, messages, streamingMessages, typingUsers,
+    rooms, roomMembers, onlineUsers,
   } = useAppStore();
   const bottomRef = useRef<HTMLDivElement>(null);
+  const [dragOver, setDragOver] = useState(false);
+
+  const activeRoom = rooms.find((r) => r.id === activeRoomId);
 
   // Find the parent message
   const parentMessage = activeThread && activeRoomId
@@ -25,30 +30,94 @@ export default function ThreadPanel() {
   // Get typing users for this thread
   const threadTyping = activeThread ? typingUsers[`thread:${activeThread.id}`] || [] : [];
 
+  const members = activeRoomId ? roomMembers[activeRoomId] || [] : [];
+
   // Auto-scroll
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [threadMessages, threadStreamingMsgs]);
 
-  if (!showThread || !activeThread) return null;
+  // Mobile keyboard: scroll to bottom when viewport resizes
+  useEffect(() => {
+    const vv = window.visualViewport;
+    if (!vv) return;
+    const onResize = () => {
+      bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+    };
+    vv.addEventListener('resize', onResize);
+    return () => vv.removeEventListener('resize', onResize);
+  }, []);
+
+  const handleDrop = useCallback(async (e: React.DragEvent) => {
+    e.preventDefault();
+    setDragOver(false);
+    if (!activeRoomId || !activeThread) return;
+    const files = Array.from(e.dataTransfer.files);
+    for (const file of files) {
+      try {
+        const attachment = await uploadFile(file);
+        socketService.sendMessage(activeRoomId, JSON.stringify(attachment), activeThread.id, 'file');
+      } catch (err) {
+        console.error('Upload failed:', err);
+      }
+    }
+  }, [activeRoomId, activeThread]);
+
+  // Truncate parent message content for subtitle
+  const parentPreview = parentMessage
+    ? parentMessage.content.length > 60
+      ? parentMessage.content.slice(0, 60) + '…'
+      : parentMessage.content
+    : '';
+
+  if (!activeThread) return null;
 
   return (
-    <div className="fixed inset-0 z-30 w-full bg-dark-surface flex flex-col h-full md:static md:inset-auto md:z-auto md:w-80 md:border-l md:border-dark-border">
-      {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-dark-border">
-        <div className="flex items-center gap-2">
-          <span className="text-lg">🧵</span>
-          <h3 className="font-semibold text-white text-sm">Thread</h3>
-          <span className="text-xs text-dark-muted">
-            {activeThread.replyCount} {activeThread.replyCount === 1 ? 'reply' : 'replies'}
-          </span>
+    <div
+      className="flex-1 flex flex-col h-full min-h-0 min-w-0 bg-dark-bg relative overflow-hidden"
+      onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+      onDragLeave={() => setDragOver(false)}
+      onDrop={handleDrop}
+    >
+      {/* Drag overlay */}
+      {dragOver && (
+        <div className="absolute inset-0 bg-primary-600/20 border-2 border-dashed border-primary-400 rounded-lg z-50 flex items-center justify-center">
+          <p className="text-primary-400 text-lg font-semibold">Drop files to upload</p>
         </div>
+      )}
+
+      {/* Header */}
+      <div className="flex items-center gap-3 px-4 py-3 border-b border-dark-border bg-dark-surface flex-shrink-0">
+        {/* Back button */}
         <button
           onClick={() => setActiveThread(null)}
           className="text-dark-muted hover:text-white p-1 rounded transition"
+          title="Back to chat"
         >
-          ✕
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+          </svg>
         </button>
+
+        <span className="text-lg">🧵</span>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2">
+            <h2 className="font-semibold text-white text-sm">Thread</h2>
+            <span className="text-xs text-dark-muted">
+              {activeThread.replyCount} {activeThread.replyCount === 1 ? 'reply' : 'replies'}
+            </span>
+          </div>
+          {parentPreview && (
+            <p className="text-xs text-dark-muted truncate">{parentPreview}</p>
+          )}
+        </div>
+
+        {/* Room name badge */}
+        {activeRoom && (
+          <span className="text-xs text-dark-muted bg-dark-hover px-2 py-0.5 rounded hidden sm:inline-block">
+            {activeRoom.name}
+          </span>
+        )}
       </div>
 
       {/* Parent message */}
@@ -59,32 +128,42 @@ export default function ThreadPanel() {
       )}
 
       {/* Thread messages */}
-      <div className="flex-1 overflow-y-auto py-2 overscroll-contain" style={{ WebkitOverflowScrolling: 'touch' }}>
+      <div className="flex-1 overflow-y-auto py-2 min-h-0 overscroll-contain">
+        {threadMessages.length === 0 && !threadStreamingMsgs.length && (
+          <div className="text-center py-12">
+            <div className="text-4xl mb-3">🧵</div>
+            <p className="text-dark-muted text-sm">No replies yet. Start the conversation!</p>
+          </div>
+        )}
+
         {threadMessages.map((msg) => (
           <MessageBubble key={msg.id} message={msg} />
         ))}
 
-        {threadStreamingMsgs.map((stream) => (
-          <MessageBubble
-            key={stream.messageId}
-            message={{
-              id: stream.messageId,
-              roomId: stream.roomId,
-              threadId: stream.threadId,
-              userId: 'bot-clawchat',
-              content: stream.content,
-              type: 'text',
-              replyTo: null,
-              reactions: {},
-              isEdited: false,
-              isDeleted: false,
-              createdAt: new Date().toISOString(),
-              updatedAt: new Date().toISOString(),
-            }}
-            isStreaming={true}
-            streamContent={stream.content}
-          />
-        ))}
+        {threadStreamingMsgs.map((stream) => {
+          const streamBotId = stream.botId || members.find(m => m.isBot)?.id || 'bot-clawchat';
+          return (
+            <MessageBubble
+              key={stream.messageId}
+              message={{
+                id: stream.messageId,
+                roomId: stream.roomId,
+                threadId: stream.threadId,
+                userId: streamBotId,
+                content: stream.content,
+                type: 'text',
+                replyTo: null,
+                reactions: {},
+                isEdited: false,
+                isDeleted: false,
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString(),
+              }}
+              isStreaming={true}
+              streamContent={stream.content}
+            />
+          );
+        })}
 
         {/* Thread typing indicator */}
         {threadTyping.length > 0 && (

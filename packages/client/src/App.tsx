@@ -11,6 +11,14 @@ import MemberPanel from './components/MemberPanel';
 import CreateRoomModal from './components/CreateRoomModal';
 import type { User } from './types';
 
+function MainContent() {
+  const { showThread, activeThread } = useAppStore();
+  if (showThread && activeThread) {
+    return <ThreadPanel />;
+  }
+  return <ChatView />;
+}
+
 export default function App() {
   const { user, setUser, setRooms, setActiveRoom } = useAppStore();
   const [loading, setLoading] = useState(true);
@@ -81,10 +89,9 @@ export default function App() {
     <>
       <div className="h-screen flex overflow-hidden bg-dark-bg max-w-[100vw]" id="app-shell">
         <Sidebar />
-        <ChatView />
+        <MainContent />
         <MemberPanel />
       </div>
-      <ThreadPanel />
       <CreateRoomModal />
     </>
   );
