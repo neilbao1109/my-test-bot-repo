@@ -28,6 +28,7 @@ export default function MessageBubble({ message, isStreaming, streamContent, hig
   const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
   const [isEditing, setIsEditing] = useState(false);
   const [editContent, setEditContent] = useState(message.content);
+  const [copied, setCopied] = useState(false);
   const editRef = useRef<HTMLTextAreaElement>(null);
   const reactionRef = useRef<HTMLDivElement>(null);
   const actionsRef = useRef<HTMLDivElement>(null);
@@ -303,6 +304,20 @@ export default function MessageBubble({ message, isStreaming, streamContent, hig
             title="React"
           >
             😀
+          </button>
+          <button
+            onClick={() => {
+              const text = message.type === 'file'
+                ? (() => { try { return JSON.parse(message.content).url || message.content; } catch { return message.content; } })()
+                : message.content;
+              navigator.clipboard.writeText(text);
+              setCopied(true);
+              setTimeout(() => setCopied(false), 1500);
+            }}
+            className="p-1.5 text-dark-muted hover:text-white hover:bg-dark-hover rounded transition text-xs"
+            title="Copy"
+          >
+            {copied ? '✅' : '📋'}
           </button>
           <button
             onClick={handleStartThread}
