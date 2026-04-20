@@ -27,9 +27,15 @@ export default function CommandBar({ roomId, threadId }: CommandBarProps) {
   const [showMentions, setShowMentions] = useState(false);
   const [mentionQuery, setMentionQuery] = useState('');
   const [mentionIdx, setMentionIdx] = useState(0);
+  const [isListening, setIsListening] = useState(false);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const typingRef = useRef(false);
+  const recognitionRef = useRef<any>(null);
+
+  // Speech recognition support
+  const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+  const speechSupported = !!SpeechRecognition;
 
   const { roomMembers, activeRoomId } = useAppStore();
   const members = activeRoomId ? roomMembers[activeRoomId] || [] : [];
@@ -172,6 +178,53 @@ export default function CommandBar({ roomId, threadId }: CommandBarProps) {
     }
   }, [handleFileUpload]);
 
+  const toggleListening = useCallback(() => {
+    if (isListening) {
+      recognitionRef.current?.stop();
+      recognitionRef.current = null;
+      setIsListening(false);
+      return;
+    }
+
+    if (!SpeechRecognition) return;
+
+    const recognition = new SpeechRecognition();
+    recognition.continuous = true;
+    recognition.interimResults = true;
+    recognition.lang = 'zh-CN';
+
+    const baseText = input; // text before speech started
+    let finalText = '';
+
+    recognition.onresult = (event: any) => {
+      let interim = '';
+      finalText = '';
+      for (let i = 0; i < event.results.length; i++) {
+        const transcript = event.results[i][0].transcript;
+        if (event.results[i].isFinal) {
+          finalText += transcript;
+        } else {
+          interim += transcript;
+        }
+      }
+      setInput(baseText + finalText + interim);
+    };
+
+    recognition.onerror = () => {
+      setIsListening(false);
+      recognitionRef.current = null;
+    };
+
+    recognition.onend = () => {
+      setIsListening(false);
+      recognitionRef.current = null;
+    };
+
+    recognitionRef.current = recognition;
+    recognition.start();
+    setIsListening(true);
+  }, [isListening, SpeechRecognition, input]);
+
   // Auto-resize textarea
   useEffect(() => {
     const el = inputRef.current;
@@ -180,6 +233,14 @@ export default function CommandBar({ roomId, threadId }: CommandBarProps) {
       el.style.height = Math.min(el.scrollHeight, 160) + 'px';
     }
   }, [input]);
+
+  // Cleanup speech recognition on unmount
+  useEffect(() => {
+    return () => {
+      recognitionRef.current?.stop();
+      recognitionRef.current = null;
+    };
+  }, []);
 
   return (
     <div className="relative flex-shrink-0">
@@ -268,6 +329,23 @@ export default function CommandBar({ roomId, threadId }: CommandBarProps) {
           rows={1}
           className="flex-1 bg-dark-bg border border-dark-border rounded-xl px-4 py-3 md:py-2.5 text-base md:text-sm text-white placeholder-dark-muted resize-none focus:outline-none focus:ring-1 focus:ring-primary-500 focus:border-primary-500 transition"
         />
+
+        {/* Voice input button */}
+        {speechSupported && (
+          <button
+            onClick={toggleListening}
+            className={`p-2.5 rounded-xl transition flex-shrink-0 ${
+              isListening
+                ? 'bg-red-500 text-white animate-pulse'
+                : 'text-dark-muted hover:text-white hover:bg-dark-hover'
+            }`}
+            title={isListening ? 'Stop listening' : 'Voice input'}
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4M12 15a3 3 0 003-3V5a3 3 0 00-6 0v7a3 3 0 003 3z" />
+            </svg>
+          </button>
+        )}
 
         <button
           onClick={handleSend}
