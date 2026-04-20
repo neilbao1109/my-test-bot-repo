@@ -8,6 +8,9 @@ import ReactDOM from 'react-dom/client';
 import App from './App';
 import './index.css';
 
+// Apply saved theme
+document.documentElement.className = `theme-${localStorage.getItem('clawchat-theme') || 'dark'}`;
+
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <App />

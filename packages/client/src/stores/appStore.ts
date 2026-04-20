@@ -304,10 +304,14 @@ export const useAppStore = create<AppState>((set, get) => ({
   showThread: false,
   showMembers: false,
   showCreateRoom: false,
-  theme: 'dark',
+  theme: (localStorage.getItem('clawchat-theme') as 'dark' | 'light') || 'dark',
   toggleSidebar: () => set((s) => ({ showSidebar: !s.showSidebar })),
   toggleThread: () => set((s) => ({ showThread: !s.showThread })),
   toggleMembers: () => set((s) => ({ showMembers: !s.showMembers })),
   setShowCreateRoom: (show) => set({ showCreateRoom: show }),
-  setTheme: (theme) => set({ theme }),
+  setTheme: (theme) => {
+    localStorage.setItem('clawchat-theme', theme);
+    document.documentElement.className = `theme-${theme}`;
+    set({ theme });
+  },
 }));

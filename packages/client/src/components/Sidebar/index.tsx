@@ -3,7 +3,7 @@ import { useAppStore } from '../../stores/appStore';
 import UserAvatar from '../UserAvatar';
 
 export default function Sidebar() {
-  const { rooms, activeRoomId, setActiveRoom, user, showSidebar, toggleSidebar, roomMembers, onlineUsers, setShowCreateRoom, logout } = useAppStore();
+  const { rooms, activeRoomId, setActiveRoom, user, showSidebar, toggleSidebar, roomMembers, onlineUsers, setShowCreateRoom, logout, theme, setTheme } = useAppStore();
 
   if (!showSidebar) return null;
 
@@ -94,11 +94,18 @@ export default function Sidebar() {
       </div>
 
       {/* New room button */}
-      <div className="p-3 border-t border-dark-border"
+      <div className="p-3 border-t border-dark-border flex items-center gap-2"
            style={{ paddingBottom: `max(0.75rem, var(--safe-area-bottom))` }}>
         <button
+          onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+          className="py-2 px-3 text-sm text-dark-muted hover:text-white hover:bg-dark-hover rounded-lg transition"
+          title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+        >
+          {theme === 'dark' ? '☀️' : '🌙'}
+        </button>
+        <button
           onClick={() => setShowCreateRoom(true)}
-          className="w-full py-2 px-3 text-sm text-dark-muted hover:text-white hover:bg-dark-hover rounded-lg transition flex items-center gap-2"
+          className="flex-1 py-2 px-3 text-sm text-dark-muted hover:text-white hover:bg-dark-hover rounded-lg transition flex items-center gap-2"
         >
           <span>＋</span>
           <span>New Room</span>

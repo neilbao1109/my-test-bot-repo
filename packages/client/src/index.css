@@ -2,6 +2,43 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Theme variables */
+:root, .theme-dark {
+  --color-bg: #1a1b1e;
+  --color-surface: #25262b;
+  --color-border: #373a40;
+  --color-hover: #2c2e33;
+  --color-text: #c1c2c5;
+  --color-muted: #909296;
+  --color-primary-400: #36a6ff;
+  --color-primary-500: #0c8cff;
+  --color-primary-600: #006cdb;
+  --color-scrollbar: #373a40;
+  --color-code-bg: #1a1b1e;
+  --color-blockquote: #909296;
+  --color-table-header: #25262b;
+  --color-table-border: #373a40;
+  --color-hljs-text: #c1c2c5;
+}
+
+.theme-light {
+  --color-bg: #ffffff;
+  --color-surface: #f5f5f5;
+  --color-border: #e0e0e0;
+  --color-hover: #ebebeb;
+  --color-text: #1a1a1a;
+  --color-muted: #6b7280;
+  --color-primary-400: #2563eb;
+  --color-primary-500: #1d4ed8;
+  --color-primary-600: #1e40af;
+  --color-scrollbar: #d1d5db;
+  --color-code-bg: #f3f4f6;
+  --color-blockquote: #6b7280;
+  --color-table-header: #f3f4f6;
+  --color-table-border: #e0e0e0;
+  --color-hljs-text: #1a1a1a;
+}
+
 /* Safe area insets */
 :root {
   --safe-area-top: env(safe-area-inset-top, 0px);
@@ -44,7 +81,7 @@ html, body {
 
 * {
   scrollbar-width: thin;
-  scrollbar-color: #373a40 transparent;
+  scrollbar-color: var(--color-scrollbar) transparent;
 }
 
 *::-webkit-scrollbar {
@@ -56,7 +93,7 @@ html, body {
 }
 
 *::-webkit-scrollbar-thumb {
-  background-color: #373a40;
+  background-color: var(--color-scrollbar);
   border-radius: 3px;
 }
 
@@ -79,10 +116,10 @@ html, body {
 }
 
 .prose blockquote {
-  border-left: 3px solid #0c8cff;
+  border-left: 3px solid var(--color-primary-500);
   padding-left: 0.75rem;
   margin: 0.5rem 0;
-  color: #909296;
+  color: var(--color-blockquote);
 }
 
 .prose table {
@@ -92,18 +129,18 @@ html, body {
 }
 
 .prose th, .prose td {
-  border: 1px solid #373a40;
+  border: 1px solid var(--color-table-border);
   padding: 0.35rem 0.75rem;
 }
 
 .prose th {
-  background-color: #25262b;
+  background-color: var(--color-table-header);
 }
 
-/* Highlight.js theme overrides for dark mode */
+/* Highlight.js theme overrides */
 .hljs {
   background: transparent !important;
-  color: #c1c2c5 !important;
+  color: var(--color-hljs-text) !important;
 }
 
 /* Animation */
