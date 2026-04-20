@@ -21,7 +21,7 @@ interface MessageBubbleProps {
 const QUICK_REACTIONS = ['👍', '❤️', '😂', '🎉', '🤔', '👀'];
 
 export default function MessageBubble({ message, isStreaming, streamContent, highlight, isSearchActive }: MessageBubbleProps) {
-  const { user, roomMembers, activeRoomId, threadInfo } = useAppStore();
+  const { user, roomMembers, activeRoomId, threadInfo, setReplyTo, messages: allMessages } = useAppStore();
   const [showActions, setShowActions] = useState(false);
   const [showReactions, setShowReactions] = useState(false);
   const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -118,6 +118,7 @@ export default function MessageBubble({ message, isStreaming, streamContent, hig
 
   return (
     <div
+      data-msg-id={message.id}
       className={clsx(
         'msg-bubble group flex gap-3 px-4 py-1.5 hover:bg-dark-hover/50 transition relative',
         message.type === 'system' && 'opacity-80',
@@ -170,6 +171,34 @@ export default function MessageBubble({ message, isStreaming, streamContent, hig
             <span className="text-xs text-dark-muted">(edited)</span>
           )}
         </div>
+
+        {/* Reply quote block */}
+        {message.replyTo && (() => {
+          const roomMsgs = activeRoomId ? allMessages[activeRoomId] || [] : [];
+          const quoted = roomMsgs.find(m => m.id === message.replyTo);
+          if (!quoted) return null;
+          const quotedSender = members.find(m => m.id === quoted.userId);
+          return (
+            <button
+              onClick={() => {
+                const el = document.querySelector(`[data-msg-id="${quoted.id}"]`);
+                if (el) {
+                  el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                  el.classList.add('bg-primary-600/20');
+                  setTimeout(() => el.classList.remove('bg-primary-600/20'), 2000);
+                }
+              }}
+              className="mt-1 mb-1 w-full text-left border-l-2 border-primary-500/50 pl-2 py-1 rounded-r bg-dark-hover/30 hover:bg-dark-hover/50 transition"
+            >
+              <p className="text-xs text-primary-400 font-semibold truncate">
+                {quotedSender?.username || 'Unknown'}
+              </p>
+              <p className="text-xs text-dark-muted truncate">
+                {quoted.content.length > 80 ? quoted.content.slice(0, 80) + '…' : quoted.content}
+              </p>
+            </button>
+          );
+        })()}
 
         {/* Message body */}
         {isEditing ? (
@@ -329,6 +358,13 @@ export default function MessageBubble({ message, isStreaming, streamContent, hig
             title="Copy"
           >
             {copied ? '✅' : '📋'}
+          </button>
+          <button
+            onClick={() => { setReplyTo(message); setShowActions(false); }}
+            className="p-1.5 text-dark-muted hover:text-white hover:bg-dark-hover rounded transition text-xs"
+            title="Reply"
+          >
+            ↩️
           </button>
           <button
             onClick={handleStartThread}

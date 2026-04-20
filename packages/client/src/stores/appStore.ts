@@ -79,6 +79,10 @@ interface AppState {
   showSearch: boolean;
   toggleSearch: () => void;
 
+  // Reply
+  replyToMessage: Message | null;
+  setReplyTo: (message: Message | null) => void;
+
   // UI
   showSidebar: boolean;
   showThread: boolean;
@@ -290,6 +294,10 @@ export const useAppStore = create<AppState>((set, get) => ({
     }
     return { showSearch: true };
   }),
+
+  // Reply
+  replyToMessage: null,
+  setReplyTo: (message) => set({ replyToMessage: message }),
 
   // UI
   showSidebar: window.innerWidth >= 768,

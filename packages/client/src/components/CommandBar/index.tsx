@@ -37,7 +37,7 @@ export default function CommandBar({ roomId, threadId }: CommandBarProps) {
   const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
   const speechSupported = !!SpeechRecognition;
 
-  const { roomMembers, activeRoomId } = useAppStore();
+  const { roomMembers, activeRoomId, replyToMessage, setReplyTo } = useAppStore();
   const members = activeRoomId ? roomMembers[activeRoomId] || [] : [];
   const botMembers = members.filter(m => m.isBot);
   const filteredBots = mentionQuery
@@ -56,14 +56,15 @@ export default function CommandBar({ roomId, threadId }: CommandBarProps) {
   const handleSend = useCallback(() => {
     const trimmed = input.trim();
     if (!trimmed) return;
-    socketService.sendMessage(roomId, trimmed, threadId);
+    socketService.sendMessage(roomId, trimmed, threadId, replyToMessage?.id);
     setInput('');
+    setReplyTo(null);
     setShowSuggestions(false);
     if (typingRef.current) {
       socketService.stopTyping(roomId);
       typingRef.current = false;
     }
-  }, [input, roomId, threadId]);
+  }, [input, roomId, threadId, replyToMessage]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     // Mention autocomplete
@@ -289,6 +290,25 @@ export default function CommandBar({ roomId, threadId }: CommandBarProps) {
               <span className="text-xs text-dark-muted">{cmd.description}</span>
             </button>
           ))}
+        </div>
+      )}
+
+      {/* Reply preview */}
+      {replyToMessage && (
+        <div className="flex items-center gap-2 px-4 py-2 border-t border-dark-border bg-dark-surface">
+          <span className="text-xs text-primary-400">↩️</span>
+          <div className="flex-1 min-w-0 border-l-2 border-primary-500 pl-2">
+            <p className="text-xs text-primary-400 font-semibold truncate">
+              {members.find(m => m.id === replyToMessage.userId)?.username || 'Unknown'}
+            </p>
+            <p className="text-xs text-dark-muted truncate">{replyToMessage.content}</p>
+          </div>
+          <button
+            onClick={() => setReplyTo(null)}
+            className="text-dark-muted hover:text-white p-1 flex-shrink-0"
+          >
+            ✕
+          </button>
         </div>
       )}
 
