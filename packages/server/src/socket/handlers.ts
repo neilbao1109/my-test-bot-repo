@@ -1,5 +1,5 @@
 import { Server, Socket } from 'socket.io';
-import { createMessage, getMessages, editMessage, deleteMessage, addReaction, searchMessages } from '../services/message.js';
+import { createMessage, getMessages, editMessage, deleteMessage, addReaction, searchMessages, getReplyChain } from '../services/message.js';
 import { createRoom, getRooms, getRoomMembers, addMemberToRoom, removeMemberFromRoom, renameRoom, searchUsers, getRoom } from '../services/room.js';
 import { createThread, getThread, getThreadByMessage } from '../services/thread.js';
 import { parseCommand, executeCommand } from '../services/command.js';
@@ -219,6 +219,21 @@ export function setupSocketHandlers(io: Server) {
         updateThreadReplyCount(data.threadId, io, data.roomId);
       }
 
+      // Build reply context if replying to a message
+      let botContent = data.content;
+      if (message.replyTo) {
+        const chain = getReplyChain(message.replyTo);
+        if (chain.length > 0) {
+          const contextLines = chain.map(m => {
+            const u = getUser(m.userId);
+            const name = u?.username || m.userId;
+            const body = m.type === 'file' ? '[file]' : m.content.slice(0, 300);
+            return `[${name}]: ${body}`;
+          });
+          botContent = `--- Reply Context ---\n${contextLines.join('\n')}\n--- End Reply Context ---\n\n${data.content}`;
+        }
+      }
+
       // Bot streaming responses — determine which bots should respond
       const respondingBots = getRespondingBots(data.content, data.roomId, socket.userId);
 
@@ -241,7 +256,7 @@ export function setupSocketHandlers(io: Server) {
           history: [],
         };
 
-        for await (const chunk of registryStreamBotResponse(bot.id, data.content, context)) {
+        for await (const chunk of registryStreamBotResponse(bot.id, botContent, context)) {
           fullContent += chunk;
           io.to(data.roomId).emit('bot:stream', {
             messageId: botMessageId,

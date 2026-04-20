@@ -159,3 +159,29 @@ function rowToMessage(row: any): Message {
     updatedAt: row.updated_at,
   };
 }
+
+export function getMessageById(messageId: string): Message | null {
+  const db = getDb();
+  const row = db.prepare('SELECT * FROM messages WHERE id = ?').get(messageId) as any;
+  return row ? rowToMessage(row) : null;
+}
+
+/**
+ * Walk the reply chain upward from a messageId, returning messages in chronological order.
+ * Max depth prevents infinite loops.
+ */
+export function getReplyChain(messageId: string, maxDepth = 8): Message[] {
+  const chain: Message[] = [];
+  const visited = new Set<string>();
+  let currentId: string | null = messageId;
+
+  while (currentId && chain.length < maxDepth && !visited.has(currentId)) {
+    visited.add(currentId);
+    const msg = getMessageById(currentId);
+    if (!msg) break;
+    chain.unshift(msg); // prepend to keep chronological order
+    currentId = msg.replyTo;
+  }
+
+  return chain;
+}
