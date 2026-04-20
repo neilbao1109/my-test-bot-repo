@@ -59,7 +59,7 @@ export default function ThreadPanel() {
       )}
 
       {/* Thread messages */}
-      <div className="flex-1 overflow-y-auto py-2">
+      <div className="flex-1 overflow-y-auto py-2 overscroll-contain" style={{ WebkitOverflowScrolling: 'touch' }}>
         {threadMessages.map((msg) => (
           <MessageBubble key={msg.id} message={msg} />
         ))}
