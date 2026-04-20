@@ -10,6 +10,40 @@ import { socketService } from '../../services/socket';
 import { formatFileSize } from '../../utils/format';
 import UserAvatar from '../UserAvatar';
 
+function CodeBlockPre({ text, children }: { text: string; children: React.ReactNode }) {
+  const [copied, setCopied] = useState(false);
+  const handleCopy = () => {
+    if (navigator.clipboard?.writeText) {
+      navigator.clipboard.writeText(text);
+    } else {
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      ta.style.position = 'fixed';
+      ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+    }
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1500);
+  };
+  return (
+    <div className="relative group/code my-2">
+      <button
+        onClick={handleCopy}
+        className="absolute right-2 top-2 px-1.5 py-0.5 rounded text-xs bg-dark-surface border border-dark-border text-dark-muted hover:text-white opacity-0 group-hover/code:opacity-100 md:opacity-0 max-md:opacity-60 transition z-10"
+        title="Copy code"
+      >
+        {copied ? '✅' : '📋'}
+      </button>
+      <pre className="bg-dark-bg rounded-lg p-3 overflow-x-auto border border-dark-border">
+        {children}
+      </pre>
+    </div>
+  );
+}
+
 interface MessageBubbleProps {
   message: Message;
   isStreaming?: boolean;
@@ -244,11 +278,23 @@ export default function MessageBubble({ message, isStreaming, streamContent, hig
               remarkPlugins={[remarkGfmSafe]}
               rehypePlugins={[rehypeHighlight]}
               components={{
-                pre: ({ children }) => (
-                  <pre className="bg-dark-bg rounded-lg p-3 overflow-x-auto border border-dark-border my-2">
-                    {children}
-                  </pre>
-                ),
+                pre: ({ children }) => {
+                  const textContent = (() => {
+                    const extractText = (node: any): string => {
+                      if (typeof node === 'string') return node;
+                      if (!node) return '';
+                      if (node.props?.children) {
+                        return Array.isArray(node.props.children)
+                          ? node.props.children.map(extractText).join('')
+                          : extractText(node.props.children);
+                      }
+                      return '';
+                    };
+                    return extractText({ props: { children } });
+                  })();
+
+                  return <CodeBlockPre text={textContent}>{children}</CodeBlockPre>;
+                },
                 code: ({ className, children, ...props }) => {
                   const isInline = !className;
                   if (isInline) {
