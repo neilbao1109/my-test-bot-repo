@@ -293,7 +293,7 @@ export default function CommandBar({ roomId, threadId }: CommandBarProps) {
       )}
 
       {/* Input area */}
-      <div className="flex items-center gap-2 p-4 pb-[calc(1rem+env(safe-area-inset-bottom,0px))] border-t border-dark-border bg-dark-surface">
+      <div className="flex items-end gap-2 p-4 pb-[calc(1rem+env(safe-area-inset-bottom,0px))] border-t border-dark-border bg-dark-surface">
         <input
           ref={fileInputRef}
           type="file"
