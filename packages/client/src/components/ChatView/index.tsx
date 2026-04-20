@@ -117,7 +117,7 @@ export default function ChatView() {
       <div className="flex-1 flex items-center justify-center bg-dark-bg">
         <div className="text-center">
           <div className="text-6xl mb-4">💬</div>
-          <h2 className="text-xl font-semibold text-white mb-2">Welcome to ClawChat</h2>
+          <h2 className="text-xl font-semibold text-dark-text mb-2">Welcome to ClawChat</h2>
           <p className="text-dark-muted">Select a conversation to start chatting</p>
         </div>
       </div>
@@ -150,7 +150,7 @@ export default function ChatView() {
           </button>
         <span className="text-lg">{activeRoom.type === 'dm' ? '💬' : '👥'}</span>
         <div className="flex-1">
-          <h2 className="font-semibold text-white text-sm">{activeRoom.name}</h2>
+          <h2 className="font-semibold text-dark-text text-sm">{activeRoom.name}</h2>
           <p className="text-xs text-dark-muted">
             {activeRoom.type === 'dm'
               ? 'Direct message with ClawBot'

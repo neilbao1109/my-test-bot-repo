@@ -102,7 +102,7 @@ export default function ThreadPanel() {
         <span className="text-lg">🧵</span>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
-            <h2 className="font-semibold text-white text-sm">Thread</h2>
+            <h2 className="font-semibold text-dark-text text-sm">Thread</h2>
             <span className="text-xs text-dark-muted">
               {activeThread.replyCount} {activeThread.replyCount === 1 ? 'reply' : 'replies'}
             </span>

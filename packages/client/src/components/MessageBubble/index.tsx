@@ -174,7 +174,7 @@ export default function MessageBubble({ message, isStreaming, streamContent, hig
       <div className="flex-1 min-w-0">
         {/* Header */}
         <div className="flex items-baseline gap-2 mb-0.5">
-          <span className={clsx('text-sm font-semibold', isBot ? 'text-primary-400' : 'text-white')}>
+          <span className={clsx('text-sm font-semibold', isBot ? 'text-primary-400' : 'text-dark-text')}>
             {sender?.username || 'Unknown'}
           </span>
           {isBot && (
@@ -229,7 +229,7 @@ export default function MessageBubble({ message, isStreaming, streamContent, hig
                 if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleEdit(); }
                 if (e.key === 'Escape') setIsEditing(false);
               }}
-              className="w-full bg-dark-bg border border-dark-border rounded-lg px-3 py-2 text-sm text-white resize-none focus:outline-none focus:ring-1 focus:ring-primary-500"
+              className="w-full bg-dark-bg border border-dark-border rounded-lg px-3 py-2 text-sm text-dark-text resize-none focus:outline-none focus:ring-1 focus:ring-primary-500"
               rows={3}
             />
             <div className="flex gap-2 mt-1">
@@ -265,7 +265,7 @@ export default function MessageBubble({ message, isStreaming, streamContent, hig
               >
                 <span className="text-2xl flex-shrink-0">{isPdf ? '📄' : '📁'}</span>
                 <div className="min-w-0 flex-1">
-                  <p className="text-sm text-white truncate">{attachment.originalName}</p>
+                  <p className="text-sm text-dark-text truncate">{attachment.originalName}</p>
                   <p className="text-xs text-dark-muted">{formatFileSize(attachment.size)}</p>
                 </div>
                 <span className="text-dark-muted text-sm flex-shrink-0">⬇</span>

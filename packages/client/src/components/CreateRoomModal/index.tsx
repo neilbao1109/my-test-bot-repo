@@ -60,7 +60,7 @@ export default function CreateRoomModal() {
       <div className="bg-dark-surface border border-dark-border rounded-xl shadow-2xl w-full max-w-md mx-4 max-h-[90vh] overflow-y-auto">
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-dark-border">
-          <h2 className="text-lg font-semibold text-white">Create Room</h2>
+          <h2 className="text-lg font-semibold text-dark-text">Create Room</h2>
           <button
             onClick={() => setShowCreateRoom(false)}
             className="text-dark-muted hover:text-white p-1 rounded transition"
@@ -100,7 +100,7 @@ export default function CreateRoomModal() {
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder="Room name"
-            className="w-full bg-dark-bg border border-dark-border rounded-lg px-3 py-2 text-sm text-white placeholder-dark-muted focus:outline-none focus:ring-1 focus:ring-primary-500"
+            className="w-full bg-dark-bg border border-dark-border rounded-lg px-3 py-2 text-sm text-dark-text placeholder-dark-muted focus:outline-none focus:ring-1 focus:ring-primary-500"
             autoFocus
           />
 
@@ -113,7 +113,7 @@ export default function CreateRoomModal() {
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder="Search users to invite..."
-                  className="w-full bg-dark-bg border border-dark-border rounded-lg px-3 py-2 text-sm text-white placeholder-dark-muted focus:outline-none focus:ring-1 focus:ring-primary-500"
+                  className="w-full bg-dark-bg border border-dark-border rounded-lg px-3 py-2 text-sm text-dark-text placeholder-dark-muted focus:outline-none focus:ring-1 focus:ring-primary-500"
                 />
               </div>
 

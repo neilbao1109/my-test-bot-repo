@@ -81,7 +81,7 @@ export default function SearchBar() {
           value={searchQuery || ''}
           onChange={(e) => handleInput(e.target.value)}
           placeholder="Search messages..."
-          className="flex-1 bg-transparent text-sm text-white placeholder-dark-muted focus:outline-none"
+          className="flex-1 bg-transparent text-sm text-dark-text placeholder-dark-muted focus:outline-none"
         />
         {/* Scope toggle */}
         <button

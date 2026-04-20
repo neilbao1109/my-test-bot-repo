@@ -22,7 +22,7 @@ export default function MemberPanel() {
       <div className="flex items-center justify-between px-4 py-3 border-b border-dark-border">
         <div className="flex items-center gap-2">
           <span className="text-lg">👥</span>
-          <h3 className="font-semibold text-white text-sm">Members</h3>
+          <h3 className="font-semibold text-dark-text text-sm">Members</h3>
           <span className="text-xs text-dark-muted">{members.length}</span>
         </div>
         <button
@@ -55,7 +55,7 @@ export default function MemberPanel() {
                 >
                   <UserAvatar username={m.username} isBot={m.isBot} isOnline={true} size="sm" />
                   <div className="flex-1 min-w-0">
-                    <span className="text-sm text-white truncate block">{m.username}</span>
+                    <span className="text-sm text-dark-text truncate block">{m.username}</span>
                     {m.isBot && (
                       <span className="text-[10px] text-primary-400">BOT</span>
                     )}

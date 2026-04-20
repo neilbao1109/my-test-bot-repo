@@ -33,9 +33,9 @@ export default function Sidebar() {
            style={{ paddingTop: `max(1rem, var(--safe-area-top))` }}>
         <div className="flex items-center gap-2">
           <div className="w-8 h-8 bg-primary-600 rounded-lg flex items-center justify-center">
-            <span className="text-sm font-bold text-white">CC</span>
+            <span className="text-sm font-bold text-dark-text">CC</span>
           </div>
-          <span className="font-semibold text-white">ClawChat</span>
+          <span className="font-semibold text-dark-text">ClawChat</span>
         </div>
         <button
           onClick={toggleSidebar}
