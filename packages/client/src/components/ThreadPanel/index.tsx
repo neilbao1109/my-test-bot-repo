@@ -120,15 +120,14 @@ export default function ThreadPanel() {
         )}
       </div>
 
-      {/* Parent message */}
-      {parentMessage && (
-        <div className="border-b border-dark-border bg-dark-bg/50">
-          <MessageBubble message={parentMessage} />
-        </div>
-      )}
-
-      {/* Thread messages */}
-      <div className="flex-1 overflow-y-auto py-2 min-h-0 overscroll-contain">
+      {/* Thread messages (parent + replies in one scrollable area) */}
+      <div className="flex-1 overflow-y-auto min-h-0 overscroll-contain">
+        {/* Parent message */}
+        {parentMessage && (
+          <div className="border-b border-dark-border bg-dark-bg/50">
+            <MessageBubble message={parentMessage} />
+          </div>
+        )}
         {threadMessages.length === 0 && !threadStreamingMsgs.length && (
           <div className="text-center py-12">
             <div className="text-4xl mb-3">🧵</div>
