@@ -12,7 +12,12 @@ class SocketService {
     const serverUrl = import.meta.env.VITE_SERVER_URL || window.location.origin;
 
     this.socket = io(serverUrl, {
-      transports: ['polling', 'websocket'],
+      transports: ['websocket', 'polling'],
+      reconnection: true,
+      reconnectionAttempts: Infinity,
+      reconnectionDelay: 1000,
+      reconnectionDelayMax: 5000,
+      timeout: 20000,
     });
     return this.socket;
   }

@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { socketService } from '../services/socket';
 import { useAppStore } from '../stores/appStore';
+import { getToken } from '../services/auth';
 import type { Message, Room, User, Thread } from '../types';
 
 export function useSocket() {
@@ -115,6 +116,22 @@ export function useSocket() {
       }
     });
 
+    // Re-auth and rejoin room on reconnect
+    const handleReconnect = () => {
+      const token = getToken();
+      if (token) {
+        socketService.auth(token).then((result) => {
+          if (!result.error) {
+            const state = useAppStore.getState();
+            if (state.activeRoomId) {
+              socketService.joinRoom(state.activeRoomId);
+            }
+          }
+        });
+      }
+    };
+    socket.io.on('reconnect', handleReconnect);
+
     return () => {
       socket.off('room:history');
       socket.off('message:new');
@@ -132,6 +149,7 @@ export function useSocket() {
       socket.off('room:updated');
       socket.off('room:added');
       socket.off('command:result');
+      socket.io.off('reconnect', handleReconnect);
     };
   }, [user]);
 }
