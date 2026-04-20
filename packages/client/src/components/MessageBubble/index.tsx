@@ -115,18 +115,28 @@ export default function MessageBubble({ message, isStreaming, streamContent, hig
   return (
     <div
       className={clsx(
-        'group flex gap-3 px-4 py-1.5 hover:bg-dark-hover/50 transition relative',
+        'msg-bubble group flex gap-3 px-4 py-1.5 hover:bg-dark-hover/50 transition relative',
         message.type === 'system' && 'opacity-80',
         isSearchActive && 'bg-primary-600/20 ring-1 ring-primary-500/40',
         highlight && !isSearchActive && 'bg-yellow-500/5',
       )}
       onMouseEnter={() => !isMobile && setShowActions(true)}
       onMouseLeave={() => { !isMobile && setShowActions(false); setShowReactions(false); }}
-      onClick={() => {
-        if (isMobile && !isEditing && !isStreaming) {
-          setShowActions((prev) => !prev);
+      onTouchStart={(e) => {
+        if (isMobile) {
+          longPressTimer.current = setTimeout(() => {
+            e.preventDefault();
+            setShowActions(true);
+          }, 500);
         }
       }}
+      onTouchEnd={() => {
+        if (longPressTimer.current) { clearTimeout(longPressTimer.current); longPressTimer.current = null; }
+      }}
+      onTouchMove={() => {
+        if (longPressTimer.current) { clearTimeout(longPressTimer.current); longPressTimer.current = null; }
+      }}
+      onContextMenu={(e) => { if (isMobile) e.preventDefault(); }}
     >
       {/* Avatar */}
       <div className="flex-shrink-0 pt-0.5">

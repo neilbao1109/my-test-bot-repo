@@ -111,3 +111,10 @@ html, body {
   0%, 100% { opacity: 1; }
   50% { opacity: 0; }
 }
+
+/* Prevent iOS long-press system menu on messages */
+.msg-bubble {
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
