@@ -313,39 +313,42 @@ export default function CommandBar({ roomId, threadId }: CommandBarProps) {
         >
           📎
         </button>
-        <textarea
-          ref={inputRef}
-          value={input}
-          onChange={handleInput}
-          onKeyDown={handleKeyDown}
-          onFocus={() => {
-            // iOS: wait for keyboard, then scroll input into view
-            setTimeout(() => {
-              inputRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            }, 400);
-          }}
-          onPaste={handlePaste}
-          placeholder={threadId ? 'Reply in thread...' : 'Type a message... (/ for commands)'}
-          rows={1}
-          className="flex-1 bg-dark-bg border border-dark-border rounded-xl px-4 py-3 md:py-2.5 text-base md:text-sm text-white placeholder-dark-muted resize-none focus:outline-none focus:ring-1 focus:ring-primary-500 focus:border-primary-500 transition"
-        />
-
-        {/* Voice input button */}
-        {speechSupported && (
-          <button
-            onClick={toggleListening}
-            className={`p-2.5 rounded-xl transition flex-shrink-0 ${
-              isListening
-                ? 'bg-red-500 text-white animate-pulse'
-                : 'text-dark-muted hover:text-white hover:bg-dark-hover'
+        <div className="flex-1 relative">
+          <textarea
+            ref={inputRef}
+            value={input}
+            onChange={handleInput}
+            onKeyDown={handleKeyDown}
+            onFocus={() => {
+              // iOS: wait for keyboard, then scroll input into view
+              setTimeout(() => {
+                inputRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+              }, 400);
+            }}
+            onPaste={handlePaste}
+            placeholder={threadId ? 'Reply in thread...' : 'Type a message... (/ for commands)'}
+            rows={1}
+            className={`w-full bg-dark-bg border border-dark-border rounded-xl px-4 py-3 md:py-2.5 text-base md:text-sm text-white placeholder-dark-muted resize-none focus:outline-none focus:ring-1 focus:ring-primary-500 focus:border-primary-500 transition ${
+              speechSupported ? 'pr-10' : ''
             }`}
-            title={isListening ? 'Stop listening' : 'Voice input'}
-          >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4M12 15a3 3 0 003-3V5a3 3 0 00-6 0v7a3 3 0 003 3z" />
-            </svg>
-          </button>
-        )}
+          />
+          {/* Voice input button inside textarea */}
+          {speechSupported && (
+            <button
+              onClick={toggleListening}
+              className={`absolute right-2 bottom-1.5 p-1.5 rounded-lg transition ${
+                isListening
+                  ? 'bg-red-500 text-white animate-pulse'
+                  : 'text-dark-muted hover:text-white'
+              }`}
+              title={isListening ? 'Stop listening' : 'Voice input'}
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4M12 15a3 3 0 003-3V5a3 3 0 00-6 0v7a3 3 0 003 3z" />
+              </svg>
+            </button>
+          )}
+        </div>
 
         <button
           onClick={handleSend}
