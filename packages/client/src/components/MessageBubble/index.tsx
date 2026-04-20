@@ -24,7 +24,6 @@ export default function MessageBubble({ message, isStreaming, streamContent, hig
   const { user, roomMembers, activeRoomId, threadInfo, setReplyTo, messages: allMessages } = useAppStore();
   const [showActions, setShowActions] = useState(false);
   const [showReactions, setShowReactions] = useState(false);
-  const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
   const [isEditing, setIsEditing] = useState(false);
   const [editContent, setEditContent] = useState(message.content);
@@ -127,21 +126,6 @@ export default function MessageBubble({ message, isStreaming, streamContent, hig
       )}
       onMouseEnter={() => !isMobile && setShowActions(true)}
       onMouseLeave={() => { !isMobile && setShowActions(false); setShowReactions(false); }}
-      onTouchStart={(e) => {
-        if (isMobile) {
-          longPressTimer.current = setTimeout(() => {
-            e.preventDefault();
-            setShowActions(true);
-          }, 500);
-        }
-      }}
-      onTouchEnd={() => {
-        if (longPressTimer.current) { clearTimeout(longPressTimer.current); longPressTimer.current = null; }
-      }}
-      onTouchMove={() => {
-        if (longPressTimer.current) { clearTimeout(longPressTimer.current); longPressTimer.current = null; }
-      }}
-      onContextMenu={(e) => { if (isMobile) e.preventDefault(); }}
     >
       {/* Avatar */}
       <div className="flex-shrink-0 pt-0.5">
@@ -323,6 +307,20 @@ export default function MessageBubble({ message, isStreaming, streamContent, hig
           </button>
         )}
       </div>
+
+      {/* Mobile: ⋮ menu button */}
+      {isMobile && !isStreaming && !message.isDeleted && (
+        <button
+          onClick={() => setShowActions(!showActions)}
+          className="flex-shrink-0 self-start mt-1 p-1 text-dark-muted/40 hover:text-dark-muted rounded transition"
+        >
+          <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+            <circle cx="10" cy="4" r="1.5" />
+            <circle cx="10" cy="10" r="1.5" />
+            <circle cx="10" cy="16" r="1.5" />
+          </svg>
+        </button>
+      )}
 
       {/* Action buttons */}
       {showActions && !isEditing && !isStreaming && (
