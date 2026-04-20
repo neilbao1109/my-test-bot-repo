@@ -336,7 +336,7 @@ export default function CommandBar({ roomId, threadId }: CommandBarProps) {
           {speechSupported && (
             <button
               onClick={toggleListening}
-              className={`absolute right-2 bottom-1.5 p-1.5 rounded-lg transition ${
+              className={`absolute right-2 top-1/2 -translate-y-1/2 p-1.5 rounded-lg transition ${
                 isListening
                   ? 'bg-red-500 text-white animate-pulse'
                   : 'text-dark-muted hover:text-white'
