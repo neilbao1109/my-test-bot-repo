@@ -112,10 +112,9 @@ html, body {
   50% { opacity: 0; }
 }
 
-/* Prevent iOS long-press system menu on messages */
+/* Allow text selection in messages, restrict only on interactive elements */
 .msg-bubble {
-  -webkit-touch-callout: none;
-  -webkit-user-select: none;
-  user-select: none;
+  -webkit-user-select: text;
+  user-select: text;
   touch-action: pan-y;
 }
