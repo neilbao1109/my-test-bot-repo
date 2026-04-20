@@ -360,7 +360,7 @@ export default function MessageBubble({ message, isStreaming, streamContent, hig
             {copied ? '✅' : '📋'}
           </button>
           <button
-            onClick={() => { setReplyTo(message); setShowActions(false); }}
+            onClick={() => { setReplyTo(message); setShowActions(false); setTimeout(() => document.querySelector<HTMLTextAreaElement>('.command-bar-input')?.focus(), 50); }}
             className="p-1.5 text-dark-muted hover:text-white hover:bg-dark-hover rounded transition text-xs"
             title="Reply"
           >
