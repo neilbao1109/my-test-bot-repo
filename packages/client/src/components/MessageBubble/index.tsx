@@ -30,6 +30,7 @@ export default function MessageBubble({ message, isStreaming, streamContent, hig
   const [editContent, setEditContent] = useState(message.content);
   const editRef = useRef<HTMLTextAreaElement>(null);
   const reactionRef = useRef<HTMLDivElement>(null);
+  const actionsRef = useRef<HTMLDivElement>(null);
 
   const members = activeRoomId ? roomMembers[activeRoomId] || [] : [];
   const sender = members.find((m) => m.id === message.userId);
@@ -52,7 +53,9 @@ export default function MessageBubble({ message, isStreaming, streamContent, hig
       if (reactionRef.current && !reactionRef.current.contains(e.target as Node)) {
         setShowReactions(false);
       }
-      if (isMobile) setShowActions(false);
+      if (isMobile && actionsRef.current && !actionsRef.current.contains(e.target as Node)) {
+        setShowActions(false);
+      }
     };
     document.addEventListener('mousedown', handler);
     document.addEventListener('touchstart', handler);
@@ -293,7 +296,7 @@ export default function MessageBubble({ message, isStreaming, streamContent, hig
 
       {/* Action buttons */}
       {showActions && !isEditing && !isStreaming && (
-        <div className="absolute right-4 -top-3 flex items-center gap-0.5 bg-dark-surface border border-dark-border rounded-lg shadow-lg p-0.5 z-40">
+        <div ref={actionsRef} className="absolute right-4 -top-3 flex items-center gap-0.5 bg-dark-surface border border-dark-border rounded-lg shadow-lg p-0.5 z-40">
           <button
             onClick={() => setShowReactions(!showReactions)}
             className="p-1.5 text-dark-muted hover:text-white hover:bg-dark-hover rounded transition text-xs"
