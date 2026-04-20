@@ -1,5 +1,7 @@
 import { create } from 'zustand';
 import type { User, Room, Message, Thread, StreamingMessage, TypingUser } from '../types';
+import { clearToken } from '../services/auth';
+import { socketService } from '../services/socket';
 
 interface ThreadInfo {
   replyCount: number;
@@ -101,8 +103,8 @@ export const useAppStore = create<AppState>((set, get) => ({
   user: null,
   setUser: (user) => set({ user }),
   logout: () => {
-    import('../services/auth').then(({ clearToken }) => clearToken());
-    import('../services/socket').then(({ socketService }) => socketService.disconnect());
+    clearToken();
+    socketService.disconnect();
     set({ user: null, rooms: [], activeRoomId: null, messages: {}, roomMembers: {}, threadInfo: {}, streamingMessages: {}, typingUsers: {}, onlineUsers: new Set<string>() });
   },
 

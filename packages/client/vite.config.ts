@@ -11,6 +11,7 @@ export default defineConfig(({ mode }) => {
     plugins: [react()],
     build: {
       target: ['es2020', 'safari15', 'chrome90', 'firefox90'],
+      chunkSizeWarningLimit: 700,
     },
     server: {
       port: 5173,
