@@ -8,6 +8,51 @@ import CommandBar from '../CommandBar';
 import SearchBar from '../SearchBar';
 import UserAvatar from '../UserAvatar';
 
+function exportMessages(roomMessages: any[], roomName: string, members: any[]) {
+  const getMemberName = (userId: string) => members.find(m => m.id === userId)?.username || userId;
+  const formatTime = (iso: string) => {
+    const d = new Date(iso);
+    return d.toLocaleString('sv-SE', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }).replace(' ', ' ');
+  };
+
+  let md = `# ClawChat Export — ${roomName}\nExported: ${new Date().toISOString()}\n\n---\n\n`;
+
+  for (const msg of roomMessages) {
+    if (msg.isDeleted) continue;
+    const name = getMemberName(msg.userId);
+    const time = formatTime(msg.createdAt);
+
+    // Reply quote
+    if (msg.replyTo) {
+      const quoted = roomMessages.find((m: any) => m.id === msg.replyTo);
+      if (quoted) {
+        const qName = getMemberName(quoted.userId);
+        const qText = quoted.content.slice(0, 100) + (quoted.content.length > 100 ? '…' : '');
+        md += `> **${qName}**: ${qText}\n\n`;
+      }
+    }
+
+    if (msg.type === 'file') {
+      try {
+        const att = JSON.parse(msg.content);
+        md += `**${name}** (${time}):\n[📎 ${att.originalName}](${att.url})\n\n`;
+      } catch {
+        md += `**${name}** (${time}):\n${msg.content}\n\n`;
+      }
+    } else {
+      md += `**${name}** (${time}):\n${msg.content}\n\n`;
+    }
+  }
+
+  const blob = new Blob([md], { type: 'text/markdown;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `clawchat-${roomName.replace(/[^a-zA-Z0-9]/g, '-')}-${new Date().toISOString().slice(0, 10)}.md`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
 export default function ChatView() {
   const {
     activeRoomId, messages, rooms, streamingMessages,
@@ -159,6 +204,15 @@ export default function ChatView() {
         </div>
 
         {/* Search button */}
+        <button
+          onClick={() => exportMessages(roomMessages, activeRoom.name, members)}
+          className="text-dark-muted hover:text-white px-2 py-1 rounded-lg hover:bg-dark-hover transition"
+          title="Export chat"
+        >
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+          </svg>
+        </button>
         <button
           onClick={toggleSearch}
           className="text-dark-muted hover:text-white px-2 py-1 rounded-lg hover:bg-dark-hover transition"
