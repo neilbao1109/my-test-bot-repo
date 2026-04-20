@@ -62,6 +62,7 @@ export default function MessageBubble({ message, isStreaming, streamContent, hig
   const [isEditing, setIsEditing] = useState(false);
   const [editContent, setEditContent] = useState(message.content);
   const [copied, setCopied] = useState(false);
+  const [speaking, setSpeaking] = useState(false);
   const editRef = useRef<HTMLTextAreaElement>(null);
   const reactionRef = useRef<HTMLDivElement>(null);
   const actionsRef = useRef<HTMLDivElement>(null);
@@ -403,6 +404,36 @@ export default function MessageBubble({ message, isStreaming, streamContent, hig
           >
             {copied ? '✅' : '📋'}
           </button>
+          {message.type !== 'file' && (
+            <button
+              onClick={() => {
+                if (speaking) {
+                  speechSynthesis.cancel();
+                  setSpeaking(false);
+                  return;
+                }
+                // Strip markdown syntax for cleaner speech
+                const text = message.content
+                  .replace(/```[\s\S]*?```/g, ' code block ')
+                  .replace(/`([^`]+)`/g, '$1')
+                  .replace(/[#*_~>\[\]()!|-]/g, '')
+                  .replace(/\n+/g, '. ')
+                  .trim();
+                if (!text) return;
+                speechSynthesis.cancel();
+                const utterance = new SpeechSynthesisUtterance(text);
+                utterance.lang = /[\u4e00-\u9fa5]/.test(text) ? 'zh-CN' : 'en-US';
+                utterance.onend = () => setSpeaking(false);
+                utterance.onerror = () => setSpeaking(false);
+                setSpeaking(true);
+                speechSynthesis.speak(utterance);
+              }}
+              className="p-1.5 text-dark-muted hover:text-white hover:bg-dark-hover rounded transition text-xs"
+              title={speaking ? 'Stop' : 'Read aloud'}
+            >
+              {speaking ? '⏹️' : '🔊'}
+            </button>
+          )}
           <button
             onClick={() => { setReplyTo(message); setShowActions(false); setTimeout(() => document.querySelector<HTMLTextAreaElement>('.command-bar-input')?.focus(), 50); }}
             className="p-1.5 text-dark-muted hover:text-white hover:bg-dark-hover rounded transition text-xs"
