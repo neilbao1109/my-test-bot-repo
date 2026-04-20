@@ -122,16 +122,10 @@ export default function MessageBubble({ message, isStreaming, streamContent, hig
       )}
       onMouseEnter={() => !isMobile && setShowActions(true)}
       onMouseLeave={() => { !isMobile && setShowActions(false); setShowReactions(false); }}
-      onTouchStart={() => {
-        if (isMobile) {
-          longPressTimer.current = setTimeout(() => { setShowActions(true); }, 500);
+      onClick={() => {
+        if (isMobile && !isEditing && !isStreaming) {
+          setShowActions((prev) => !prev);
         }
-      }}
-      onTouchEnd={() => {
-        if (longPressTimer.current) { clearTimeout(longPressTimer.current); longPressTimer.current = null; }
-      }}
-      onTouchMove={() => {
-        if (longPressTimer.current) { clearTimeout(longPressTimer.current); longPressTimer.current = null; }
       }}
     >
       {/* Avatar */}
