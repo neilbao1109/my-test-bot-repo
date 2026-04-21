@@ -193,18 +193,33 @@ export class BotBridge {
       return;
     }
 
-    const sessionKey = await this.getSessionForRoom(context.roomId);
+    let sessionKey: string;
+    try {
+      sessionKey = await this.getSessionForRoom(context.roomId);
+    } catch (err: any) {
+      console.error(`[BotBridge:${this.config.id}] getSessionForRoom failed:`, err.message);
+      yield '⚠️ Failed to create session';
+      return;
+    }
+
     const runId = `${sessionKey}:${crypto.randomBytes(4).toString('hex')}`;
 
     const stream: ActiveStream = { chunks: [], done: false, listeners: new Set() };
     this.activeStreams.set(runId, stream);
 
     try {
-      const sendResult = await gw.rpc('chat.send', {
-        sessionKey,
-        message: content,
-        idempotencyKey: crypto.randomBytes(16).toString('hex'),
-      }, 10000);
+      let sendResult: any;
+      try {
+        sendResult = await gw.rpc('chat.send', {
+          sessionKey,
+          message: content,
+          idempotencyKey: crypto.randomBytes(16).toString('hex'),
+        }, 10000);
+      } catch (err: any) {
+        console.error(`[BotBridge:${this.config.id}] chat.send failed:`, err.message);
+        yield '⚠️ Failed to send message to AI';
+        return;
+      }
 
       const chatRunId = sendResult?.runId;
       if (!chatRunId) {

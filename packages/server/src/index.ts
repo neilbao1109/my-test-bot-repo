@@ -1,4 +1,9 @@
 import 'dotenv/config';
+
+// Prevent unhandled rejections from crashing the server
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('[Server] Unhandled rejection:', reason);
+});
 import express from 'express';
 import { createServer } from 'http';
 import { Server } from 'socket.io';
