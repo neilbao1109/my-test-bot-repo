@@ -198,7 +198,7 @@ export default function ChatView() {
           <RoomNameHeader room={activeRoom} userId={user?.id} />
           <p className="text-xs text-dark-muted">
             {activeRoom.type === 'dm'
-              ? 'Direct message with ClawBot'
+              ? 'Direct Message'
               : `${members.length} members, ${onlineCount} online`}
           </p>
         </div>
