@@ -16,9 +16,10 @@ const COMMANDS = [
 interface CommandBarProps {
   roomId: string;
   threadId?: string;
+  onExport?: () => void;
 }
 
-export default function CommandBar({ roomId, threadId }: CommandBarProps) {
+export default function CommandBar({ roomId, threadId, onExport }: CommandBarProps) {
   const [input, setInput] = useState('');
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [selectedIdx, setSelectedIdx] = useState(0);
@@ -28,8 +29,11 @@ export default function CommandBar({ roomId, threadId }: CommandBarProps) {
   const [mentionQuery, setMentionQuery] = useState('');
   const [mentionIdx, setMentionIdx] = useState(0);
   const [isListening, setIsListening] = useState(false);
+  const [showPlusMenu, setShowPlusMenu] = useState(false);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const imageInputRef = useRef<HTMLInputElement>(null);
+  const plusMenuRef = useRef<HTMLDivElement>(null);
   const typingRef = useRef(false);
   const recognitionRef = useRef<any>(null);
 
@@ -52,6 +56,16 @@ export default function CommandBar({ roomId, threadId }: CommandBarProps) {
     setShowSuggestions(suggestions.length > 0 && input.startsWith('/') && !input.includes(' '));
     setSelectedIdx(0);
   }, [input]);
+
+  // Close plus menu on click outside
+  useEffect(() => {
+    if (!showPlusMenu) return;
+    const handle = (e: MouseEvent) => {
+      if (plusMenuRef.current && !plusMenuRef.current.contains(e.target as Node)) setShowPlusMenu(false);
+    };
+    document.addEventListener('mousedown', handle);
+    return () => document.removeEventListener('mousedown', handle);
+  }, [showPlusMenu]);
 
   const handleSend = useCallback(() => {
     const trimmed = input.trim();
@@ -314,25 +328,78 @@ export default function CommandBar({ roomId, threadId }: CommandBarProps) {
 
       {/* Input area */}
       <div className="flex items-end gap-2 p-4 pb-[calc(1rem+env(safe-area-inset-bottom,0px))] border-t border-dark-border bg-dark-surface">
+        {/* Hidden file inputs */}
         <input
-          ref={fileInputRef}
+          ref={imageInputRef}
           type="file"
           className="hidden"
-          accept="image/*,.pdf,.txt,.md,.doc,.docx,.zip"
+          accept="image/*,video/*"
           onChange={(e) => {
             const file = e.target.files?.[0];
             if (file) handleFileUpload(file);
             e.target.value = '';
           }}
         />
-        <button
-          onClick={() => fileInputRef.current?.click()}
-          disabled={uploading}
-          className="p-2.5 text-dark-muted hover:text-white hover:bg-dark-hover disabled:opacity-30 rounded-xl transition flex-shrink-0"
-          title="Attach file"
-        >
-          📎
-        </button>
+        <input
+          ref={fileInputRef}
+          type="file"
+          className="hidden"
+          accept="*"
+          onChange={(e) => {
+            const file = e.target.files?.[0];
+            if (file) handleFileUpload(file);
+            e.target.value = '';
+          }}
+        />
+
+        {/* Plus menu */}
+        <div className="relative flex-shrink-0" ref={plusMenuRef}>
+          <button
+            onClick={() => setShowPlusMenu(!showPlusMenu)}
+            disabled={uploading}
+            className="p-2.5 text-dark-muted hover:text-white hover:bg-dark-hover disabled:opacity-30 rounded-xl transition"
+            title="Actions"
+          >
+            <svg
+              className={`w-5 h-5 transition-transform duration-200 ${showPlusMenu ? 'rotate-45' : ''}`}
+              fill="none" stroke="currentColor" viewBox="0 0 24 24"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+            </svg>
+          </button>
+
+          {/* Popup menu */}
+          {showPlusMenu && (
+            <div className="absolute left-0 bottom-full mb-2 bg-dark-surface border border-dark-border rounded-xl shadow-lg py-1.5 z-50 min-w-[160px] animate-in fade-in slide-in-from-bottom-2">
+              <button
+                onClick={() => { imageInputRef.current?.click(); setShowPlusMenu(false); }}
+                className="w-full text-left px-3 py-2.5 text-sm text-dark-text hover:bg-dark-hover transition flex items-center gap-3"
+              >
+                <span className="text-base">📷</span>
+                <span>Photo / Video</span>
+              </button>
+              <button
+                onClick={() => { fileInputRef.current?.click(); setShowPlusMenu(false); }}
+                className="w-full text-left px-3 py-2.5 text-sm text-dark-text hover:bg-dark-hover transition flex items-center gap-3"
+              >
+                <span className="text-base">📄</span>
+                <span>File</span>
+              </button>
+              {onExport && (
+                <>
+                  <div className="mx-2 my-1 border-t border-dark-border" />
+                  <button
+                    onClick={() => { onExport(); setShowPlusMenu(false); }}
+                    className="w-full text-left px-3 py-2.5 text-sm text-dark-text hover:bg-dark-hover transition flex items-center gap-3"
+                  >
+                    <span className="text-base">📥</span>
+                    <span>Export Chat</span>
+                  </button>
+                </>
+              )}
+            </div>
+          )}
+        </div>
         <div className="flex-1 relative">
           <textarea
             ref={inputRef}
