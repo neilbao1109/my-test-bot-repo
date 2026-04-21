@@ -107,6 +107,10 @@ export function useSocket() {
       store.addRoom(room);
     });
 
+    socket.on('room:deleted', (data: { roomId: string }) => {
+      store.removeRoom(data.roomId);
+    });
+
     socket.on('command:result', (data: { command: string; result: { data?: { action: string } } }) => {
       if (data.result.data?.action === 'clear') {
         const activeRoomId = useAppStore.getState().activeRoomId;
@@ -148,6 +152,7 @@ export function useSocket() {
       socket.off('room:member-joined');
       socket.off('room:updated');
       socket.off('room:added');
+      socket.off('room:deleted');
       socket.off('command:result');
       socket.io.off('reconnect', handleReconnect);
     };

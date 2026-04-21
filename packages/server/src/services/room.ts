@@ -90,6 +90,17 @@ export function renameRoom(roomId: string, name: string, userId?: string): { roo
   return { room: getRoom(roomId) };
 }
 
+export function deleteRoom(roomId: string, userId?: string): { success: boolean; error?: string } {
+  const db = getDb();
+  const existing = getRoom(roomId);
+  if (!existing) return { success: false, error: 'Room not found' };
+  if (existing.createdBy && userId && existing.createdBy !== userId) {
+    return { success: false, error: 'Only the room creator can delete' };
+  }
+  db.prepare('DELETE FROM rooms WHERE id = ?').run(roomId);
+  return { success: true };
+}
+
 export function searchUsers(query: string): User[] {
   const db = getDb();
   const rows = db.prepare('SELECT * FROM users WHERE username LIKE ? LIMIT 20').all(`%${query}%`) as any[];

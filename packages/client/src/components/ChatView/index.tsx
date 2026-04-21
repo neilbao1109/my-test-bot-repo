@@ -234,6 +234,9 @@ export default function ChatView() {
           </svg>
           <span className="text-xs">{members.length}</span>
         </button>
+
+        {/* Room menu */}
+        <RoomMenu room={activeRoom} userId={user?.id} />
       </div>
 
       {/* Search bar */}
@@ -395,5 +398,91 @@ function RoomNameHeader({ room, userId }: { room: Room; userId?: string }) {
         <span className="ml-1.5 text-dark-muted text-xs opacity-0 group-hover:opacity-100 transition">✏️</span>
       )}
     </h2>
+  );
+}
+
+// ── Room menu with delete ──
+
+function RoomMenu({ room, userId }: { room: Room; userId?: string }) {
+  const [open, setOpen] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const canDelete = !room.createdBy || room.createdBy === userId;
+
+  useEffect(() => {
+    if (!open) return;
+    const handle = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener('mousedown', handle);
+    return () => document.removeEventListener('mousedown', handle);
+  }, [open]);
+
+  const handleDelete = async () => {
+    const result = await socketService.deleteRoom(room.id);
+    if ((result as any)?.error) {
+      console.warn('Delete failed:', (result as any).error);
+    }
+    setConfirmDelete(false);
+    setOpen(false);
+  };
+
+  if (!canDelete) return null;
+
+  return (
+    <>
+      <div className="relative" ref={menuRef}>
+        <button
+          onClick={() => setOpen(!open)}
+          className="text-dark-muted hover:text-white px-2 py-1 rounded-lg hover:bg-dark-hover transition"
+          title="Room options"
+        >
+          <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+            <circle cx="12" cy="5" r="2" />
+            <circle cx="12" cy="12" r="2" />
+            <circle cx="12" cy="19" r="2" />
+          </svg>
+        </button>
+        {open && (
+          <div className="absolute right-0 top-full mt-1 bg-dark-surface border border-dark-border rounded-lg shadow-lg py-1 z-50 min-w-[140px]">
+            <button
+              onClick={() => { setConfirmDelete(true); setOpen(false); }}
+              className="w-full text-left px-3 py-2 text-sm text-red-400 hover:bg-dark-hover transition flex items-center gap-2"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+              </svg>
+              Delete Room
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* Confirm dialog */}
+      {confirmDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={() => setConfirmDelete(false)}>
+          <div className="bg-dark-surface border border-dark-border rounded-xl p-6 max-w-sm mx-4 shadow-xl" onClick={(e) => e.stopPropagation()}>
+            <h3 className="text-lg font-semibold text-dark-text mb-2">Delete "{room.name}"?</h3>
+            <p className="text-sm text-dark-muted mb-6">
+              All messages will be permanently deleted. This cannot be undone.
+            </p>
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => setConfirmDelete(false)}
+                className="px-4 py-2 text-sm text-dark-muted hover:text-white rounded-lg hover:bg-dark-hover transition"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDelete}
+                className="px-4 py-2 text-sm text-white bg-red-600 hover:bg-red-700 rounded-lg transition"
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 }

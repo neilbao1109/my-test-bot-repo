@@ -1,6 +1,6 @@
 import { Server, Socket } from 'socket.io';
 import { createMessage, getMessages, editMessage, deleteMessage, addReaction, searchMessages, getReplyChain } from '../services/message.js';
-import { createRoom, getRooms, getRoomMembers, addMemberToRoom, removeMemberFromRoom, renameRoom, searchUsers, getRoom } from '../services/room.js';
+import { createRoom, getRooms, getRoomMembers, addMemberToRoom, removeMemberFromRoom, renameRoom, deleteRoom, searchUsers, getRoom } from '../services/room.js';
 import { createThread, getThread, getThreadByMessage } from '../services/thread.js';
 import { parseCommand, executeCommand } from '../services/command.js';
 import { initBotRegistry, getRespondingBots, isBotUser, getAutoJoinBotIds, getAllBots, streamBotResponse as registryStreamBotResponse } from '../services/bot-registry.js';
@@ -146,6 +146,28 @@ export function setupSocketHandlers(io: Server) {
         io.to(data.roomId).emit('room:updated', room);
       }
       if (callback) callback(room);
+    });
+
+    socket.on('room:delete', (data: { roomId: string }, callback?) => {
+      // Get members before deleting so we can notify them
+      const members = getRoomMembers(data.roomId);
+      const { success, error } = deleteRoom(data.roomId, socket.userId);
+      if (error) {
+        if (callback) callback({ error });
+        return;
+      }
+      if (success) {
+        // Notify all members (they may not be in the socket room anymore)
+        for (const member of members) {
+          const memberSocketIds = userSockets.get(member.id);
+          if (memberSocketIds) {
+            for (const sid of memberSocketIds) {
+              io.sockets.sockets.get(sid)?.emit('room:deleted', { roomId: data.roomId });
+            }
+          }
+        }
+      }
+      if (callback) callback({ success });
     });
 
     socket.on('user:search', (data: { query: string }, callback) => {

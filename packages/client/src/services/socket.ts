@@ -71,6 +71,12 @@ class SocketService {
     });
   }
 
+  deleteRoom(roomId: string): Promise<{ success?: boolean; error?: string }> {
+    return new Promise((resolve) => {
+      this.socket?.emit('room:delete', { roomId }, resolve);
+    });
+  }
+
   searchUsers(query: string): Promise<User[]> {
     return new Promise((resolve) => {
       this.socket?.emit('user:search', { query }, resolve);

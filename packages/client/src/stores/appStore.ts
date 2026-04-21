@@ -22,6 +22,7 @@ interface AppState {
   setRooms: (rooms: Room[]) => void;
   addRoom: (room: Room) => void;
   updateRoom: (room: Room) => void;
+  removeRoom: (roomId: string) => void;
   setActiveRoom: (roomId: string) => void;
 
   // Messages
@@ -125,6 +126,19 @@ export const useAppStore = create<AppState>((set, get) => ({
   updateRoom: (room) => set((s) => ({
     rooms: s.rooms.map((r) => r.id === room.id ? room : r),
   })),
+  removeRoom: (roomId) => set((s) => {
+    const newRooms = s.rooms.filter((r) => r.id !== roomId);
+    const newState: any = { rooms: newRooms };
+    if (s.activeRoomId === roomId) {
+      newState.activeRoomId = newRooms.length > 0 ? newRooms[0].id : null;
+    }
+    // Clean up related state
+    const { [roomId]: _msgs, ...restMsgs } = s.messages;
+    const { [roomId]: _members, ...restMembers } = s.roomMembers;
+    newState.messages = restMsgs;
+    newState.roomMembers = restMembers;
+    return newState;
+  }),
   setActiveRoom: (roomId) => set({ activeRoomId: roomId }),
 
   // Messages
