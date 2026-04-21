@@ -1,9 +1,10 @@
 import clsx from 'clsx';
 import { useAppStore } from '../../stores/appStore';
 import UserAvatar from '../UserAvatar';
+import SettingsPanel from './SettingsPanel';
 
 export default function Sidebar() {
-  const { rooms, activeRoomId, setActiveRoom, user, showSidebar, toggleSidebar, roomMembers, onlineUsers, setShowCreateRoom, logout, theme, setTheme } = useAppStore();
+  const { rooms, activeRoomId, setActiveRoom, user, showSidebar, toggleSidebar, roomMembers, onlineUsers, setShowCreateRoom, logout, theme, setTheme, showSettings, setShowSettings } = useAppStore();
 
   if (!showSidebar) return null;
 
@@ -25,9 +26,16 @@ export default function Sidebar() {
 
   const sidebar = (
     <div className={clsx(
-      'bg-dark-surface border-r border-dark-border flex flex-col h-full',
+      'bg-dark-surface border-r border-dark-border flex flex-col h-full overflow-hidden',
       'fixed inset-0 z-40 w-full md:static md:w-64 md:z-auto'
     )}>
+      {/* Two-layer container for slide transition */}
+      <div className="relative flex-1 flex overflow-hidden">
+        {/* Main sidebar content */}
+        <div className={clsx(
+          'absolute inset-0 flex flex-col transition-transform duration-200 ease-in-out',
+          showSettings ? '-translate-x-full' : 'translate-x-0'
+        )}>
       {/* Header */}
       <div className="p-4 border-b border-dark-border flex items-center justify-between"
            style={{ paddingTop: `max(1rem, var(--safe-area-top))` }}>
@@ -97,11 +105,11 @@ export default function Sidebar() {
       <div className="p-3 border-t border-dark-border flex items-center gap-2"
            style={{ paddingBottom: `max(0.75rem, var(--safe-area-bottom))` }}>
         <button
-          onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+          onClick={() => setShowSettings(true)}
           className="py-2 px-3 text-sm text-dark-muted hover:text-white hover:bg-dark-hover rounded-lg transition"
-          title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+          title="Settings"
         >
-          {theme === 'dark' ? '☀️' : '🌙'}
+          ⚙️
         </button>
         <button
           onClick={() => setShowCreateRoom(true)}
@@ -110,6 +118,16 @@ export default function Sidebar() {
           <span>＋</span>
           <span>New Room</span>
         </button>
+      </div>
+        </div>
+
+        {/* Settings panel (slides in from right) */}
+        <div className={clsx(
+          'absolute inset-0 flex flex-col transition-transform duration-200 ease-in-out',
+          showSettings ? 'translate-x-0' : 'translate-x-full'
+        )}>
+          <SettingsPanel onBack={() => setShowSettings(false)} />
+        </div>
       </div>
     </div>
   );

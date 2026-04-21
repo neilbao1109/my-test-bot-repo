@@ -1,8 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useAppStore } from '../../stores/appStore';
 import { socketService } from '../../services/socket';
-import { uploadFile, getDefaultImageQuality, setDefaultImageQuality } from '../../services/upload';
-import type { ImageQuality } from '../../services/upload';
+import { uploadFile } from '../../services/upload';
 
 const COMMANDS = [
   { name: 'help', description: 'Show available commands' },
@@ -29,10 +28,9 @@ export default function CommandBar({ roomId, threadId }: CommandBarProps) {
   const [mentionQuery, setMentionQuery] = useState('');
   const [mentionIdx, setMentionIdx] = useState(0);
   const [isListening, setIsListening] = useState(false);
-  const [imageQuality, setImageQuality] = useState<ImageQuality>(getDefaultImageQuality());
-  const [showQualityMenu, setShowQualityMenu] = useState(false);
+  const { imageQuality, setImageQuality } = useAppStore();
 
-  const qualityLabels: Record<ImageQuality, string> = {
+  const qualityLabels: Record<string, string> = {
     original: '原图',
     high: '高清 (2048px)',
     medium: '标准 (1280px)',
@@ -40,10 +38,9 @@ export default function CommandBar({ roomId, threadId }: CommandBarProps) {
   };
 
   const cycleQuality = () => {
-    const order: ImageQuality[] = ['original', 'high', 'medium', 'low'];
+    const order = ['original', 'high', 'medium', 'low'] as const;
     const next = order[(order.indexOf(imageQuality) + 1) % order.length];
     setImageQuality(next);
-    setDefaultImageQuality(next);
   };
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);

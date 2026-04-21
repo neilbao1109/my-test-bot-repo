@@ -2,6 +2,8 @@ import { create } from 'zustand';
 import type { User, Room, Message, Thread, StreamingMessage, TypingUser } from '../types';
 import { clearToken } from '../services/auth';
 import { socketService } from '../services/socket';
+import type { ImageQuality } from '../services/upload';
+import { setDefaultImageQuality } from '../services/upload';
 
 interface ThreadInfo {
   replyCount: number;
@@ -90,12 +92,16 @@ interface AppState {
   showThread: boolean;
   showMembers: boolean;
   showCreateRoom: boolean;
+  showSettings: boolean;
   theme: 'dark' | 'light';
+  imageQuality: ImageQuality;
   toggleSidebar: () => void;
   toggleThread: () => void;
   toggleMembers: () => void;
   setShowCreateRoom: (show: boolean) => void;
+  setShowSettings: (show: boolean) => void;
   setTheme: (theme: 'dark' | 'light') => void;
+  setImageQuality: (q: ImageQuality) => void;
 }
 
 export const useAppStore = create<AppState>((set, get) => ({
@@ -306,14 +312,26 @@ export const useAppStore = create<AppState>((set, get) => ({
   showThread: false,
   showMembers: false,
   showCreateRoom: false,
+  showSettings: false,
   theme: (localStorage.getItem('clawchat-theme') as 'dark' | 'light') || 'dark',
+  imageQuality: (localStorage.getItem('clawchat-image-quality') as ImageQuality) || 'medium',
   toggleSidebar: () => set((s) => ({ showSidebar: !s.showSidebar })),
   toggleThread: () => set((s) => ({ showThread: !s.showThread })),
   toggleMembers: () => set((s) => ({ showMembers: !s.showMembers })),
   setShowCreateRoom: (show) => set({ showCreateRoom: show }),
+  setShowSettings: (show) => set({ showSettings: show }),
   setTheme: (theme) => {
     localStorage.setItem('clawchat-theme', theme);
     document.documentElement.className = `theme-${theme}`;
     set({ theme });
   },
+  setImageQuality: (q) => {
+    localStorage.setItem('clawchat-image-quality', q);
+    setDefaultImageQuality(q);
+    set({ imageQuality: q });
+  },
 }));
+
+// Sync image quality on load
+const savedQuality = localStorage.getItem('clawchat-image-quality') as ImageQuality;
+if (savedQuality) setDefaultImageQuality(savedQuality);
