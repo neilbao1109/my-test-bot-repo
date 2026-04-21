@@ -33,6 +33,7 @@ function initSchema(db: Database.Database) {
       id TEXT PRIMARY KEY,
       name TEXT NOT NULL,
       type TEXT NOT NULL CHECK(type IN ('dm', 'group')),
+      created_by TEXT,
       created_at TEXT NOT NULL DEFAULT (datetime('now'))
     );
 
@@ -71,4 +72,9 @@ function initSchema(db: Database.Database) {
     CREATE INDEX IF NOT EXISTS idx_room_members_user ON room_members(user_id);
   `);
 
+  // Migration: add created_by column if missing
+  const cols = db.prepare("PRAGMA table_info('rooms')").all() as any[];
+  if (!cols.some((c: any) => c.name === 'created_by')) {
+    db.exec('ALTER TABLE rooms ADD COLUMN created_by TEXT');
+  }
 }

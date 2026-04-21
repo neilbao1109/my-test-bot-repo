@@ -3,12 +3,12 @@ import { getDb } from '../db/schema.js';
 import { getAutoJoinBotIds } from '../services/bot-registry.js';
 import type { Room, User } from '../types.js';
 
-export function createRoom(name: string, type: 'dm' | 'group', memberIds: string[]): Room {
+export function createRoom(name: string, type: 'dm' | 'group', memberIds: string[], createdBy?: string): Room {
   const db = getDb();
   const id = uuid();
   const now = new Date().toISOString();
 
-  db.prepare('INSERT INTO rooms (id, name, type, created_at) VALUES (?, ?, ?, ?)').run(id, name, type, now);
+  db.prepare('INSERT INTO rooms (id, name, type, created_by, created_at) VALUES (?, ?, ?, ?, ?)').run(id, name, type, createdBy || null, now);
 
   const insertMember = db.prepare('INSERT OR IGNORE INTO room_members (room_id, user_id) VALUES (?, ?)');
   for (const userId of memberIds) {
@@ -20,7 +20,7 @@ export function createRoom(name: string, type: 'dm' | 'group', memberIds: string
     insertMember.run(id, botId);
   }
 
-  return { id, name, type, createdAt: now };
+  return { id, name, type, createdBy: createdBy || undefined, createdAt: now };
 }
 
 export function getRooms(userId: string): Room[] {
@@ -36,6 +36,7 @@ export function getRooms(userId: string): Room[] {
     id: r.id,
     name: r.name,
     type: r.type,
+    createdBy: r.created_by || undefined,
     createdAt: r.created_at,
   }));
 }
@@ -62,7 +63,7 @@ export function getRoom(roomId: string): Room | null {
   const db = getDb();
   const row = db.prepare('SELECT * FROM rooms WHERE id = ?').get(roomId) as any;
   if (!row) return null;
-  return { id: row.id, name: row.name, type: row.type, createdAt: row.created_at };
+  return { id: row.id, name: row.name, type: row.type, createdBy: row.created_by || undefined, createdAt: row.created_at };
 }
 
 export function addMemberToRoom(roomId: string, userId: string): boolean {
@@ -77,10 +78,16 @@ export function removeMemberFromRoom(roomId: string, userId: string): boolean {
   return result.changes > 0;
 }
 
-export function renameRoom(roomId: string, name: string): Room | null {
+export function renameRoom(roomId: string, name: string, userId?: string): { room: Room | null; error?: string } {
   const db = getDb();
+  const existing = getRoom(roomId);
+  if (!existing) return { room: null, error: 'Room not found' };
+  // Only creator can rename (if creator is tracked)
+  if (existing.createdBy && userId && existing.createdBy !== userId) {
+    return { room: null, error: 'Only the room creator can rename' };
+  }
   db.prepare('UPDATE rooms SET name = ? WHERE id = ?').run(name, roomId);
-  return getRoom(roomId);
+  return { room: getRoom(roomId) };
 }
 
 export function searchUsers(query: string): User[] {

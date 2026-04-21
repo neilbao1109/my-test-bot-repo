@@ -87,7 +87,7 @@ export function setupSocketHandlers(io: Server) {
     socket.on('room:create', (data: { name: string; type: 'dm' | 'group'; memberIds?: string[] }, callback) => {
       if (!socket.userId) return;
       const memberIds = data.memberIds ? [socket.userId, ...data.memberIds] : [socket.userId];
-      const room = createRoom(data.name, data.type, memberIds);
+      const room = createRoom(data.name, data.type, memberIds, socket.userId);
       callback(room);
       socket.join(room.id);
 
@@ -137,7 +137,11 @@ export function setupSocketHandlers(io: Server) {
     });
 
     socket.on('room:rename', (data: { roomId: string; name: string }, callback?) => {
-      const room = renameRoom(data.roomId, data.name);
+      const { room, error } = renameRoom(data.roomId, data.name, socket.userId);
+      if (error) {
+        if (callback) callback({ error });
+        return;
+      }
       if (room) {
         io.to(data.roomId).emit('room:updated', room);
       }

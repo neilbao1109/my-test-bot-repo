@@ -12,6 +12,7 @@ export interface Room {
   id: string;
   name: string;
   type: 'dm' | 'group';
+  createdBy?: string;
   createdAt: string;
 }
 

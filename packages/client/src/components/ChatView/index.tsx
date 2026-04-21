@@ -194,8 +194,8 @@ export default function ChatView() {
             </svg>
           </button>
         <span className="text-lg">{activeRoom.type === 'dm' ? '💬' : '👥'}</span>
-        <div className="flex-1">
-          <h2 className="font-semibold text-dark-text text-sm">{activeRoom.name}</h2>
+        <div className="flex-1 min-w-0">
+          <RoomNameHeader room={activeRoom} userId={user?.id} />
           <p className="text-xs text-dark-muted">
             {activeRoom.type === 'dm'
               ? 'Direct message with ClawBot'
@@ -330,5 +330,70 @@ export default function ChatView() {
       {/* Input */}
       <CommandBar roomId={activeRoomId} />
     </div>
+  );
+}
+
+// ── Inline room rename component ──
+
+import type { Room } from '../../types';
+
+function RoomNameHeader({ room, userId }: { room: Room; userId?: string }) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(room.name);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const canRename = !room.createdBy || room.createdBy === userId;
+
+  useEffect(() => {
+    if (editing) {
+      setDraft(room.name);
+      setTimeout(() => inputRef.current?.select(), 0);
+    }
+  }, [editing]);
+
+  const save = async () => {
+    const trimmed = draft.trim();
+    if (!trimmed || trimmed === room.name) {
+      setEditing(false);
+      return;
+    }
+    const result = await socketService.renameRoom(room.id, trimmed);
+    if (result && (result as any).error) {
+      console.warn('Rename failed:', (result as any).error);
+    }
+    setEditing(false);
+  };
+
+  if (editing) {
+    return (
+      <div className="flex items-center gap-1">
+        <input
+          ref={inputRef}
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') save();
+            if (e.key === 'Escape') setEditing(false);
+          }}
+          onBlur={save}
+          className="bg-dark-bg border border-primary-500 rounded px-2 py-0.5 text-sm text-dark-text font-semibold outline-none w-full max-w-[200px]"
+          maxLength={50}
+        />
+      </div>
+    );
+  }
+
+  return (
+    <h2
+      className={`font-semibold text-dark-text text-sm truncate ${
+        canRename ? 'cursor-pointer hover:text-primary-400 transition' : ''
+      }`}
+      onClick={() => canRename && setEditing(true)}
+      title={canRename ? 'Click to rename' : undefined}
+    >
+      {room.name}
+      {canRename && (
+        <span className="ml-1.5 text-dark-muted text-xs opacity-0 group-hover:opacity-100 transition">✏️</span>
+      )}
+    </h2>
   );
 }
