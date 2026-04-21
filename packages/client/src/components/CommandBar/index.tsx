@@ -32,7 +32,6 @@ export default function CommandBar({ roomId, threadId, onExport }: CommandBarPro
   const [showPlusMenu, setShowPlusMenu] = useState(false);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const imageInputRef = useRef<HTMLInputElement>(null);
   const plusMenuRef = useRef<HTMLDivElement>(null);
   const typingRef = useRef(false);
   const recognitionRef = useRef<any>(null);
@@ -328,18 +327,7 @@ export default function CommandBar({ roomId, threadId, onExport }: CommandBarPro
 
       {/* Input area */}
       <div className="flex items-end gap-2 p-4 pb-[calc(1rem+env(safe-area-inset-bottom,0px))] border-t border-dark-border bg-dark-surface">
-        {/* Hidden file inputs */}
-        <input
-          ref={imageInputRef}
-          type="file"
-          className="hidden"
-          accept="image/*,video/*"
-          onChange={(e) => {
-            const file = e.target.files?.[0];
-            if (file) handleFileUpload(file);
-            e.target.value = '';
-          }}
-        />
+        {/* Hidden file input */}
         <input
           ref={fileInputRef}
           type="file"
@@ -371,13 +359,6 @@ export default function CommandBar({ roomId, threadId, onExport }: CommandBarPro
           {/* Popup menu */}
           {showPlusMenu && (
             <div className="absolute left-0 bottom-full mb-2 bg-dark-surface border border-dark-border rounded-xl shadow-lg py-1.5 z-50 min-w-[160px] animate-in fade-in slide-in-from-bottom-2">
-              <button
-                onClick={() => { imageInputRef.current?.click(); setShowPlusMenu(false); }}
-                className="w-full text-left px-3 py-2.5 text-sm text-dark-text hover:bg-dark-hover transition flex items-center gap-3"
-              >
-                <span className="text-base">📷</span>
-                <span>Photo / Video</span>
-              </button>
               <button
                 onClick={() => { fileInputRef.current?.click(); setShowPlusMenu(false); }}
                 className="w-full text-left px-3 py-2.5 text-sm text-dark-text hover:bg-dark-hover transition flex items-center gap-3"
