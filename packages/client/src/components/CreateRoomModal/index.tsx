@@ -6,7 +6,7 @@ import type { User } from '../../types';
 export default function CreateRoomModal() {
   const { showCreateRoom, setShowCreateRoom, user } = useAppStore();
   const [name, setName] = useState('');
-  const [type, setType] = useState<'dm' | 'group'>('group');
+  const [type, setType] = useState<'dm' | 'group'>('dm');
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<User[]>([]);
   const [selectedUsers, setSelectedUsers] = useState<User[]>([]);
