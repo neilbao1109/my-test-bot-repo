@@ -234,16 +234,14 @@ export class BotBridge {
       }
 
       try {
-        const history = await gw.rpc('chat.history', { sessionKey, limit: 5 });
+        const history = await gw.rpc('chat.history', { sessionKey, limit: 10 });
         const messages = history?.messages || (Array.isArray(history) ? history : []);
         console.log(`[BotBridge:${this.config.id}] chat.history returned ${messages.length} messages, roles: ${messages.map((m: any) => m.role).join(',')}`);
+        // Find the last assistant message that has actual text content (skip tool-call-only messages)
         const assistantMsgs = messages.filter((m: any) => m.role === 'assistant');
-        if (assistantMsgs.length > 0) {
-          const lastMsg = assistantMsgs[assistantMsgs.length - 1];
-          console.log(`[BotBridge:${this.config.id}] Last assistant content type: ${typeof lastMsg.content}, isArray: ${Array.isArray(lastMsg.content)}, keys: ${typeof lastMsg.content === 'object' ? Object.keys(lastMsg.content || {}).join(',') : 'n/a'}`);
-          const text = this.extractContentValue(lastMsg.content);
+        for (let i = assistantMsgs.length - 1; i >= 0; i--) {
+          const text = this.extractContentValue(assistantMsgs[i].content);
           if (text) { yield text; return; }
-          console.warn(`[BotBridge:${this.config.id}] extractContentValue returned empty for:`, JSON.stringify(lastMsg.content)?.slice(0, 200));
         }
       } catch (err: any) {
         console.error(`[BotBridge:${this.config.id}] chat.history failed:`, err.message);
