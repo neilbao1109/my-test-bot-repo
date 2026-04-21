@@ -236,10 +236,14 @@ export class BotBridge {
       try {
         const history = await gw.rpc('chat.history', { sessionKey, limit: 5 });
         const messages = history?.messages || (Array.isArray(history) ? history : []);
+        console.log(`[BotBridge:${this.config.id}] chat.history returned ${messages.length} messages, roles: ${messages.map((m: any) => m.role).join(',')}`);
         const assistantMsgs = messages.filter((m: any) => m.role === 'assistant');
         if (assistantMsgs.length > 0) {
-          const text = this.extractContentValue(assistantMsgs[assistantMsgs.length - 1].content);
+          const lastMsg = assistantMsgs[assistantMsgs.length - 1];
+          console.log(`[BotBridge:${this.config.id}] Last assistant content type: ${typeof lastMsg.content}, isArray: ${Array.isArray(lastMsg.content)}, keys: ${typeof lastMsg.content === 'object' ? Object.keys(lastMsg.content || {}).join(',') : 'n/a'}`);
+          const text = this.extractContentValue(lastMsg.content);
           if (text) { yield text; return; }
+          console.warn(`[BotBridge:${this.config.id}] extractContentValue returned empty for:`, JSON.stringify(lastMsg.content)?.slice(0, 200));
         }
       } catch (err: any) {
         console.error(`[BotBridge:${this.config.id}] chat.history failed:`, err.message);
