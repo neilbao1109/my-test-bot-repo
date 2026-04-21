@@ -1,7 +1,8 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useAppStore } from '../../stores/appStore';
 import { socketService } from '../../services/socket';
-import { uploadFile } from '../../services/upload';
+import { uploadFile, getDefaultImageQuality, setDefaultImageQuality } from '../../services/upload';
+import type { ImageQuality } from '../../services/upload';
 
 const COMMANDS = [
   { name: 'help', description: 'Show available commands' },
@@ -28,6 +29,22 @@ export default function CommandBar({ roomId, threadId }: CommandBarProps) {
   const [mentionQuery, setMentionQuery] = useState('');
   const [mentionIdx, setMentionIdx] = useState(0);
   const [isListening, setIsListening] = useState(false);
+  const [imageQuality, setImageQuality] = useState<ImageQuality>(getDefaultImageQuality());
+  const [showQualityMenu, setShowQualityMenu] = useState(false);
+
+  const qualityLabels: Record<ImageQuality, string> = {
+    original: '原图',
+    high: '高清 (2048px)',
+    medium: '标准 (1280px)',
+    low: '省流 (800px)',
+  };
+
+  const cycleQuality = () => {
+    const order: ImageQuality[] = ['original', 'high', 'medium', 'low'];
+    const next = order[(order.indexOf(imageQuality) + 1) % order.length];
+    setImageQuality(next);
+    setDefaultImageQuality(next);
+  };
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const typingRef = useRef(false);
@@ -325,14 +342,23 @@ export default function CommandBar({ roomId, threadId }: CommandBarProps) {
             e.target.value = '';
           }}
         />
-        <button
-          onClick={() => fileInputRef.current?.click()}
-          disabled={uploading}
-          className="p-2.5 text-dark-muted hover:text-white hover:bg-dark-hover disabled:opacity-30 rounded-xl transition flex-shrink-0"
-          title="Attach file"
-        >
-          📎
-        </button>
+        <div className="flex flex-shrink-0 items-center gap-0.5">
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            disabled={uploading}
+            className="p-2.5 text-dark-muted hover:text-white hover:bg-dark-hover disabled:opacity-30 rounded-xl transition"
+            title="Attach file"
+          >
+            📎
+          </button>
+          <button
+            onClick={cycleQuality}
+            className="px-1.5 py-1 text-[10px] rounded-lg text-dark-muted hover:text-white hover:bg-dark-hover transition leading-tight"
+            title={`图片质量: ${qualityLabels[imageQuality]}\n点击切换`}
+          >
+            {imageQuality === 'original' ? '原' : imageQuality === 'high' ? 'HD' : imageQuality === 'medium' ? 'SD' : 'Lo'}
+          </button>
+        </div>
         <div className="flex-1 relative">
           <textarea
             ref={inputRef}
