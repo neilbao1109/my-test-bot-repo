@@ -25,11 +25,15 @@ async function sendClawChatMessage({ to, content, cfg }) {
   const channelCfg = getChannelConfig(cfg);
   const pushUrl = channelCfg.pushUrl || DEFAULT_PUSH_URL;
   const pushSecret = channelCfg.pushSecret || "";
+  const defaultRoom = channelCfg.defaultRoom || "🔔 Notifications";
+
+  // Resolve target: explicit `to` overrides defaultRoom from config
+  const resolvedTo = to || defaultRoom;
 
   const body = {
     message: content,
     source: "OpenClaw",
-    ...(to ? { to } : {}),
+    to: resolvedTo,
     ...(pushSecret ? { secret: pushSecret } : {}),
   };
 
