@@ -13,12 +13,14 @@ import { fileURLToPath } from 'url';
 import apiRouter from './routes/api.js';
 import uploadRouter from './routes/upload.js';
 import authRouter from './routes/auth.js';
+import pushRouter from './routes/push.js';
 import { setupSocketHandlers } from './socket/handlers.js';
 import { shutdown, getConnectionMode } from './services/bot-bridge.js';
 import { initBotRegistry, getAllBots, getBridge } from './services/bot-registry.js';
 import { createRoom, getRooms, addMemberToRoom } from './services/room.js';
 import { createMessage } from './services/message.js';
 import { getAllUsers } from './services/user.js';
+import { setIo } from './services/io.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PORT = process.env.PORT || 3001;
@@ -32,6 +34,7 @@ app.use(express.json());
 app.use('/api', authRouter);
 app.use('/api', apiRouter);
 app.use('/api', uploadRouter);
+app.use('/api', pushRouter);
 
 // Serve static client files in production
 const clientDist = path.join(__dirname, '../../client/dist');
@@ -47,6 +50,9 @@ const io = new Server(httpServer, {
     methods: ['GET', 'POST'],
   },
 });
+
+// Make io available to route handlers
+setIo(io);
 
 // Initialize bot registry (upserts bot users in DB, creates bridges)
 initBotRegistry();
