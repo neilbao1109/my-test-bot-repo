@@ -40,12 +40,35 @@ function getOrCreateNotificationsRoom(): string {
 }
 
 /**
+ * Resolve target room ID from a `to` parameter.
+ * Accepts: room ID (uuid), room name, or empty (defaults to Notifications).
+ */
+function resolveTargetRoom(to?: string): string {
+  if (!to) return getOrCreateNotificationsRoom();
+
+  const db = getDb();
+
+  // Try as room ID first
+  const byId = db.prepare('SELECT id FROM rooms WHERE id = ?').get(to) as { id: string } | undefined;
+  if (byId) return byId.id;
+
+  // Try as room name
+  const byName = db.prepare('SELECT id FROM rooms WHERE name = ? LIMIT 1').get(to) as { id: string } | undefined;
+  if (byName) return byName.id;
+
+  // Fallback to Notifications room
+  return getOrCreateNotificationsRoom();
+}
+
+/**
  * POST /api/push
  *
- * Body: { message: string, secret?: string, source?: string }
+ * Body: { message: string, secret?: string, source?: string, to?: string }
  *
- * Inserts a bot message into the 🔔 Notifications room and broadcasts
- * it to all connected clients via Socket.IO.
+ * Inserts a bot message into the target room (default: 🔔 Notifications)
+ * and broadcasts it to all connected clients via Socket.IO.
+ *
+ * `to` can be a room ID, room name, or omitted to use Notifications room.
  */
 router.post('/push', (req, res) => {
   // Auth: if CLAWCHAT_PUSH_SECRET is set, require it
@@ -54,14 +77,14 @@ router.post('/push', (req, res) => {
     return;
   }
 
-  const { message, source } = req.body as { message?: string; source?: string };
+  const { message, source, to } = req.body as { message?: string; source?: string; to?: string };
   if (!message || typeof message !== 'string' || !message.trim()) {
     res.status(400).json({ error: 'message is required' });
     return;
   }
 
   try {
-    const roomId = getOrCreateNotificationsRoom();
+    const roomId = resolveTargetRoom(to);
     const bots = getAllBots();
     const botId = bots[0]?.id || 'bot-clawchat';
 
@@ -84,7 +107,8 @@ router.post('/push', (req, res) => {
       message: msg,
     });
 
-    console.log(`[Push] Message delivered to ${NOTIFICATIONS_ROOM_NAME} (${roomId}): ${message.slice(0, 80)}...`);
+    const targetName = to || NOTIFICATIONS_ROOM_NAME;
+    console.log(`[Push] Message delivered to ${targetName} (${roomId}): ${message.slice(0, 80)}...`);
     res.json({ ok: true, messageId: msg.id, roomId });
   } catch (err: any) {
     console.error('[Push] Error:', err.message);
