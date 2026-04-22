@@ -8,5 +8,17 @@
       "import": "./index.js"
     }
   },
-  "files": ["index.js", "src", "openclaw.plugin.json", "README.md"]
+  "files": ["index.js", "src", "openclaw.plugin.json", "README.md"],
+  "openclaw": {
+    "extensions": ["./index.js"],
+    "channel": {
+      "id": "clawchat",
+      "label": "ClawChat",
+      "selectionLabel": "ClawChat (Web)",
+      "docsPath": "/channels/clawchat",
+      "docsLabel": "clawchat-openclaw-plugin",
+      "blurb": "ClawChat Web 客户端推送插件",
+      "order": 90
+    }
+  }
 }
