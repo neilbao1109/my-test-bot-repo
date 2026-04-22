@@ -1,0 +1,12 @@
+{
+  "name": "clawchat-openclaw-plugin",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "index.js",
+  "exports": {
+    ".": {
+      "import": "./index.js"
+    }
+  },
+  "files": ["index.js", "src", "openclaw.plugin.json", "README.md"]
+}

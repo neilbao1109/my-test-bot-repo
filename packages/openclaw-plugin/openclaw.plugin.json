@@ -1,0 +1,10 @@
+{
+  "id": "clawchat-openclaw-plugin",
+  "channels": ["clawchat"],
+  "skills": [],
+  "configSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {}
+  }
+}
