@@ -25,9 +25,13 @@ export class BotBridge {
   private tunnel: SshTunnel | null = null;
   private initPromise: Promise<void> | null = null;
   private roomSessions = new Map<string, string>();
+  private sessionRooms = new Map<string, string>(); // reverse: sessionKey → roomId
   private activeStreams = new Map<string, ActiveStream>();
   private subscribedSessions = new Set<string>();
   private connectionMode: ConnectionMode;
+
+  /** Callback for push messages (cron, heartbeat, etc.) */
+  onPushMessage?: (roomId: string, botId: string, content: string) => void;
 
   constructor(config: BotConfig) {
     this.config = config;
@@ -122,9 +126,10 @@ export class BotBridge {
   }
 
   private handleSessionMessage(payload: any) {
-    const { sessionKey, role, delta, done } = payload;
+    const { sessionKey, role, delta, done, content } = payload;
     if (role !== 'assistant') return;
 
+    // 1. Try to match an active stream (user-initiated request)
     for (const [runId, stream] of this.activeStreams) {
       if (runId.startsWith(sessionKey + ':')) {
         const text = delta || '';
@@ -139,6 +144,48 @@ export class BotBridge {
         return;
       }
     }
+
+    // 2. No active stream — this is a push message (cron, heartbeat, etc.)
+    if (done) {
+      const roomId = this.sessionRooms.get(sessionKey);
+      if (roomId && this.onPushMessage) {
+        // Extract text from the content or delta
+        let text = '';
+        if (typeof content === 'string') {
+          text = content;
+        } else if (Array.isArray(content)) {
+          text = content.filter((p: any) => p.type === 'text' && typeof p.text === 'string').map((p: any) => p.text).join('\n');
+        } else if (delta) {
+          // Accumulate — but since we only fire on done, delta might be empty
+          // Fall back to fetching from history
+        }
+
+        if (!text) {
+          // Try to get from chat.history
+          this.fetchLatestAssistantMessage(sessionKey).then(msg => {
+            if (msg && roomId) this.onPushMessage?.(roomId, this.config.id, msg);
+          }).catch(() => {});
+        } else {
+          this.onPushMessage(roomId, this.config.id, text);
+        }
+      }
+    }
+  }
+
+  private async fetchLatestAssistantMessage(sessionKey: string): Promise<string | null> {
+    try {
+      const gw = await this.ensureClient();
+      const history = await gw.rpc('chat.history', { sessionKey, limit: 5 });
+      const messages = history?.messages || (Array.isArray(history) ? history : []);
+      const assistantMsgs = messages.filter((m: any) => m.role === 'assistant');
+      for (let i = assistantMsgs.length - 1; i >= 0; i--) {
+        const text = this.extractContentValue(assistantMsgs[i].content);
+        if (text) return text;
+      }
+    } catch (err: any) {
+      console.error(`[BotBridge:${this.config.id}] fetchLatestAssistantMessage failed:`, err.message);
+    }
+    return null;
   }
 
   private async getSessionForRoom(roomId: string): Promise<string> {
@@ -170,6 +217,7 @@ export class BotBridge {
     }
 
     this.roomSessions.set(roomId, sessionKey);
+    this.sessionRooms.set(sessionKey, roomId);
 
     if (!this.subscribedSessions.has(sessionKey)) {
       try {
@@ -273,6 +321,19 @@ export class BotBridge {
 
   getConnectionMode(): string {
     return this.connectionMode;
+  }
+
+  /**
+   * Subscribe a room's session for push messages.
+   * Call this on startup for the notifications room.
+   */
+  async subscribeRoomForPush(roomId: string): Promise<void> {
+    try {
+      const sessionKey = await this.getSessionForRoom(roomId);
+      console.log(`[BotBridge:${this.config.id}] Subscribed room ${roomId} for push (session: ${sessionKey})`);
+    } catch (err: any) {
+      console.error(`[BotBridge:${this.config.id}] Failed to subscribe room for push:`, err.message);
+    }
   }
 
   shutdown() {

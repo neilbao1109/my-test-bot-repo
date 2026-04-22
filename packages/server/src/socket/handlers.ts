@@ -68,6 +68,12 @@ export function setupSocketHandlers(io: Server) {
       socket.emit('presence:snapshot', { onlineUsers });
 
       io.emit('user:online', { userId: user.id, isOnline: true });
+
+      // Auto-join all rooms' socket.io channels for push notifications
+      for (const room of rooms) {
+        socket.join(room.id);
+      }
+
       callback({ user, rooms });
     });
 
