@@ -71,9 +71,17 @@ export default function PinnedBar() {
         )}
 
         <button
+          onClick={() => handleUnpin(latestPin.messageId)}
+          className="text-dark-muted hover:text-red-400 p-0.5 rounded hover:bg-dark-hover transition flex-shrink-0 text-xs"
+          title="Unpin"
+        >
+          📌
+        </button>
+
+        <button
           onClick={() => setDismissed(true)}
           className="text-dark-muted hover:text-white p-0.5 rounded hover:bg-dark-hover transition flex-shrink-0 text-xs"
-          title="Dismiss"
+          title="Hide"
         >
           ✕
         </button>
