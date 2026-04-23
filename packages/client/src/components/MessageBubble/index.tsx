@@ -303,6 +303,11 @@ export default function MessageBubble({ message, isStreaming, streamContent, hig
                   }
                   return <code className={className} {...props}>{children}</code>;
                 },
+                table: ({ children, ...props }) => (
+                  <div className="table-wrapper">
+                    <table {...props}>{children}</table>
+                  </div>
+                ),
               }}
             >
               {displayContent}

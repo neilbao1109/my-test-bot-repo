@@ -122,10 +122,16 @@ html, body {
   color: var(--color-blockquote);
 }
 
+.prose .table-wrapper {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  margin: 0.5rem 0;
+}
+
 .prose table {
   border-collapse: collapse;
-  margin: 0.5rem 0;
   font-size: 0.85em;
+  min-width: 100%;
 }
 
 .prose th, .prose td {
