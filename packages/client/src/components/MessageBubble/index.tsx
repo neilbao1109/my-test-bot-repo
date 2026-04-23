@@ -132,6 +132,8 @@ export default function MessageBubble({ message, isStreaming, streamContent, hig
   const handlePin = () => {
     if (!activeRoomId) return;
     if (isPinned) {
+      // Optimistic update: remove from store immediately
+      useAppStore.getState().removePinnedMessage(activeRoomId, message.id);
       socketService.unpinMessage(message.id, activeRoomId);
     } else {
       socketService.pinMessage(message.id, activeRoomId);

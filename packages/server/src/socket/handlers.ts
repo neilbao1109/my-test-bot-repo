@@ -458,9 +458,8 @@ export function setupSocketHandlers(io: Server) {
     socket.on('message:unpin', (data: { messageId: string; roomId: string }, callback?) => {
       if (!socket.userId) return;
       const success = unpinMessage(data.messageId, data.roomId);
-      if (success) {
-        io.to(data.roomId).emit('message:unpinned', { messageId: data.messageId, roomId: data.roomId });
-      }
+      // Always broadcast unpin to ensure frontend stays in sync
+      io.to(data.roomId).emit('message:unpinned', { messageId: data.messageId, roomId: data.roomId });
       if (callback) callback({ success });
     });
 

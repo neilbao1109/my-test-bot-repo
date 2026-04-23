@@ -42,7 +42,9 @@ export function pinMessage(messageId: string, roomId: string, pinnedBy: string):
 
 export function unpinMessage(messageId: string, roomId: string): boolean {
   const db = getDb();
-  const result = db.prepare('DELETE FROM pinned_messages WHERE message_id = ? AND room_id = ?').run(messageId, roomId);
+  // Delete by message_id only (ignore roomId mismatch edge cases)
+  const result = db.prepare('DELETE FROM pinned_messages WHERE message_id = ?').run(messageId);
+  console.log(`[Pin] unpin message=${messageId} room=${roomId} deleted=${result.changes}`);
   return result.changes > 0;
 }
 
