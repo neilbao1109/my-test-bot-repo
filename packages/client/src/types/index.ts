@@ -72,3 +72,10 @@ export interface PinnedMessage {
   type: string;
   createdAt: string;
 }
+
+export interface ChatFolder {
+  id: string;
+  name: string;
+  filter: 'all' | 'dm' | 'group' | 'custom';
+  roomIds?: string[]; // only for custom folders
+}

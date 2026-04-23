@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { User, Room, Message, Thread, StreamingMessage, TypingUser, PinnedMessage } from '../types';
+import type { User, Room, Message, Thread, StreamingMessage, TypingUser, PinnedMessage, ChatFolder } from '../types';
 import { clearToken } from '../services/auth';
 import { socketService } from '../services/socket';
 import type { ImageQuality } from '../services/upload';
@@ -93,6 +93,15 @@ interface AppState {
   setPinnedMessages: (roomId: string, pins: PinnedMessage[]) => void;
   addPinnedMessage: (roomId: string, pin: PinnedMessage) => void;
   removePinnedMessage: (roomId: string, messageId: string) => void;
+
+  // Folders
+  folders: ChatFolder[];
+  activeFolderId: string;
+  setFolders: (folders: ChatFolder[]) => void;
+  setActiveFolderId: (id: string) => void;
+  addFolder: (folder: ChatFolder) => void;
+  updateFolder: (folder: ChatFolder) => void;
+  removeFolder: (id: string) => void;
 
   // UI
   showSidebar: boolean;
@@ -343,6 +352,37 @@ export const useAppStore = create<AppState>((set, get) => ({
       [roomId]: (s.pinnedMessages[roomId] || []).filter((p) => p.messageId !== messageId),
     },
   })),
+
+  // Folders
+  folders: JSON.parse(localStorage.getItem('clawchat-folders') || 'null') || [
+    { id: 'all', name: 'All', filter: 'all' },
+    { id: 'dms', name: 'DMs', filter: 'dm' },
+    { id: 'groups', name: 'Groups', filter: 'group' },
+  ] as ChatFolder[],
+  activeFolderId: localStorage.getItem('clawchat-active-folder') || 'all',
+  setFolders: (folders) => {
+    localStorage.setItem('clawchat-folders', JSON.stringify(folders));
+    set({ folders });
+  },
+  setActiveFolderId: (id) => {
+    localStorage.setItem('clawchat-active-folder', id);
+    set({ activeFolderId: id });
+  },
+  addFolder: (folder) => set((s) => {
+    const next = [...s.folders, folder];
+    localStorage.setItem('clawchat-folders', JSON.stringify(next));
+    return { folders: next };
+  }),
+  updateFolder: (folder) => set((s) => {
+    const next = s.folders.map((f) => f.id === folder.id ? folder : f);
+    localStorage.setItem('clawchat-folders', JSON.stringify(next));
+    return { folders: next };
+  }),
+  removeFolder: (id) => set((s) => {
+    const next = s.folders.filter((f) => f.id !== id);
+    localStorage.setItem('clawchat-folders', JSON.stringify(next));
+    return { folders: next, activeFolderId: s.activeFolderId === id ? 'all' : s.activeFolderId };
+  }),
 
   // UI
   showSidebar: localStorage.getItem('clawchat-sidebar') !== 'collapsed' && window.innerWidth >= 768,

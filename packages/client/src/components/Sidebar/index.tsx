@@ -1,10 +1,16 @@
+import { useState } from 'react';
 import clsx from 'clsx';
 import { useAppStore } from '../../stores/appStore';
 import UserAvatar from '../UserAvatar';
 import SettingsPanel from './SettingsPanel';
+import FolderTabs from './FolderTabs';
+import FolderEditModal from './FolderEditModal';
+import type { ChatFolder } from '../../types';
 
 export default function Sidebar() {
-  const { rooms, activeRoomId, setActiveRoom, user, showSidebar, toggleSidebar, roomMembers, onlineUsers, setShowCreateRoom, logout, theme, setTheme, showSettings, setShowSettings } = useAppStore();
+  const { rooms, activeRoomId, setActiveRoom, user, showSidebar, toggleSidebar, roomMembers, onlineUsers, setShowCreateRoom, logout, theme, setTheme, showSettings, setShowSettings, folders, activeFolderId } = useAppStore();
+  const [showFolderModal, setShowFolderModal] = useState(false);
+  const [editingFolder, setEditingFolder] = useState<ChatFolder | null>(null);
 
   const isMobile = window.innerWidth < 768;
 
@@ -24,6 +30,17 @@ export default function Sidebar() {
     setActiveRoom(roomId);
     if (isMobile) toggleSidebar();
   };
+
+  // Filter rooms by active folder
+  const activeFolder = folders.find((f) => f.id === activeFolderId) || folders[0];
+  const filteredRooms = rooms.filter((room) => {
+    if (!activeFolder) return true;
+    if (activeFolder.filter === 'all') return true;
+    if (activeFolder.filter === 'dm') return room.type === 'dm';
+    if (activeFolder.filter === 'group') return room.type === 'group';
+    if (activeFolder.filter === 'custom') return activeFolder.roomIds?.includes(room.id) ?? false;
+    return true;
+  });
 
   const sidebar = (
     <div className={clsx(
@@ -67,14 +84,12 @@ export default function Sidebar() {
         </div>
       )}
 
+      {/* Folder tabs */}
+      <FolderTabs onCreateFolder={() => setShowFolderModal(true)} />
+
       {/* Room list */}
       <div className="flex-1 overflow-y-auto py-2">
-        <div className="px-3 py-1">
-          <span className="text-xs font-semibold text-dark-muted uppercase tracking-wider">
-            Conversations
-          </span>
-        </div>
-        {rooms.map((room) => {
+        {filteredRooms.map((room) => {
           const memberCount = (roomMembers[room.id] || []).length;
           const online = isRoomOnline(room.id);
           return (
@@ -143,9 +158,25 @@ export default function Sidebar() {
       <>
         <div className="fixed inset-0 z-30 bg-black/50" onClick={toggleSidebar} />
         {sidebar}
+        {(showFolderModal || editingFolder) && (
+          <FolderEditModal
+            folder={editingFolder}
+            onClose={() => { setShowFolderModal(false); setEditingFolder(null); }}
+          />
+        )}
       </>
     );
   }
 
-  return sidebar;
+  return (
+    <>
+      {sidebar}
+      {(showFolderModal || editingFolder) && (
+        <FolderEditModal
+          folder={editingFolder}
+          onClose={() => { setShowFolderModal(false); setEditingFolder(null); }}
+        />
+      )}
+    </>
+  );
 }
