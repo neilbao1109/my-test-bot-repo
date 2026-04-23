@@ -16,6 +16,51 @@ interface AuthenticatedSocket extends Socket {
 // Track connected sockets per user for accurate presence
 const userSockets = new Map<string, Set<string>>(); // userId -> Set<socketId>
 
+// Track active bot streams for graceful shutdown
+const activeBotStreams = new Map<string, { roomId: string; botId: string; content: string; threadId?: string }>();
+let isShuttingDown = false;
+
+/** Signal handlers to stop accepting new bot work */
+export function signalShutdown(): void {
+  isShuttingDown = true;
+}
+
+/**
+ * Wait for active bot streams to finish, or save partial content on timeout.
+ * Returns when all streams are done or timeout expires.
+ */
+export async function drainBotStreams(timeoutMs = 5000): Promise<void> {
+  if (activeBotStreams.size === 0) return;
+
+  console.log(`[Shutdown] Waiting for ${activeBotStreams.size} active bot stream(s)...`);
+
+  const deadline = Date.now() + timeoutMs;
+  while (activeBotStreams.size > 0 && Date.now() < deadline) {
+    await new Promise(resolve => setTimeout(resolve, 200));
+  }
+
+  // Save any remaining partial streams
+  if (activeBotStreams.size > 0) {
+    console.log(`[Shutdown] Saving ${activeBotStreams.size} partial bot response(s)...`);
+    for (const [streamId, stream] of activeBotStreams) {
+      if (stream.content.trim()) {
+        try {
+          const partialMsg = createMessage({
+            roomId: stream.roomId,
+            userId: stream.botId,
+            content: stream.content + '\n\n⚠️ _Response interrupted by server shutdown_',
+            threadId: stream.threadId,
+          });
+          console.log(`[Shutdown] Saved partial response: ${partialMsg.id} (${stream.content.length} chars)`);
+        } catch (err: any) {
+          console.error(`[Shutdown] Failed to save partial response:`, err.message);
+        }
+      }
+      activeBotStreams.delete(streamId);
+    }
+  }
+}
+
 function updateThreadReplyCount(threadId: string, io: Server, roomId: string) {
   const thread = getThread(threadId);
   if (thread) {
@@ -271,8 +316,19 @@ export function setupSocketHandlers(io: Server) {
 
       // Process bots sequentially to avoid interleaving
       for (const bot of respondingBots) {
+        if (isShuttingDown) break; // Don't start new bot responses during shutdown
+
         const botMessageId = uuid();
         let fullContent = '';
+
+        // Track this stream for graceful shutdown
+        const streamId = `${data.roomId}:${botMessageId}`;
+        activeBotStreams.set(streamId, {
+          roomId: data.roomId,
+          botId: bot.id,
+          content: '',
+          threadId: data.threadId,
+        });
 
         io.to(data.roomId).emit('bot:stream:start', {
           messageId: botMessageId,
@@ -288,31 +344,40 @@ export function setupSocketHandlers(io: Server) {
           history: [],
         };
 
-        for await (const chunk of registryStreamBotResponse(bot.id, botContent, context)) {
-          fullContent += chunk;
+        try {
+          for await (const chunk of registryStreamBotResponse(bot.id, botContent, context)) {
+            fullContent += chunk;
+            // Update tracked content for graceful shutdown
+            const tracked = activeBotStreams.get(streamId);
+            if (tracked) tracked.content = fullContent;
+
+            io.to(data.roomId).emit('bot:stream', {
+              messageId: botMessageId,
+              chunk,
+              done: false,
+            });
+          }
+
+          const botMsg = createMessage({
+            roomId: data.roomId,
+            userId: bot.id,
+            content: fullContent,
+            threadId: data.threadId,
+          });
+
           io.to(data.roomId).emit('bot:stream', {
             messageId: botMessageId,
-            chunk,
-            done: false,
+            chunk: '',
+            done: true,
+            finalMessage: botMsg,
           });
-        }
 
-        const botMsg = createMessage({
-          roomId: data.roomId,
-          userId: bot.id,
-          content: fullContent,
-          threadId: data.threadId,
-        });
-
-        io.to(data.roomId).emit('bot:stream', {
-          messageId: botMessageId,
-          chunk: '',
-          done: true,
-          finalMessage: botMsg,
-        });
-
-        if (data.threadId) {
-          updateThreadReplyCount(data.threadId, io, data.roomId);
+          if (data.threadId) {
+            updateThreadReplyCount(data.threadId, io, data.roomId);
+          }
+        } finally {
+          // Stream completed or errored — remove from tracking
+          activeBotStreams.delete(streamId);
         }
       }
     });

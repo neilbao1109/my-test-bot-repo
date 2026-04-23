@@ -14,7 +14,7 @@ import apiRouter from './routes/api.js';
 import uploadRouter from './routes/upload.js';
 import authRouter from './routes/auth.js';
 import pushRouter from './routes/push.js';
-import { setupSocketHandlers } from './socket/handlers.js';
+import { setupSocketHandlers, signalShutdown, drainBotStreams } from './socket/handlers.js';
 import { shutdown, getConnectionMode } from './services/bot-bridge.js';
 import { initBotRegistry, getAllBots, getBridge } from './services/bot-registry.js';
 import { createRoom, getRooms, addMemberToRoom } from './services/room.js';
@@ -119,12 +119,39 @@ httpServer.listen(Number(PORT), HOST, () => {
 });
 
 // Graceful shutdown
-process.on('SIGINT', () => {
-  console.log('\n🛑 Shutting down...');
+let shuttingDown = false;
+async function gracefulShutdown(signal: string) {
+  if (shuttingDown) return; // Prevent double shutdown
+  shuttingDown = true;
+  console.log(`\n🛑 ${signal} received, starting graceful shutdown...`);
+
+  // 1. Stop accepting new connections
+  httpServer.close(() => {
+    console.log('[Shutdown] HTTP server closed');
+  });
+
+  // 2. Signal socket handlers to stop new bot work
+  signalShutdown();
+
+  // 3. Wait for active bot streams (max 5s)
+  await drainBotStreams(5000);
+
+  // 4. Notify connected clients and close Socket.IO
+  io.emit('server:shutdown', { message: 'Server is shutting down' });
+  io.close(() => {
+    console.log('[Shutdown] Socket.IO closed');
+  });
+
+  // 5. Close bot bridge connections
   shutdown();
+
+  // 6. Checkpoint and close database
+  const { closeDb } = await import('./db/schema.js');
+  closeDb();
+
+  console.log('✅ Graceful shutdown complete');
   process.exit(0);
-});
-process.on('SIGTERM', () => {
-  shutdown();
-  process.exit(0);
-});
+}
+
+process.on('SIGINT', () => gracefulShutdown('SIGINT'));
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));

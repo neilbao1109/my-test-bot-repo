@@ -16,6 +16,27 @@ export function getDb(): Database.Database {
   return db;
 }
 
+/**
+ * Graceful DB shutdown: checkpoint WAL and close connection.
+ * Call this during server shutdown to ensure all data is flushed.
+ */
+export function closeDb(): void {
+  if (!db) return;
+  try {
+    db.pragma('wal_checkpoint(TRUNCATE)');
+    console.log('[DB] WAL checkpoint complete');
+  } catch (err: any) {
+    console.error('[DB] WAL checkpoint failed:', err.message);
+  }
+  try {
+    db.close();
+    console.log('[DB] Connection closed');
+  } catch (err: any) {
+    console.error('[DB] Close failed:', err.message);
+  }
+  db = undefined as any;
+}
+
 function initSchema(db: Database.Database) {
   db.exec(`
     CREATE TABLE IF NOT EXISTS users (
