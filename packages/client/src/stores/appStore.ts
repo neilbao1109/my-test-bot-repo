@@ -322,14 +322,18 @@ export const useAppStore = create<AppState>((set, get) => ({
   setReplyTo: (message) => set({ replyToMessage: message }),
 
   // UI
-  showSidebar: window.innerWidth >= 768,
+  showSidebar: localStorage.getItem('clawchat-sidebar') !== 'collapsed' && window.innerWidth >= 768,
   showThread: false,
   showMembers: false,
   showCreateRoom: false,
   showSettings: false,
   theme: (localStorage.getItem('clawchat-theme') as 'dark' | 'light') || 'dark',
   imageQuality: (localStorage.getItem('clawchat-image-quality') as ImageQuality) || 'medium',
-  toggleSidebar: () => set((s) => ({ showSidebar: !s.showSidebar })),
+  toggleSidebar: () => set((s) => {
+    const next = !s.showSidebar;
+    localStorage.setItem('clawchat-sidebar', next ? 'expanded' : 'collapsed');
+    return { showSidebar: next };
+  }),
   toggleThread: () => set((s) => ({ showThread: !s.showThread })),
   toggleMembers: () => set((s) => ({ showMembers: !s.showMembers })),
   setShowCreateRoom: (show) => set({ showCreateRoom: show }),

@@ -6,9 +6,10 @@ import SettingsPanel from './SettingsPanel';
 export default function Sidebar() {
   const { rooms, activeRoomId, setActiveRoom, user, showSidebar, toggleSidebar, roomMembers, onlineUsers, setShowCreateRoom, logout, theme, setTheme, showSettings, setShowSettings } = useAppStore();
 
-  if (!showSidebar) return null;
-
   const isMobile = window.innerWidth < 768;
+
+  // On mobile, hide completely when collapsed (overlay mode)
+  if (isMobile && !showSidebar) return null;
 
   const getRoomOnlineCount = (roomId: string): number => {
     const members = roomMembers[roomId] || [];
@@ -26,8 +27,12 @@ export default function Sidebar() {
 
   const sidebar = (
     <div className={clsx(
-      'bg-dark-surface border-r border-dark-border flex flex-col h-full overflow-hidden',
-      'fixed inset-0 z-40 w-full md:static md:w-64 md:z-auto'
+      'bg-dark-surface border-r border-dark-border flex flex-col h-full overflow-hidden transition-all duration-200 ease-in-out',
+      isMobile
+        ? 'fixed inset-0 z-40 w-full'
+        : showSidebar
+          ? 'w-64 min-w-[16rem] opacity-100'
+          : 'w-0 min-w-0 opacity-0 border-r-0 overflow-hidden'
     )}>
       {/* Two-layer container for slide transition */}
       <div className="relative flex-1 flex overflow-hidden">
