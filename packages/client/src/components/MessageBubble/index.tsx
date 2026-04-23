@@ -55,7 +55,8 @@ interface MessageBubbleProps {
 const QUICK_REACTIONS = ['👍', '❤️', '😂', '🎉', '🤔', '👀'];
 
 export default function MessageBubble({ message, isStreaming, streamContent, highlight, isSearchActive }: MessageBubbleProps) {
-  const { user, roomMembers, activeRoomId, threadInfo, setReplyTo, messages: allMessages, pinnedMessages } = useAppStore();
+  const { user, roomMembers, activeRoomId, threadInfo, setReplyTo, messages: allMessages } = useAppStore();
+  const isPinned = useAppStore((s) => activeRoomId ? (s.pinnedMessages[activeRoomId] || []).some((p) => p.messageId === message.id) : false);
   const [showActions, setShowActions] = useState(false);
   const [showReactions, setShowReactions] = useState(false);
   const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
@@ -63,7 +64,6 @@ export default function MessageBubble({ message, isStreaming, streamContent, hig
   const [editContent, setEditContent] = useState(message.content);
   const [copied, setCopied] = useState(false);
   const [speaking, setSpeaking] = useState(false);
-  const isPinned = activeRoomId ? (pinnedMessages[activeRoomId] || []).some((p) => p.messageId === message.id) : false;
   const editRef = useRef<HTMLTextAreaElement>(null);
   const reactionRef = useRef<HTMLDivElement>(null);
   const actionsRef = useRef<HTMLDivElement>(null);
