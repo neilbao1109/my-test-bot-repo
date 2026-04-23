@@ -145,6 +145,25 @@ class SocketService {
     this.socket?.emit('typing:stop', { roomId, threadId });
   }
 
+  // Pins
+  pinMessage(messageId: string, roomId: string): Promise<{ success?: boolean; pin?: any; error?: string }> {
+    return new Promise((resolve) => {
+      this.socket?.emit('message:pin', { messageId, roomId }, resolve);
+    });
+  }
+
+  unpinMessage(messageId: string, roomId: string): Promise<{ success: boolean }> {
+    return new Promise((resolve) => {
+      this.socket?.emit('message:unpin', { messageId, roomId }, resolve);
+    });
+  }
+
+  getPinnedMessages(roomId: string): Promise<any[]> {
+    return new Promise((resolve) => {
+      this.socket?.emit('message:pins', { roomId }, resolve);
+    });
+  }
+
   // Event listeners
   on(event: string, callback: (...args: any[]) => void) {
     this.socket?.on(event, callback);

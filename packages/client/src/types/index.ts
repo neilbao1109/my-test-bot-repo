@@ -60,3 +60,15 @@ export interface FileAttachment {
   size: number;
   url: string;
 }
+
+export interface PinnedMessage {
+  id: string;
+  messageId: string;
+  roomId: string;
+  pinnedBy: string;
+  pinnedAt: string;
+  content: string;
+  userId: string;
+  type: string;
+  createdAt: string;
+}

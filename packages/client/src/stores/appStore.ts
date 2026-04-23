@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { User, Room, Message, Thread, StreamingMessage, TypingUser } from '../types';
+import type { User, Room, Message, Thread, StreamingMessage, TypingUser, PinnedMessage } from '../types';
 import { clearToken } from '../services/auth';
 import { socketService } from '../services/socket';
 import type { ImageQuality } from '../services/upload';
@@ -87,6 +87,12 @@ interface AppState {
   // Reply
   replyToMessage: Message | null;
   setReplyTo: (message: Message | null) => void;
+
+  // Pins
+  pinnedMessages: Record<string, PinnedMessage[]>;
+  setPinnedMessages: (roomId: string, pins: PinnedMessage[]) => void;
+  addPinnedMessage: (roomId: string, pin: PinnedMessage) => void;
+  removePinnedMessage: (roomId: string, messageId: string) => void;
 
   // UI
   showSidebar: boolean;
@@ -320,6 +326,23 @@ export const useAppStore = create<AppState>((set, get) => ({
   // Reply
   replyToMessage: null,
   setReplyTo: (message) => set({ replyToMessage: message }),
+
+  // Pins
+  pinnedMessages: {},
+  setPinnedMessages: (roomId, pins) => set((s) => ({
+    pinnedMessages: { ...s.pinnedMessages, [roomId]: pins },
+  })),
+  addPinnedMessage: (roomId, pin) => set((s) => {
+    const current = s.pinnedMessages[roomId] || [];
+    if (current.some((p) => p.messageId === pin.messageId)) return s;
+    return { pinnedMessages: { ...s.pinnedMessages, [roomId]: [pin, ...current] } };
+  }),
+  removePinnedMessage: (roomId, messageId) => set((s) => ({
+    pinnedMessages: {
+      ...s.pinnedMessages,
+      [roomId]: (s.pinnedMessages[roomId] || []).filter((p) => p.messageId !== messageId),
+    },
+  })),
 
   // UI
   showSidebar: localStorage.getItem('clawchat-sidebar') !== 'collapsed' && window.innerWidth >= 768,

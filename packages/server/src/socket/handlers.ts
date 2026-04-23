@@ -4,6 +4,7 @@ import { createRoom, getRooms, getRoomMembers, addMemberToRoom, removeMemberFrom
 import { createThread, getThread, getThreadByMessage } from '../services/thread.js';
 import { parseCommand, executeCommand } from '../services/command.js';
 import { initBotRegistry, getRespondingBots, isBotUser, getAutoJoinBotIds, getAllBots, streamBotResponse as registryStreamBotResponse } from '../services/bot-registry.js';
+import { pinMessage, unpinMessage, getPinnedMessages } from '../services/pin.js';
 import { getUser, setOnline, getOnlineUsers } from '../services/user.js';
 import { verifyToken } from '../services/auth.js';
 import { v4 as uuid } from 'uuid';
@@ -442,6 +443,30 @@ export function setupSocketHandlers(io: Server) {
 
       const result = searchMessages(data.query.trim(), searchOpts);
       if (callback) callback(result);
+    });
+
+    // --- Pins ---
+    socket.on('message:pin', (data: { messageId: string; roomId: string }, callback?) => {
+      if (!socket.userId) return;
+      const pin = pinMessage(data.messageId, data.roomId, socket.userId);
+      if (pin) {
+        io.to(data.roomId).emit('message:pinned', pin);
+      }
+      if (callback) callback(pin ? { success: true, pin } : { error: 'Failed to pin' });
+    });
+
+    socket.on('message:unpin', (data: { messageId: string; roomId: string }, callback?) => {
+      if (!socket.userId) return;
+      const success = unpinMessage(data.messageId, data.roomId);
+      if (success) {
+        io.to(data.roomId).emit('message:unpinned', { messageId: data.messageId, roomId: data.roomId });
+      }
+      if (callback) callback({ success });
+    });
+
+    socket.on('message:pins', (data: { roomId: string }, callback) => {
+      const pins = getPinnedMessages(data.roomId);
+      callback(pins);
     });
 
     // --- Typing ---

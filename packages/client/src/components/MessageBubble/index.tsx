@@ -55,7 +55,7 @@ interface MessageBubbleProps {
 const QUICK_REACTIONS = ['👍', '❤️', '😂', '🎉', '🤔', '👀'];
 
 export default function MessageBubble({ message, isStreaming, streamContent, highlight, isSearchActive }: MessageBubbleProps) {
-  const { user, roomMembers, activeRoomId, threadInfo, setReplyTo, messages: allMessages } = useAppStore();
+  const { user, roomMembers, activeRoomId, threadInfo, setReplyTo, messages: allMessages, pinnedMessages } = useAppStore();
   const [showActions, setShowActions] = useState(false);
   const [showReactions, setShowReactions] = useState(false);
   const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
@@ -63,6 +63,7 @@ export default function MessageBubble({ message, isStreaming, streamContent, hig
   const [editContent, setEditContent] = useState(message.content);
   const [copied, setCopied] = useState(false);
   const [speaking, setSpeaking] = useState(false);
+  const isPinned = activeRoomId ? (pinnedMessages[activeRoomId] || []).some((p) => p.messageId === message.id) : false;
   const editRef = useRef<HTMLTextAreaElement>(null);
   const reactionRef = useRef<HTMLDivElement>(null);
   const actionsRef = useRef<HTMLDivElement>(null);
@@ -128,6 +129,15 @@ export default function MessageBubble({ message, isStreaming, streamContent, hig
     useAppStore.getState().setThreadMessages(msgs);
   };
 
+  const handlePin = () => {
+    if (!activeRoomId) return;
+    if (isPinned) {
+      socketService.unpinMessage(message.id, activeRoomId);
+    } else {
+      socketService.pinMessage(message.id, activeRoomId);
+    }
+  };
+
   // Deleted message placeholder
   if (message.isDeleted) {
     return (
@@ -188,6 +198,9 @@ export default function MessageBubble({ message, isStreaming, streamContent, hig
           </span>
           {message.isEdited && (
             <span className="text-xs text-dark-muted">(edited)</span>
+          )}
+          {isPinned && (
+            <span className="text-xs text-dark-muted">📌</span>
           )}
         </div>
 
@@ -452,6 +465,13 @@ export default function MessageBubble({ message, isStreaming, streamContent, hig
             title="Thread"
           >
             🧵
+          </button>
+          <button
+            onClick={handlePin}
+            className={clsx('p-1.5 hover:bg-dark-hover rounded transition text-xs', isPinned ? 'text-primary-400' : 'text-dark-muted hover:text-white')}
+            title={isPinned ? 'Unpin' : 'Pin'}
+          >
+            📌
           </button>
           {isOwn && (
             <>

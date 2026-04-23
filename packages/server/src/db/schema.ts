@@ -88,9 +88,19 @@ function initSchema(db: Database.Database) {
       last_reply_at TEXT NOT NULL DEFAULT (datetime('now'))
     );
 
+    CREATE TABLE IF NOT EXISTS pinned_messages (
+      id TEXT PRIMARY KEY,
+      message_id TEXT NOT NULL REFERENCES messages(id) ON DELETE CASCADE,
+      room_id TEXT NOT NULL REFERENCES rooms(id) ON DELETE CASCADE,
+      pinned_by TEXT NOT NULL REFERENCES users(id),
+      pinned_at TEXT NOT NULL DEFAULT (datetime('now')),
+      UNIQUE(message_id)
+    );
+
     CREATE INDEX IF NOT EXISTS idx_messages_room ON messages(room_id, created_at);
     CREATE INDEX IF NOT EXISTS idx_messages_thread ON messages(thread_id);
     CREATE INDEX IF NOT EXISTS idx_room_members_user ON room_members(user_id);
+    CREATE INDEX IF NOT EXISTS idx_pinned_room ON pinned_messages(room_id, pinned_at);
   `);
 
   // Migration: add created_by column if missing

@@ -2,7 +2,7 @@ import { useEffect } from 'react';
 import { socketService } from '../services/socket';
 import { useAppStore } from '../stores/appStore';
 import { getToken } from '../services/auth';
-import type { Message, Room, User, Thread } from '../types';
+import type { Message, Room, User, Thread, PinnedMessage } from '../types';
 
 export function useSocket() {
   const store = useAppStore();
@@ -18,6 +18,10 @@ export function useSocket() {
       store.setMessages(data.roomId, data.messages);
       store.setRoomMembers(data.roomId, data.members);
       store.setHasMore(data.roomId, data.hasMore ?? false);
+      // Load pinned messages for this room
+      socketService.getPinnedMessages(data.roomId).then((pins) => {
+        store.setPinnedMessages(data.roomId, pins);
+      });
     });
 
     socket.on('message:new', (message: Message) => {
@@ -111,6 +115,14 @@ export function useSocket() {
       store.removeRoom(data.roomId);
     });
 
+    socket.on('message:pinned', (pin: PinnedMessage) => {
+      store.addPinnedMessage(pin.roomId, pin);
+    });
+
+    socket.on('message:unpinned', (data: { messageId: string; roomId: string }) => {
+      store.removePinnedMessage(data.roomId, data.messageId);
+    });
+
     socket.on('command:result', (data: { command: string; result: { data?: { action: string } } }) => {
       if (data.result.data?.action === 'clear') {
         const activeRoomId = useAppStore.getState().activeRoomId;
@@ -154,6 +166,8 @@ export function useSocket() {
       socket.off('room:added');
       socket.off('room:deleted');
       socket.off('command:result');
+      socket.off('message:pinned');
+      socket.off('message:unpinned');
       socket.io.off('reconnect', handleReconnect);
     };
   }, [user]);

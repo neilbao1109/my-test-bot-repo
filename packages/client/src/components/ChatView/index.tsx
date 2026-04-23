@@ -6,6 +6,7 @@ import { uploadFile } from '../../services/upload';
 import MessageBubble from '../MessageBubble';
 import CommandBar from '../CommandBar';
 import SearchBar from '../SearchBar';
+import PinnedBar from '../PinnedBar';
 import UserAvatar from '../UserAvatar';
 
 function exportMessages(roomMessages: any[], roomName: string, members: any[]) {
@@ -232,6 +233,9 @@ export default function ChatView() {
 
       {/* Search bar */}
       <SearchBar />
+
+      {/* Pinned messages bar */}
+      <PinnedBar />
 
       {/* Messages */}
       <div ref={messageListRef} onScroll={handleScroll} className="flex-1 overflow-y-auto py-4 min-h-0 overscroll-contain">
