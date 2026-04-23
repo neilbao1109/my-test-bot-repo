@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import clsx from 'clsx';
 import { useAppStore } from '../../stores/appStore';
 import { socketService } from '../../services/socket';
@@ -10,6 +10,15 @@ export default function PinnedBar() {
 
   const pins = activeRoomId ? pinnedMessages[activeRoomId] || [] : [];
   const members = activeRoomId ? roomMembers[activeRoomId] || [] : [];
+  const prevPinCount = useRef(pins.length);
+
+  // Reset dismissed when new pins are added
+  useEffect(() => {
+    if (pins.length > prevPinCount.current) {
+      setDismissed(false);
+    }
+    prevPinCount.current = pins.length;
+  }, [pins.length]);
 
   if (pins.length === 0 || dismissed) return null;
 

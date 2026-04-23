@@ -21,17 +21,21 @@ export function pinMessage(messageId: string, roomId: string, pinnedBy: string):
   const msg = db.prepare('SELECT id FROM messages WHERE id = ? AND room_id = ? AND is_deleted = 0').get(messageId, roomId) as any;
   if (!msg) return null;
 
-  // Check not already pinned
-  const existing = db.prepare('SELECT id FROM pinned_messages WHERE message_id = ?').get(messageId) as any;
-  if (existing) return null;
+  // Upsert: delete any stale record first, then insert fresh
+  db.prepare('DELETE FROM pinned_messages WHERE message_id = ?').run(messageId);
 
   const id = uuid();
   const now = new Date().toISOString();
 
-  db.prepare(`
-    INSERT INTO pinned_messages (id, message_id, room_id, pinned_by, pinned_at)
-    VALUES (?, ?, ?, ?, ?)
-  `).run(id, messageId, roomId, pinnedBy, now);
+  try {
+    db.prepare(`
+      INSERT INTO pinned_messages (id, message_id, room_id, pinned_by, pinned_at)
+      VALUES (?, ?, ?, ?, ?)
+    `).run(id, messageId, roomId, pinnedBy, now);
+  } catch (err: any) {
+    console.error('[Pin] Insert failed:', err.message);
+    return null;
+  }
 
   return getPinnedMessage(id);
 }
