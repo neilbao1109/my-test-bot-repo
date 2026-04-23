@@ -1,7 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import clsx from 'clsx';
 import { useAppStore } from '../../stores/appStore';
-import { socketService } from '../../services/socket';
 
 export default function PinnedBar() {
   const { activeRoomId, pinnedMessages, roomMembers } = useAppStore();
@@ -35,13 +33,6 @@ export default function PinnedBar() {
     }
   };
 
-  const handleUnpin = (messageId: string) => {
-    if (activeRoomId) {
-      useAppStore.getState().removePinnedMessage(activeRoomId, messageId);
-      socketService.unpinMessage(messageId, activeRoomId);
-    }
-  };
-
   const latestPin = pins[0];
 
   return (
@@ -71,14 +62,6 @@ export default function PinnedBar() {
         )}
 
         <button
-          onClick={() => handleUnpin(latestPin.messageId)}
-          className="text-dark-muted hover:text-red-400 p-0.5 rounded hover:bg-dark-hover transition flex-shrink-0 text-xs"
-          title="Unpin"
-        >
-          📌
-        </button>
-
-        <button
           onClick={() => setDismissed(true)}
           className="text-dark-muted hover:text-white p-0.5 rounded hover:bg-dark-hover transition flex-shrink-0 text-xs"
           title="Hide"
@@ -91,7 +74,7 @@ export default function PinnedBar() {
       {expanded && (
         <div className="px-4 pb-2 space-y-1 max-h-48 overflow-y-auto">
           {pins.slice(1).map((pin) => (
-            <div key={pin.id} className="flex items-center gap-2 group/pin">
+            <div key={pin.id} className="flex items-center gap-2">
               <button
                 onClick={() => scrollToMessage(pin.messageId)}
                 className="flex-1 min-w-0 text-left hover:bg-dark-hover/50 rounded px-2 py-1 transition"
@@ -102,13 +85,6 @@ export default function PinnedBar() {
                 <p className="text-xs text-dark-text truncate">
                   {pin.type === 'file' ? '📎 File' : pin.content.slice(0, 100)}
                 </p>
-              </button>
-              <button
-                onClick={() => handleUnpin(pin.messageId)}
-                className="text-xs text-dark-muted hover:text-red-400 opacity-0 group-hover/pin:opacity-100 transition p-1"
-                title="Unpin"
-              >
-                ✕
               </button>
             </div>
           ))}

@@ -202,7 +202,7 @@ export default function MessageBubble({ message, isStreaming, streamContent, hig
             <span className="text-xs text-dark-muted">(edited)</span>
           )}
           {isPinned && (
-            <span className="text-xs text-dark-muted">📌</span>
+            <span className="text-xs text-primary-400">📌</span>
           )}
         </div>
 
@@ -473,7 +473,7 @@ export default function MessageBubble({ message, isStreaming, streamContent, hig
             className={clsx('p-1.5 hover:bg-dark-hover rounded transition text-xs', isPinned ? 'text-primary-400' : 'text-dark-muted hover:text-white')}
             title={isPinned ? 'Unpin' : 'Pin'}
           >
-            📌
+            {isPinned ? '📍' : '📌'}
           </button>
           {isOwn && (
             <>
