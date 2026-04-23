@@ -37,6 +37,7 @@ export default function PinnedBar() {
 
   const handleUnpin = (messageId: string) => {
     if (activeRoomId) {
+      useAppStore.getState().removePinnedMessage(activeRoomId, messageId);
       socketService.unpinMessage(messageId, activeRoomId);
     }
   };
