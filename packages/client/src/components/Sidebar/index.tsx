@@ -1,21 +1,16 @@
-import { useState, useRef, useCallback } from 'react';
+import { useState } from 'react';
 import clsx from 'clsx';
 import { useAppStore } from '../../stores/appStore';
 import UserAvatar from '../UserAvatar';
 import SettingsPanel from './SettingsPanel';
 import FolderTabs from './FolderTabs';
 import FolderEditModal from './FolderEditModal';
-import PeekPanel from './PeekPanel';
 import type { ChatFolder } from '../../types';
 
 export default function Sidebar() {
   const { rooms, activeRoomId, setActiveRoom, user, showSidebar, toggleSidebar, roomMembers, onlineUsers, setShowCreateRoom, logout, theme, setTheme, showSettings, setShowSettings, folders, activeFolderId } = useAppStore();
   const [showFolderModal, setShowFolderModal] = useState(false);
   const [editingFolder, setEditingFolder] = useState<ChatFolder | null>(null);
-  const [peekRoomId, setPeekRoomId] = useState<string | null>(null);
-  const [peekTop, setPeekTop] = useState(0);
-  const peekTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const peekingRef = useRef(false); // true when mouse is over peek panel
 
   const isMobile = window.innerWidth < 768;
 
@@ -33,38 +28,8 @@ export default function Sidebar() {
 
   const handleRoomSelect = (roomId: string) => {
     setActiveRoom(roomId);
-    setPeekRoomId(null);
     if (isMobile) toggleSidebar();
   };
-
-  // Peek hover handlers (desktop only)
-  const handleRoomHoverEnter = useCallback((roomId: string, e: React.MouseEvent) => {
-    if (isMobile || roomId === activeRoomId) return;
-    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-    if (peekTimerRef.current) clearTimeout(peekTimerRef.current);
-    peekTimerRef.current = setTimeout(() => {
-      setPeekRoomId(roomId);
-      setPeekTop(rect.top);
-    }, 300);
-  }, [isMobile, activeRoomId]);
-
-  const handleRoomHoverLeave = useCallback(() => {
-    if (peekTimerRef.current) clearTimeout(peekTimerRef.current);
-    // Delay close to allow mouse to enter peek panel
-    peekTimerRef.current = setTimeout(() => {
-      if (!peekingRef.current) setPeekRoomId(null);
-    }, 150);
-  }, []);
-
-  const handlePeekEnter = useCallback(() => {
-    peekingRef.current = true;
-    if (peekTimerRef.current) clearTimeout(peekTimerRef.current);
-  }, []);
-
-  const handlePeekLeave = useCallback(() => {
-    peekingRef.current = false;
-    setPeekRoomId(null);
-  }, []);
 
   // Filter rooms by active folder
   const activeFolder = folders.find((f) => f.id === activeFolderId) || folders[0];
@@ -131,8 +96,6 @@ export default function Sidebar() {
             <button
               key={room.id}
               onClick={() => handleRoomSelect(room.id)}
-              onMouseEnter={(e) => handleRoomHoverEnter(room.id, e)}
-              onMouseLeave={handleRoomHoverLeave}
               className={clsx(
                 'w-full text-left px-3 py-2.5 mx-1 rounded-lg flex items-center gap-2.5 transition',
                 activeRoomId === room.id
@@ -189,8 +152,6 @@ export default function Sidebar() {
     </div>
   );
 
-  const peekRoom = peekRoomId ? rooms.find((r) => r.id === peekRoomId) : null;
-
   // On mobile, wrap with backdrop
   if (isMobile) {
     return (
@@ -210,16 +171,6 @@ export default function Sidebar() {
   return (
     <>
       {sidebar}
-      {peekRoom && peekRoomId && (
-        <PeekPanel
-          roomId={peekRoomId}
-          roomName={peekRoom.name}
-          anchorTop={peekTop}
-          onEnter={handlePeekEnter}
-          onLeave={handlePeekLeave}
-          onGoToRoom={() => { handleRoomSelect(peekRoomId); setPeekRoomId(null); }}
-        />
-      )}
       {(showFolderModal || editingFolder) && (
         <FolderEditModal
           folder={editingFolder}
