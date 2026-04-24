@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useCallback } from 'react';
+import { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import clsx from 'clsx';
 import { useAppStore } from '../../stores/appStore';
 import { socketService } from '../../services/socket';
@@ -73,9 +73,9 @@ export default function ChatView() {
   const onlineCount = members.filter((m) => onlineUsers.has(m.id) || m.isOnline).length;
 
   // Get streaming messages for this room (not in threads)
-  const roomStreamingMsgs = Object.values(streamingMessages).filter(
+  const roomStreamingMsgs = useMemo(() => Object.values(streamingMessages).filter(
     (s) => s.roomId === activeRoomId && !s.threadId
-  );
+  ), [streamingMessages, activeRoomId]);
 
   // Load older messages on scroll
   const loadMoreMessages = useCallback(async () => {

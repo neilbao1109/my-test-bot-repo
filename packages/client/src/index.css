@@ -67,13 +67,10 @@
 #app-shell {
   overscroll-behavior: none;
   -webkit-overflow-scrolling: touch;
-  overflow: hidden;
-  touch-action: none;
 }
 
-/* Allow touch scrolling only inside message lists */
+/* Contain overscroll inside message lists */
 #app-shell .overflow-y-auto {
-  touch-action: pan-y;
   overscroll-behavior: contain;
 }
 
