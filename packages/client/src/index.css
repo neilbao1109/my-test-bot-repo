@@ -53,7 +53,6 @@
   height: var(--vh, 100vh);
   height: 100dvh;
   padding-top: env(safe-area-inset-top, 0px);
-  padding-bottom: env(safe-area-inset-bottom, 0px);
   padding-left: env(safe-area-inset-left, 0px);
   padding-right: env(safe-area-inset-right, 0px);
   box-sizing: border-box;
@@ -68,6 +67,14 @@
 #app-shell {
   overscroll-behavior: none;
   -webkit-overflow-scrolling: touch;
+  overflow: hidden;
+  touch-action: none;
+}
+
+/* Allow touch scrolling only inside message lists */
+#app-shell .overflow-y-auto {
+  touch-action: pan-y;
+  overscroll-behavior: contain;
 }
 
 /* Base styles */
