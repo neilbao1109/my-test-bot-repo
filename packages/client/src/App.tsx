@@ -57,7 +57,9 @@ export default function App() {
       setUser(result.user);
       setRooms(result.rooms);
       if (result.rooms.length > 0) {
-        setActiveRoom(result.rooms[0].id);
+        const lastRoomId = localStorage.getItem('clawchat-active-room');
+        const validRoom = lastRoomId && result.rooms.find((r: any) => r.id === lastRoomId);
+        setActiveRoom(validRoom ? lastRoomId : result.rooms[0].id);
       }
     } catch (err) {
       console.error('Auth failed:', err);

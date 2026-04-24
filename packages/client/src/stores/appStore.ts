@@ -154,7 +154,10 @@ export const useAppStore = create<AppState>((set, get) => ({
     newState.roomMembers = restMembers;
     return newState;
   }),
-  setActiveRoom: (roomId) => set({ activeRoomId: roomId }),
+  setActiveRoom: (roomId) => {
+    localStorage.setItem('clawchat-active-room', roomId);
+    set({ activeRoomId: roomId });
+  },
 
   // Messages
   messages: {},
