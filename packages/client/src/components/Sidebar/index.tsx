@@ -41,8 +41,8 @@ export default function Sidebar() {
 
   const isMobile = window.innerWidth < 768;
 
-  // On mobile, hide completely when collapsed (overlay mode)
-  if (isMobile && !showSidebar) return null;
+  // On mobile, hide via CSS instead of unmounting to avoid re-mount re-render storms
+  const hiddenOnMobile = isMobile && !showSidebar;
 
   const getRoomOnlineCount = (roomId: string): number => {
     const members = roomMembers[roomId] || [];
@@ -206,6 +206,7 @@ export default function Sidebar() {
 
   // On mobile, wrap with backdrop
   if (isMobile) {
+    if (hiddenOnMobile) return <div style={{ display: 'none' }}>{sidebar}</div>;
     return (
       <>
         <div className="fixed inset-0 z-30 bg-black/50" onClick={toggleSidebar} />
