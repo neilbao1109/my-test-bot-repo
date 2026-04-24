@@ -326,7 +326,7 @@ export default function CommandBar({ roomId, threadId, onExport }: CommandBarPro
       )}
 
       {/* Input area */}
-      <div className="flex items-end gap-2 p-4 pb-[calc(1rem+env(safe-area-inset-bottom,0px))] border-t border-dark-border bg-dark-surface">
+      <div className="flex items-end gap-2 p-4 pb-[max(0.75rem,env(safe-area-inset-bottom,0px))] border-t border-dark-border bg-dark-surface">
         {/* Hidden file input */}
         <input
           ref={fileInputRef}
