@@ -1,5 +1,5 @@
 import { Server, Socket } from 'socket.io';
-import { createMessage, getMessages, editMessage, deleteMessage, addReaction, searchMessages, getReplyChain } from '../services/message.js';
+import { createMessage, getMessages, getLastMessage, editMessage, deleteMessage, addReaction, searchMessages, getReplyChain } from '../services/message.js';
 import { createRoom, getRooms, getRoomMembers, addMemberToRoom, removeMemberFromRoom, renameRoom, deleteRoom, searchUsers, getRoom } from '../services/room.js';
 import { createThread, getThread, getThreadByMessage } from '../services/thread.js';
 import { parseCommand, executeCommand } from '../services/command.js';
@@ -120,7 +120,19 @@ export function setupSocketHandlers(io: Server) {
         socket.join(room.id);
       }
 
-      callback({ user, rooms });
+      callback({ user, rooms: rooms.map(r => {
+        const lastMsg = getLastMessage(r.id);
+        const sender = lastMsg ? getRoomMembers(r.id).find(m => m.id === lastMsg.userId) : null;
+        return {
+          ...r,
+          lastMessage: lastMsg ? {
+            content: lastMsg.content,
+            type: lastMsg.type,
+            senderName: sender?.username || 'Unknown',
+            createdAt: lastMsg.createdAt,
+          } : null,
+        };
+      }) });
     });
 
     // --- Rooms ---

@@ -14,6 +14,12 @@ export interface Room {
   type: 'dm' | 'group';
   createdBy?: string;
   createdAt: string;
+  lastMessage?: {
+    content: string;
+    type: string;
+    senderName: string;
+    createdAt: string;
+  } | null;
 }
 
 export interface Message {

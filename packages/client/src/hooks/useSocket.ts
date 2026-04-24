@@ -44,6 +44,21 @@ export function useSocket() {
         }
       } else {
         store.addMessage(message);
+        // Update room's lastMessage for sidebar preview
+        const room = useAppStore.getState().rooms.find(r => r.id === message.roomId);
+        if (room) {
+          const members = useAppStore.getState().roomMembers[message.roomId] || [];
+          const sender = members.find(m => m.id === message.userId);
+          store.updateRoom({
+            ...room,
+            lastMessage: {
+              content: message.content,
+              type: message.type,
+              senderName: sender?.username || 'Unknown',
+              createdAt: message.createdAt,
+            },
+          });
+        }
       }
     });
 

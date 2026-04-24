@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import clsx from 'clsx';
 import { useAppStore } from '../../stores/appStore';
 import UserAvatar from '../UserAvatar';
@@ -6,6 +6,33 @@ import SettingsPanel from './SettingsPanel';
 import FolderTabs from './FolderTabs';
 import FolderEditModal from './FolderEditModal';
 import type { ChatFolder } from '../../types';
+
+function formatTime(dateStr: string): string {
+  const date = new Date(dateStr);
+  const now = new Date();
+  const diffMs = now.getTime() - date.getTime();
+  const diffDays = Math.floor(diffMs / 86400000);
+  const isToday = date.toDateString() === now.toDateString();
+  const yesterday = new Date(now);
+  yesterday.setDate(yesterday.getDate() - 1);
+  const isYesterday = date.toDateString() === yesterday.toDateString();
+
+  if (isToday) {
+    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
+  }
+  if (isYesterday) return '昨天';
+  if (diffDays < 7) {
+    return ['周日','周一','周二','周三','周四','周五','周六'][date.getDay()];
+  }
+  return `${date.getMonth()+1}/${date.getDate()}`;
+}
+
+function previewText(content: string, type: string): string {
+  if (type === 'file') return '📎 文件';
+  if (type === 'system') return '⚙️ 系统消息';
+  // Strip markdown
+  return content.replace(/[*_~`#>\[\]]/g, '').replace(/\n/g, ' ').slice(0, 60);
+}
 
 export default function Sidebar() {
   const { rooms, activeRoomId, setActiveRoom, user, showSidebar, toggleSidebar, roomMembers, onlineUsers, setShowCreateRoom, logout, theme, setTheme, showSettings, setShowSettings, folders, activeFolderId } = useAppStore();
@@ -41,6 +68,15 @@ export default function Sidebar() {
     if (activeFolder.filter === 'custom') return activeFolder.roomIds?.includes(room.id) ?? false;
     return true;
   });
+
+  // Sort rooms by last message time (most recent first)
+  const sortedRooms = useMemo(() => {
+    return [...filteredRooms].sort((a, b) => {
+      const timeA = a.lastMessage?.createdAt || a.createdAt;
+      const timeB = b.lastMessage?.createdAt || b.createdAt;
+      return new Date(timeB).getTime() - new Date(timeA).getTime();
+    });
+  }, [filteredRooms]);
 
   const sidebar = (
     <div className={clsx(
@@ -89,33 +125,49 @@ export default function Sidebar() {
 
       {/* Room list */}
       <div className="flex-1 overflow-y-auto py-2">
-        {filteredRooms.map((room) => {
+        {sortedRooms.map((room) => {
           const memberCount = (roomMembers[room.id] || []).length;
           const online = isRoomOnline(room.id);
+          const lm = room.lastMessage;
           return (
             <button
               key={room.id}
               onClick={() => handleRoomSelect(room.id)}
               className={clsx(
-                'w-full text-left px-3 py-2.5 mx-1 rounded-lg flex items-center gap-2.5 transition',
+                'w-full text-left px-3 py-2.5 mx-1 rounded-lg flex items-start gap-2.5 transition',
                 activeRoomId === room.id
                   ? 'bg-primary-600/20 text-primary-400'
                   : 'text-dark-text hover:bg-dark-hover'
               )}
               style={{ width: 'calc(100% - 8px)' }}
             >
-              <div className="relative">
+              <div className="relative mt-0.5 flex-shrink-0">
                 <span className="text-lg">{room.type === 'dm' ? '💬' : '👥'}</span>
                 {online && (
                   <span className="absolute -bottom-0.5 -right-0.5 w-2 h-2 bg-green-500 rounded-full border border-dark-surface" />
                 )}
               </div>
-              <span className="text-sm truncate flex-1">{room.name}</span>
-              {room.type === 'group' && memberCount > 0 && (
-                <span className="text-[10px] text-dark-muted bg-dark-hover px-1.5 py-0.5 rounded-full">
-                  {memberCount}
-                </span>
-              )}
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-sm truncate font-medium">{room.name}</span>
+                  <div className="flex items-center gap-1.5 flex-shrink-0">
+                    {room.type === 'group' && memberCount > 0 && (
+                      <span className="text-[10px] text-dark-muted bg-dark-hover px-1.5 py-0.5 rounded-full">
+                        {memberCount}
+                      </span>
+                    )}
+                    {lm && (
+                      <span className="text-[10px] text-dark-muted">{formatTime(lm.createdAt)}</span>
+                    )}
+                  </div>
+                </div>
+                {lm && (
+                  <p className="text-xs text-dark-muted truncate mt-0.5">
+                    <span className="font-medium">{lm.senderName}:</span>{' '}
+                    {previewText(lm.content, lm.type)}
+                  </p>
+                )}
+              </div>
             </button>
           );
         })}

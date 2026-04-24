@@ -166,6 +166,14 @@ export function getMessageById(messageId: string): Message | null {
   return row ? rowToMessage(row) : null;
 }
 
+export function getLastMessage(roomId: string): Message | null {
+  const db = getDb();
+  const row = db.prepare(
+    'SELECT * FROM messages WHERE room_id = ? AND is_deleted = 0 AND thread_id IS NULL ORDER BY created_at DESC LIMIT 1'
+  ).get(roomId) as any;
+  return row ? rowToMessage(row) : null;
+}
+
 /**
  * Walk the reply chain upward from a messageId, returning messages in chronological order.
  * Max depth prevents infinite loops.
