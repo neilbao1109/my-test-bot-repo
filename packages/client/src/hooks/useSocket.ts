@@ -5,7 +5,6 @@ import { getToken } from '../services/auth';
 import type { Message, Room, User, Thread, PinnedMessage } from '../types';
 
 export function useSocket() {
-  const store = useAppStore();
   const user = useAppStore((s) => s.user);
 
   useEffect(() => {
@@ -13,6 +12,9 @@ export function useSocket() {
 
     const socket = socketService.getSocket();
     if (!socket) return;
+
+    // Use getState() for actions to avoid subscribing to entire store
+    const store = useAppStore.getState();
 
     socket.on('room:history', (data: { roomId: string; messages: Message[]; members: User[]; hasMore?: boolean }) => {
       // Skip update if we already have messages cached and the latest message matches
@@ -45,18 +47,21 @@ export function useSocket() {
       } else {
         store.addMessage(message);
         // Update room's lastMessage for sidebar preview
-        const room = useAppStore.getState().rooms.find(r => r.id === message.roomId);
+        const state = useAppStore.getState();
+        const room = state.rooms.find(r => r.id === message.roomId);
         if (room) {
-          const members = useAppStore.getState().roomMembers[message.roomId] || [];
+          const members = state.roomMembers[message.roomId] || [];
           const sender = members.find(m => m.id === message.userId);
-          store.updateRoom({
-            ...room,
-            lastMessage: {
-              content: message.content,
-              type: message.type,
-              senderName: sender?.username || 'Unknown',
-              createdAt: message.createdAt,
-            },
+          useAppStore.setState({
+            rooms: state.rooms.map(r => r.id === message.roomId ? {
+              ...r,
+              lastMessage: {
+                content: message.content,
+                type: message.type,
+                senderName: sender?.username || 'Unknown',
+                createdAt: message.createdAt,
+              },
+            } : r),
           });
         }
       }
