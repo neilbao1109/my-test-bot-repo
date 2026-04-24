@@ -112,16 +112,21 @@ export default function ChatView() {
     }
   }, [activeRoomId, loadMoreMessages]);
 
+  // Track room switches for instant vs smooth scroll
+  const prevRoomRef = useRef<string | null>(null);
+  const isRoomSwitch = prevRoomRef.current !== activeRoomId;
+
   // Join room on selection
   useEffect(() => {
     if (activeRoomId) {
       socketService.joinRoom(activeRoomId);
     }
+    prevRoomRef.current = activeRoomId;
   }, [activeRoomId]);
 
-  // Auto-scroll
+  // Auto-scroll: instant on room switch, smooth on new messages
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+    bottomRef.current?.scrollIntoView({ behavior: isRoomSwitch ? 'instant' : 'smooth' });
   }, [roomMessages, roomStreamingMsgs]);
 
   // Mobile keyboard: scroll to bottom when viewport resizes
