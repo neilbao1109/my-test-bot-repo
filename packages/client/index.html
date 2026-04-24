@@ -10,6 +10,14 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="ClawChat" />
     <meta name="theme-color" content="#0c8cff" />
+    <script>
+      // Fix iOS 100vh: set --vh to actual viewport height (without keyboard adjustment)
+      function setVh(){
+        document.documentElement.style.setProperty('--vh', window.innerHeight + 'px');
+      }
+      setVh();
+      window.addEventListener('resize', setVh);
+    </script>
   </head>
   <body class="bg-dark-bg text-dark-text">
     <div id="root"></div>
