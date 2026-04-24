@@ -318,7 +318,7 @@ export default function CommandBar({ roomId, threadId, onExport }: CommandBarPro
           </div>
           <button
             onClick={() => setReplyTo(null)}
-            className="text-dark-muted hover:text-white p-1 flex-shrink-0"
+            className="text-dark-muted hover:text-dark-text p-1 flex-shrink-0"
           >
             ✕
           </button>
@@ -345,7 +345,7 @@ export default function CommandBar({ roomId, threadId, onExport }: CommandBarPro
           <button
             onClick={() => setShowPlusMenu(!showPlusMenu)}
             disabled={uploading}
-            className="p-2.5 text-dark-muted hover:text-white hover:bg-dark-hover disabled:opacity-30 rounded-xl transition"
+            className="p-2.5 text-dark-muted hover:text-dark-text hover:bg-dark-hover disabled:opacity-30 rounded-xl transition"
             title="Actions"
           >
             <svg
@@ -407,7 +407,7 @@ export default function CommandBar({ roomId, threadId, onExport }: CommandBarPro
               className={`absolute right-2 top-1/2 -translate-y-1/2 p-1.5 rounded-lg transition ${
                 isListening
                   ? 'bg-red-500 text-white animate-pulse'
-                  : 'text-dark-muted hover:text-white'
+                  : 'text-dark-muted hover:text-dark-text'
               }`}
               title={isListening ? 'Stop listening' : 'Voice input'}
             >

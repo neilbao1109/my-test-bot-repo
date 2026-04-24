@@ -63,7 +63,7 @@ export default function CreateRoomModal() {
           <h2 className="text-lg font-semibold text-dark-text">Create Room</h2>
           <button
             onClick={() => setShowCreateRoom(false)}
-            className="text-dark-muted hover:text-white p-1 rounded transition"
+            className="text-dark-muted hover:text-dark-text p-1 rounded transition"
           >
             ✕
           </button>
@@ -77,7 +77,7 @@ export default function CreateRoomModal() {
               className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium transition ${
                 type === 'dm'
                   ? 'bg-primary-600 text-white'
-                  : 'bg-dark-hover text-dark-muted hover:text-white'
+                  : 'bg-dark-hover text-dark-muted hover:text-dark-text'
               }`}
             >
               💬 Direct Message
@@ -87,7 +87,7 @@ export default function CreateRoomModal() {
               className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium transition ${
                 type === 'group'
                   ? 'bg-primary-600 text-white'
-                  : 'bg-dark-hover text-dark-muted hover:text-white'
+                  : 'bg-dark-hover text-dark-muted hover:text-dark-text'
               }`}
             >
               👥 Group
@@ -128,7 +128,7 @@ export default function CreateRoomModal() {
                       {u.username}
                       <button
                         onClick={() => toggleUser(u)}
-                        className="hover:text-white"
+                        className="hover:text-dark-text"
                       >
                         ✕
                       </button>
@@ -172,7 +172,7 @@ export default function CreateRoomModal() {
         <div className="flex justify-end gap-2 px-5 py-4 border-t border-dark-border">
           <button
             onClick={() => setShowCreateRoom(false)}
-            className="px-4 py-2 text-sm text-dark-muted hover:text-white rounded-lg hover:bg-dark-hover transition"
+            className="px-4 py-2 text-sm text-dark-muted hover:text-dark-text rounded-lg hover:bg-dark-hover transition"
           >
             Cancel
           </button>

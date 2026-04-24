@@ -109,7 +109,7 @@ export default function FolderEditModal({ folder, onClose }: FolderEditModalProp
           <div className="flex-1" />
           <button
             onClick={onClose}
-            className="px-3 py-1.5 text-xs text-dark-muted hover:text-white rounded-lg hover:bg-dark-hover transition"
+            className="px-3 py-1.5 text-xs text-dark-muted hover:text-dark-text rounded-lg hover:bg-dark-hover transition"
           >
             Cancel
           </button>

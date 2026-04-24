@@ -91,7 +91,7 @@ export default function ThreadPanel() {
         {/* Back button */}
         <button
           onClick={() => setActiveThread(null)}
-          className="text-dark-muted hover:text-white p-1 rounded transition"
+          className="text-dark-muted hover:text-dark-text p-1 rounded transition"
           title="Back to chat"
         >
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

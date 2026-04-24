@@ -104,7 +104,7 @@ export default function Sidebar() {
         </div>
         <button
           onClick={toggleSidebar}
-          className="text-dark-muted hover:text-white p-1 rounded md:hidden"
+          className="text-dark-muted hover:text-dark-text p-1 rounded md:hidden"
         >
           ✕
         </button>
@@ -163,14 +163,14 @@ export default function Sidebar() {
            style={{ paddingBottom: `max(0.75rem, var(--safe-area-bottom))` }}>
         <button
           onClick={() => setShowSettings(true)}
-          className="py-2 px-3 text-sm text-dark-muted hover:text-white hover:bg-dark-hover rounded-lg transition"
+          className="py-2 px-3 text-sm text-dark-muted hover:text-dark-text hover:bg-dark-hover rounded-lg transition"
           title="Settings"
         >
           ⚙️
         </button>
         <button
           onClick={() => setShowCreateRoom(true)}
-          className="flex-1 py-2 px-3 text-sm text-dark-muted hover:text-white hover:bg-dark-hover rounded-lg transition flex items-center gap-2"
+          className="flex-1 py-2 px-3 text-sm text-dark-muted hover:text-dark-text hover:bg-dark-hover rounded-lg transition flex items-center gap-2"
         >
           <span>＋</span>
           <span>New Room</span>

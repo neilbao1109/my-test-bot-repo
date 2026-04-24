@@ -89,14 +89,14 @@ export default function SearchBar() {
           className={`text-xs px-2 py-1 rounded transition flex-shrink-0 ${
             searchGlobal
               ? 'bg-primary-600/30 text-primary-400'
-              : 'bg-dark-hover text-dark-muted hover:text-white'
+              : 'bg-dark-hover text-dark-muted hover:text-dark-text'
           }`}
         >
           {searchGlobal ? 'All Rooms' : 'This Room'}
         </button>
         <button
           onClick={toggleSearch}
-          className="text-dark-muted hover:text-white p-1 flex-shrink-0"
+          className="text-dark-muted hover:text-dark-text p-1 flex-shrink-0"
         >
           ✕
         </button>
@@ -112,8 +112,8 @@ export default function SearchBar() {
                 </span>
               )}
               <span>{searchActiveIdx + 1} / {searchTotal}</span>
-              <button onClick={handlePrev} className="hover:text-white px-1">▲</button>
-              <button onClick={handleNext} className="hover:text-white px-1">▼</button>
+              <button onClick={handlePrev} className="hover:text-dark-text px-1">▲</button>
+              <button onClick={handleNext} className="hover:text-dark-text px-1">▼</button>
             </>
           ) : (
             <span>No results</span>

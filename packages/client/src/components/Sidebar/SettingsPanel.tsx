@@ -24,7 +24,7 @@ export default function SettingsPanel({ onBack }: SettingsPanelProps) {
       >
         <button
           onClick={onBack}
-          className="p-1 text-dark-muted hover:text-white rounded transition"
+          className="p-1 text-dark-muted hover:text-dark-text rounded transition"
         >
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
@@ -120,7 +120,7 @@ function ThemeButton({ active, onClick, icon, label }: {
       className={`flex-1 py-3 rounded-lg text-center transition ${
         active
           ? 'bg-primary-600/20 text-primary-400 ring-1 ring-primary-500/30'
-          : 'bg-dark-hover text-dark-muted hover:text-white'
+          : 'bg-dark-hover text-dark-muted hover:text-dark-text'
       }`}
     >
       <span className="text-lg block">{icon}</span>

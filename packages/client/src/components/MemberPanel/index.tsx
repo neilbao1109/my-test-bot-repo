@@ -27,7 +27,7 @@ export default function MemberPanel() {
         </div>
         <button
           onClick={toggleMembers}
-          className="text-dark-muted hover:text-white p-1 rounded transition"
+          className="text-dark-muted hover:text-dark-text p-1 rounded transition"
         >
           ✕
         </button>

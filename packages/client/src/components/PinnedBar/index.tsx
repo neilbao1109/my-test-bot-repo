@@ -55,7 +55,7 @@ export default function PinnedBar() {
         {pins.length > 1 && (
           <button
             onClick={() => setExpanded(!expanded)}
-            className="text-xs text-dark-muted hover:text-white px-1.5 py-0.5 rounded hover:bg-dark-hover transition flex-shrink-0"
+            className="text-xs text-dark-muted hover:text-dark-text px-1.5 py-0.5 rounded hover:bg-dark-hover transition flex-shrink-0"
           >
             {expanded ? '▴' : `▾ ${pins.length - 1} more`}
           </button>
@@ -63,7 +63,7 @@ export default function PinnedBar() {
 
         <button
           onClick={() => setDismissed(true)}
-          className="text-dark-muted hover:text-white p-0.5 rounded hover:bg-dark-hover transition flex-shrink-0 text-xs"
+          className="text-dark-muted hover:text-dark-text p-0.5 rounded hover:bg-dark-hover transition flex-shrink-0 text-xs"
           title="Hide"
         >
           ✕

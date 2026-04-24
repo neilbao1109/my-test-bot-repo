@@ -22,7 +22,7 @@ export default function FolderTabs({ onCreateFolder }: { onCreateFolder: () => v
       ))}
       <button
         onClick={onCreateFolder}
-        className="px-1.5 py-1 text-xs text-dark-muted hover:text-white hover:bg-dark-hover rounded-md transition flex-shrink-0"
+        className="px-1.5 py-1 text-xs text-dark-muted hover:text-dark-text hover:bg-dark-hover rounded-md transition flex-shrink-0"
         title="New folder"
       >
         ＋

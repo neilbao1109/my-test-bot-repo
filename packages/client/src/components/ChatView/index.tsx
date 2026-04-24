@@ -188,7 +188,7 @@ export default function ChatView() {
         {/* Hamburger: toggle sidebar on all screen sizes */}
         <button
           onClick={toggleSidebar}
-          className="text-dark-muted hover:text-white p-1"
+          className="text-dark-muted hover:text-dark-text p-1"
         >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
@@ -207,7 +207,7 @@ export default function ChatView() {
         {/* Search button */}
         <button
           onClick={toggleSearch}
-          className="text-dark-muted hover:text-white px-2 py-1 rounded-lg hover:bg-dark-hover transition"
+          className="text-dark-muted hover:text-dark-text px-2 py-1 rounded-lg hover:bg-dark-hover transition"
           title="Search"
         >
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -218,7 +218,7 @@ export default function ChatView() {
         {/* Members button */}
         <button
           onClick={toggleMembers}
-          className="flex items-center gap-1.5 text-dark-muted hover:text-white px-2 py-1 rounded-lg hover:bg-dark-hover transition"
+          className="flex items-center gap-1.5 text-dark-muted hover:text-dark-text px-2 py-1 rounded-lg hover:bg-dark-hover transition"
           title="Members"
         >
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -429,7 +429,7 @@ function RoomMenu({ room, userId }: { room: Room; userId?: string }) {
       <div className="relative" ref={menuRef}>
         <button
           onClick={() => setOpen(!open)}
-          className="text-dark-muted hover:text-white px-2 py-1 rounded-lg hover:bg-dark-hover transition"
+          className="text-dark-muted hover:text-dark-text px-2 py-1 rounded-lg hover:bg-dark-hover transition"
           title="Room options"
         >
           <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
@@ -464,7 +464,7 @@ function RoomMenu({ room, userId }: { room: Room; userId?: string }) {
             <div className="flex justify-end gap-3">
               <button
                 onClick={() => setConfirmDelete(false)}
-                className="px-4 py-2 text-sm text-dark-muted hover:text-white rounded-lg hover:bg-dark-hover transition"
+                className="px-4 py-2 text-sm text-dark-muted hover:text-dark-text rounded-lg hover:bg-dark-hover transition"
               >
                 Cancel
               </button>

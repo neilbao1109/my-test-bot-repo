@@ -33,7 +33,7 @@ function CodeBlockPre({ text, children }: { text: string; children: React.ReactN
     <div className="relative group/code my-2">
       <button
         onClick={handleCopy}
-        className="absolute right-2 top-2 px-1.5 py-0.5 rounded text-xs bg-dark-surface border border-dark-border text-dark-muted hover:text-white opacity-0 group-hover/code:opacity-100 md:opacity-0 max-md:opacity-60 transition z-10"
+        className="absolute right-2 top-2 px-1.5 py-0.5 rounded text-xs bg-dark-surface border border-dark-border text-dark-muted hover:text-dark-text opacity-0 group-hover/code:opacity-100 md:opacity-0 max-md:opacity-60 transition z-10"
         title="Copy code"
       >
         {copied ? '✅' : '📋'}
@@ -355,7 +355,7 @@ export default function MessageBubble({ message, isStreaming, streamContent, hig
             {/* Add reaction button */}
             <button
               onClick={() => setShowReactions(!showReactions)}
-              className="inline-flex items-center justify-center w-6 h-6 rounded-full border border-dark-border bg-dark-bg text-dark-muted hover:border-dark-muted hover:text-white transition text-xs"
+              className="inline-flex items-center justify-center w-6 h-6 rounded-full border border-dark-border bg-dark-bg text-dark-muted hover:border-dark-muted hover:text-dark-text transition text-xs"
               title="Add reaction"
             >
               +
@@ -395,7 +395,7 @@ export default function MessageBubble({ message, isStreaming, streamContent, hig
         <div ref={actionsRef} className="absolute right-4 -top-3 flex items-center gap-0.5 bg-dark-surface border border-dark-border rounded-lg shadow-lg p-0.5 z-40">
           <button
             onClick={() => setShowReactions(!showReactions)}
-            className="p-1.5 text-dark-muted hover:text-white hover:bg-dark-hover rounded transition text-xs"
+            className="p-1.5 text-dark-muted hover:text-dark-text hover:bg-dark-hover rounded transition text-xs"
             title="React"
           >
             😀
@@ -420,7 +420,7 @@ export default function MessageBubble({ message, isStreaming, streamContent, hig
               setCopied(true);
               setTimeout(() => setCopied(false), 1500);
             }}
-            className="p-1.5 text-dark-muted hover:text-white hover:bg-dark-hover rounded transition text-xs"
+            className="p-1.5 text-dark-muted hover:text-dark-text hover:bg-dark-hover rounded transition text-xs"
             title="Copy"
           >
             {copied ? '✅' : '📋'}
@@ -449,7 +449,7 @@ export default function MessageBubble({ message, isStreaming, streamContent, hig
                 setSpeaking(true);
                 speechSynthesis.speak(utterance);
               }}
-              className="p-1.5 text-dark-muted hover:text-white hover:bg-dark-hover rounded transition text-xs"
+              className="p-1.5 text-dark-muted hover:text-dark-text hover:bg-dark-hover rounded transition text-xs"
               title={speaking ? 'Stop' : 'Read aloud'}
             >
               {speaking ? '⏹️' : '🔊'}
@@ -457,21 +457,21 @@ export default function MessageBubble({ message, isStreaming, streamContent, hig
           )}
           <button
             onClick={() => { setReplyTo(message); setShowActions(false); setTimeout(() => document.querySelector<HTMLTextAreaElement>('.command-bar-input')?.focus(), 50); }}
-            className="p-1.5 text-dark-muted hover:text-white hover:bg-dark-hover rounded transition text-xs"
+            className="p-1.5 text-dark-muted hover:text-dark-text hover:bg-dark-hover rounded transition text-xs"
             title="Reply"
           >
             ↩️
           </button>
           <button
             onClick={handleStartThread}
-            className="p-1.5 text-dark-muted hover:text-white hover:bg-dark-hover rounded transition text-xs"
+            className="p-1.5 text-dark-muted hover:text-dark-text hover:bg-dark-hover rounded transition text-xs"
             title="Thread"
           >
             🧵
           </button>
           <button
             onClick={handlePin}
-            className={clsx('p-1.5 hover:bg-dark-hover rounded transition text-xs', isPinned ? 'text-primary-400' : 'text-dark-muted hover:text-white')}
+            className={clsx('p-1.5 hover:bg-dark-hover rounded transition text-xs', isPinned ? 'text-primary-400' : 'text-dark-muted hover:text-dark-text')}
             title={isPinned ? 'Unpin' : 'Pin'}
           >
             {isPinned ? '📍' : '📌'}
@@ -480,7 +480,7 @@ export default function MessageBubble({ message, isStreaming, streamContent, hig
             <>
               <button
                 onClick={() => { setIsEditing(true); setEditContent(message.content); }}
-                className="p-1.5 text-dark-muted hover:text-white hover:bg-dark-hover rounded transition text-xs"
+                className="p-1.5 text-dark-muted hover:text-dark-text hover:bg-dark-hover rounded transition text-xs"
                 title="Edit"
               >
                 ✏️

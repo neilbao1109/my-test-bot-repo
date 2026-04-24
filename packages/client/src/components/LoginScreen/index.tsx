@@ -67,13 +67,13 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
         <div className="flex mb-6 bg-dark-bg rounded-xl p-1">
           <button
             onClick={() => { setTab('login'); setError(''); }}
-            className={`flex-1 py-2 text-sm font-medium rounded-lg transition ${tab === 'login' ? 'bg-primary-600 text-white' : 'text-dark-muted hover:text-white'}`}
+            className={`flex-1 py-2 text-sm font-medium rounded-lg transition ${tab === 'login' ? 'bg-primary-600 text-white' : 'text-dark-muted hover:text-dark-text'}`}
           >
             Login
           </button>
           <button
             onClick={() => { setTab('register'); setError(''); }}
-            className={`flex-1 py-2 text-sm font-medium rounded-lg transition ${tab === 'register' ? 'bg-primary-600 text-white' : 'text-dark-muted hover:text-white'}`}
+            className={`flex-1 py-2 text-sm font-medium rounded-lg transition ${tab === 'register' ? 'bg-primary-600 text-white' : 'text-dark-muted hover:text-dark-text'}`}
           >
             Register
           </button>
