@@ -3,7 +3,6 @@ import clsx from 'clsx';
 import ReactMarkdown from 'react-markdown';
 import remarkGfmSafe from '../../utils/remarkGfmSafe';
 import rehypeHighlight from 'rehype-highlight';
-import rehypeAutolink from '../../utils/rehypeAutolink';
 import { formatDistanceToNow } from 'date-fns';
 import type { Message, FileAttachment } from '../../types';
 import { useAppStore } from '../../stores/appStore';
@@ -293,7 +292,7 @@ export default function MessageBubble({ message, isStreaming, streamContent, hig
           <div className="prose prose-invert prose-sm max-w-none break-words overflow-hidden">
             <ReactMarkdown
               remarkPlugins={[remarkGfmSafe]}
-              rehypePlugins={[rehypeHighlight, rehypeAutolink]}
+              rehypePlugins={[rehypeHighlight]}
               components={{
                 pre: ({ children }) => {
                   const textContent = (() => {
