@@ -126,7 +126,9 @@ export default function ChatView() {
 
   // Auto-scroll: instant on room switch, smooth on new messages
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: isRoomSwitch ? 'instant' : 'smooth' });
+    requestAnimationFrame(() => {
+      bottomRef.current?.scrollIntoView({ behavior: isRoomSwitch ? 'instant' : 'smooth' });
+    });
   }, [roomMessages, roomStreamingMsgs]);
 
   // Mobile keyboard: scroll to bottom when viewport resizes
