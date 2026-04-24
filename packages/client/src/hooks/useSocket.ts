@@ -15,6 +15,18 @@ export function useSocket() {
     if (!socket) return;
 
     socket.on('room:history', (data: { roomId: string; messages: Message[]; members: User[]; hasMore?: boolean }) => {
+      // Skip update if we already have messages cached and the latest message matches
+      const existing = useAppStore.getState().messages[data.roomId];
+      if (existing && existing.length > 0 && data.messages.length > 0) {
+        const existingLatest = existing[existing.length - 1].id;
+        const newLatest = data.messages[data.messages.length - 1].id;
+        if (existingLatest === newLatest) {
+          // Same data, just update members
+          store.setRoomMembers(data.roomId, data.members);
+          store.setHasMore(data.roomId, data.hasMore ?? false);
+          return;
+        }
+      }
       store.setMessages(data.roomId, data.messages);
       store.setRoomMembers(data.roomId, data.members);
       store.setHasMore(data.roomId, data.hasMore ?? false);
