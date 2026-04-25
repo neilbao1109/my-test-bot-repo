@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import ReactMarkdown from 'react-markdown';
 import remarkGfmSafe from '../../utils/remarkGfmSafe';
 import rehypeHighlight from 'rehype-highlight';
@@ -11,21 +12,10 @@ interface FilePreviewModalProps {
   onClose: () => void;
 }
 
-function useIsMobile() {
-  const [mobile, setMobile] = useState(() => typeof window !== 'undefined' && window.innerWidth < 768);
-  useEffect(() => {
-    const handler = () => setMobile(window.innerWidth < 768);
-    window.addEventListener('resize', handler);
-    return () => window.removeEventListener('resize', handler);
-  }, []);
-  return mobile;
-}
-
 export default function FilePreviewModal({ attachment, onClose }: FilePreviewModalProps) {
   const [content, setContent] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
-  const isMobile = useIsMobile();
 
   const isImage = attachment.mimeType.startsWith('image/');
   const isPdf = attachment.mimeType === 'application/pdf';
@@ -34,7 +24,7 @@ export default function FilePreviewModal({ attachment, onClose }: FilePreviewMod
   const isHtml = attachment.mimeType === 'text/html'
     || /\.html?$/i.test(attachment.originalName);
   const isText = !isHtml && (/^(text\/|application\/json|application\/javascript)/.test(attachment.mimeType)
-    || /\.(md|txt|json|js|ts|tsx|jsx|py|sh|css|html|yml|yaml|toml|csv|xml|sql|log|env|cfg|ini|conf)$/i.test(attachment.originalName));
+    || /\.(md|txt|json|js|ts|tsx|jsx|py|sh|css|yml|yaml|toml|csv|xml|sql|log|env|cfg|ini|conf)$/i.test(attachment.originalName));
   const isMd = /\.md$/i.test(attachment.originalName);
 
   useEffect(() => {
@@ -62,56 +52,9 @@ export default function FilePreviewModal({ attachment, onClose }: FilePreviewMod
     if (e.target === e.currentTarget) onClose();
   }, [onClose]);
 
-  // Mobile + HTML: fullscreen preview
-  if (isMobile && isHtml) {
-    return (
-      <div className="fixed inset-0 z-50 flex flex-col bg-dark-bg">
-        {/* Toolbar */}
-        <div
-          className="flex items-center justify-between px-3 py-2 bg-dark-surface border-b border-dark-border flex-shrink-0"
-          style={{ paddingTop: 'max(0.5rem, env(safe-area-inset-top))' }}
-        >
-          <button
-            onClick={onClose}
-            className="p-2 text-dark-text hover:text-primary-400 transition text-base"
-          >
-            ← 返回
-          </button>
-          <span className="text-xs text-dark-muted truncate mx-2 flex-1 text-center">
-            {attachment.originalName}
-          </span>
-          <a
-            href={attachment.url}
-            download={attachment.originalName}
-            className="p-2 text-xs text-primary-400 hover:text-primary-300 transition flex-shrink-0"
-          >
-            ⬇
-          </a>
-        </div>
-
-        {/* Full iframe */}
-        <div className="flex-1 min-h-0">
-          {loading ? (
-            <div className="text-sm text-dark-muted animate-pulse py-8 text-center">加载中...</div>
-          ) : error ? (
-            <div className="text-sm text-red-400 py-8 text-center">加载失败</div>
-          ) : (
-            <iframe
-              srcDoc={content || ''}
-              sandbox="allow-scripts"
-              className="w-full h-full border-0 bg-white"
-              title={attachment.originalName}
-            />
-          )}
-        </div>
-      </div>
-    );
-  }
-
-  // Desktop / non-HTML: modal
-  return (
+  const modal = (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-2 md:p-4"
+      className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4"
       onClick={handleBackdropClick}
     >
       <div className="bg-dark-surface border border-dark-border rounded-xl shadow-2xl flex flex-col w-full max-w-2xl max-h-[85vh] overflow-hidden">
@@ -140,7 +83,7 @@ export default function FilePreviewModal({ attachment, onClose }: FilePreviewMod
         </div>
 
         {/* Body */}
-        <div className="flex-1 overflow-auto p-4 min-h-0 flex flex-col">
+        <div className="flex-1 overflow-y-auto p-4">
           {isHtml ? (
             loading ? (
               <div className="text-sm text-dark-muted animate-pulse py-8 text-center">加载中...</div>
@@ -150,8 +93,8 @@ export default function FilePreviewModal({ attachment, onClose }: FilePreviewMod
               <iframe
                 srcDoc={content || ''}
                 sandbox="allow-scripts"
-                className="w-full flex-1 min-h-0 rounded-lg border border-dark-border bg-white"
-                style={{ minHeight: '60vh' }}
+                className="w-full rounded-lg border border-dark-border bg-white"
+                style={{ height: '70vh' }}
                 title={attachment.originalName}
               />
             )
@@ -204,4 +147,7 @@ export default function FilePreviewModal({ attachment, onClose }: FilePreviewMod
       </div>
     </div>
   );
+
+  // Portal to document.body so fixed positioning is always relative to viewport
+  return createPortal(modal, document.body);
 }
