@@ -53,10 +53,10 @@ export default function FilePreviewModal({ attachment, onClose }: FilePreviewMod
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-2 md:p-4"
       onClick={handleBackdropClick}
     >
-      <div className="bg-dark-surface border border-dark-border rounded-xl shadow-2xl flex flex-col w-full max-w-2xl max-h-[85vh] overflow-hidden">
+      <div className="bg-dark-surface border border-dark-border rounded-xl shadow-2xl flex flex-col w-full max-w-2xl h-[95dvh] md:max-h-[85vh] overflow-hidden">
         {/* Header */}
         <div className="flex items-center justify-between px-4 py-3 border-b border-dark-border bg-dark-bg flex-shrink-0">
           <div className="flex items-center gap-2 min-w-0">
@@ -82,7 +82,7 @@ export default function FilePreviewModal({ attachment, onClose }: FilePreviewMod
         </div>
 
         {/* Body */}
-        <div className="flex-1 overflow-y-auto p-4">
+        <div className="flex-1 overflow-auto p-2 md:p-4 min-h-0 flex flex-col">
           {isHtml ? (
             loading ? (
               <div className="text-sm text-dark-muted animate-pulse py-8 text-center">加载中...</div>
@@ -90,9 +90,15 @@ export default function FilePreviewModal({ attachment, onClose }: FilePreviewMod
               <div className="text-sm text-red-400 py-8 text-center">加载失败</div>
             ) : (
               <iframe
-                srcDoc={content || ''}
+                srcDoc={(() => {
+                  const doc = content || '';
+                  const viewport = '<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">';
+                  if (doc.includes('<head>')) return doc.replace('<head>', '<head>' + viewport);
+                  if (doc.includes('<html>')) return doc.replace('<html>', '<html><head>' + viewport + '</head>');
+                  return '<html><head>' + viewport + '</head><body>' + doc + '</body></html>';
+                })()}
                 sandbox="allow-scripts"
-                className="w-full h-[70vh] rounded-lg border border-dark-border bg-white"
+                className="w-full flex-1 min-h-0 rounded-lg border border-dark-border bg-white"
                 title={attachment.originalName}
               />
             )
