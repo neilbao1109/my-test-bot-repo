@@ -27,12 +27,12 @@ export default function FilePreviewModal({ attachment, onClose }: FilePreviewMod
   const isMd = /\.md$/i.test(attachment.originalName);
 
   useEffect(() => {
-    if (!isText) { setLoading(false); return; }
+    if (!isText && !isHtml) { setLoading(false); return; }
     fetch(attachment.url)
       .then(r => r.text())
       .then(text => { setContent(text); setLoading(false); })
       .catch(() => { setError(true); setLoading(false); });
-  }, [attachment.url, isText]);
+  }, [attachment.url, isText, isHtml]);
 
   // Close on Escape
   useEffect(() => {
@@ -84,12 +84,18 @@ export default function FilePreviewModal({ attachment, onClose }: FilePreviewMod
         {/* Body */}
         <div className="flex-1 overflow-y-auto p-4">
           {isHtml ? (
-            <iframe
-              src={attachment.url}
-              sandbox="allow-scripts allow-same-origin"
-              className="w-full h-[70vh] rounded-lg border border-dark-border bg-white"
-              title={attachment.originalName}
-            />
+            loading ? (
+              <div className="text-sm text-dark-muted animate-pulse py-8 text-center">加载中...</div>
+            ) : error ? (
+              <div className="text-sm text-red-400 py-8 text-center">加载失败</div>
+            ) : (
+              <iframe
+                srcDoc={content || ''}
+                sandbox="allow-scripts"
+                className="w-full h-[70vh] rounded-lg border border-dark-border bg-white"
+                title={attachment.originalName}
+              />
+            )
           ) : isImage ? (
             <img
               src={attachment.url}
