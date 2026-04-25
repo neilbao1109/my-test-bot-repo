@@ -321,7 +321,7 @@ export function setupSocketHandlers(io: Server) {
             const body = m.type === 'file' ? '[file]' : m.content.slice(0, 300);
             return `[${name}]: ${body}`;
           });
-          botContent = `--- Reply Context ---\n${contextLines.join('\n')}\n--- End Reply Context ---\n\n${data.content}`;
+          botContent = `--- Reply Context ---\n${contextLines.join('\n')}\n--- End Reply Context ---\n\n[${getUser(socket.userId)?.username || socket.userId}]: ${data.content}`;
         }
       }
 
