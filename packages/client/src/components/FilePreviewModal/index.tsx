@@ -90,13 +90,15 @@ export default function FilePreviewModal({ attachment, onClose }: FilePreviewMod
             ) : error ? (
               <div className="text-sm text-red-400 py-8 text-center">加载失败</div>
             ) : (
-              <iframe
-                srcDoc={content || ''}
-                sandbox="allow-scripts"
-                className="w-full rounded-lg border border-dark-border bg-white"
-                style={{ height: '70vh' }}
-                title={attachment.originalName}
-              />
+              <div className="w-full overflow-auto rounded-lg border border-dark-border" style={{ height: '70vh', WebkitOverflowScrolling: 'touch' }}>
+                <iframe
+                  srcDoc={content || ''}
+                  sandbox="allow-scripts"
+                  className="border-0 bg-white"
+                  style={{ width: '100%', height: '100%', display: 'block' }}
+                  title={attachment.originalName}
+                />
+              </div>
             )
           ) : isImage ? (
             <img
