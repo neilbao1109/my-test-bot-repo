@@ -10,6 +10,7 @@ import { useAppStore } from '../../stores/appStore';
 import { socketService } from '../../services/socket';
 import { formatFileSize } from '../../utils/format';
 import UserAvatar from '../UserAvatar';
+import FilePreviewModal from '../FilePreviewModal';
 
 function CodeBlockPre({ text, children }: { text: string; children: React.ReactNode }) {
   const [copied, setCopied] = useState(false);
@@ -65,6 +66,7 @@ export default function MessageBubble({ message, isStreaming, streamContent, hig
   const [editContent, setEditContent] = useState(message.content);
   const [copied, setCopied] = useState(false);
   const [speaking, setSpeaking] = useState(false);
+  const [previewAttachment, setPreviewAttachment] = useState<FileAttachment | null>(null);
   const editRef = useRef<HTMLTextAreaElement>(null);
   const reactionRef = useRef<HTMLDivElement>(null);
   const actionsRef = useRef<HTMLDivElement>(null);
@@ -265,33 +267,28 @@ export default function MessageBubble({ message, isStreaming, streamContent, hig
               || /\.(md|txt|json|js|ts|tsx|jsx|py|sh|css|html|yml|yaml|toml|csv|xml|sql|log|env|cfg|ini|conf)$/i.test(attachment.originalName);
             if (isImage) {
               return (
-                <a href={attachment.url} target="_blank" rel="noopener noreferrer" className="block mt-1">
+                <div className="block mt-1 cursor-pointer" onClick={() => setPreviewAttachment(attachment)}>
                   <img
                     src={attachment.url}
                     alt={attachment.originalName}
-                    className="max-w-[70vw] md:max-w-xs max-h-64 rounded-lg border border-dark-border hover:opacity-90 transition cursor-pointer"
+                    className="max-w-[70vw] md:max-w-xs max-h-64 rounded-lg border border-dark-border hover:opacity-90 transition"
                   />
                   <span className="text-xs text-dark-muted mt-1 block">{attachment.originalName} · {formatFileSize(attachment.size)}</span>
-                </a>
+                </div>
               );
             }
-            if (isText) {
-              return <TextFilePreview attachment={attachment} />;
-            }
             return (
-              <a
-                href={attachment.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center gap-3 mt-1 p-3 bg-dark-bg border border-dark-border rounded-lg hover:bg-dark-hover transition max-w-xs"
+              <div
+                onClick={() => setPreviewAttachment(attachment)}
+                className="flex items-center gap-3 mt-1 p-3 bg-dark-bg border border-dark-border rounded-lg hover:bg-dark-hover transition max-w-xs cursor-pointer"
               >
-                <span className="text-2xl flex-shrink-0">{isPdf ? '📄' : '📁'}</span>
+                <span className="text-2xl flex-shrink-0">{isText ? '📄' : isPdf ? '📄' : '📁'}</span>
                 <div className="min-w-0 flex-1">
                   <p className="text-sm text-dark-text truncate">{attachment.originalName}</p>
                   <p className="text-xs text-dark-muted">{formatFileSize(attachment.size)}</p>
                 </div>
-                <span className="text-dark-muted text-sm flex-shrink-0">⬇</span>
-              </a>
+                <span className="text-primary-400 text-xs flex-shrink-0">预览</span>
+              </div>
             );
           })()
         ) : (
@@ -519,75 +516,11 @@ export default function MessageBubble({ message, isStreaming, streamContent, hig
           ))}
         </div>
       )}
-    </div>
-  );
-}
-
-// --- Text file preview component ---
-
-function TextFilePreview({ attachment }: { attachment: FileAttachment }) {
-  const [showPreview, setShowPreview] = useState(false);
-  const [content, setContent] = useState<string | null>(null);
-  const [expanded, setExpanded] = useState(false);
-  const isMd = /\.md$/i.test(attachment.originalName);
-
-  const loadPreview = () => {
-    setShowPreview(true);
-    if (content !== null) return;
-    fetch(attachment.url)
-      .then(r => r.text())
-      .then(text => setContent(text.slice(0, 5000)))
-      .catch(() => setContent(null));
-  };
-
-  return (
-    <div className="mt-1 max-w-[70vw] md:max-w-md border border-dark-border rounded-lg overflow-hidden">
-      {/* Header */}
-      <div className="flex items-center justify-between px-3 py-2 bg-dark-bg">
-        <div className="flex items-center gap-2 min-w-0">
-          <span className="text-sm">📄</span>
-          <span className="text-xs text-dark-text font-medium truncate">{attachment.originalName}</span>
-          <span className="text-[10px] text-dark-muted flex-shrink-0">{formatFileSize(attachment.size)}</span>
-        </div>
-        <div className="flex items-center gap-2 flex-shrink-0 ml-2">
-          <button
-            onClick={() => showPreview ? setShowPreview(false) : loadPreview()}
-            className="text-[10px] text-primary-400 hover:text-primary-300 transition"
-          >
-            {showPreview ? '收起' : '预览'}
-          </button>
-          <a href={attachment.url} target="_blank" rel="noopener noreferrer" className="text-xs text-primary-400 hover:text-primary-300">⬇</a>
-        </div>
-      </div>
-      {/* Preview content */}
-      {showPreview && (
-        <>
-          <div className="border-t border-dark-border">
-            {content === null ? (
-              <div className="px-3 py-4 text-xs text-dark-muted animate-pulse">Loading...</div>
-            ) : (
-              <div className={clsx('overflow-hidden transition-all', expanded ? 'max-h-[600px]' : 'max-h-48')}>
-                <div className="px-3 py-2 overflow-y-auto" style={{ maxHeight: expanded ? '600px' : '192px' }}>
-                  {isMd ? (
-                    <div className="prose prose-invert prose-xs max-w-none text-xs">
-                      <ReactMarkdown>{content}</ReactMarkdown>
-                    </div>
-                  ) : (
-                    <pre className="text-xs text-dark-text whitespace-pre-wrap break-words font-mono leading-relaxed">{content}</pre>
-                  )}
-                </div>
-              </div>
-            )}
-          </div>
-          {content && content.length > 500 && (
-            <button
-              onClick={() => setExpanded(!expanded)}
-              className="w-full px-3 py-1.5 text-[10px] text-dark-muted hover:text-dark-text bg-dark-bg border-t border-dark-border transition"
-            >
-              {expanded ? '▴ 收起' : '▾ 展开全部'}
-            </button>
-          )}
-        </>
+      {previewAttachment && (
+        <FilePreviewModal
+          attachment={previewAttachment}
+          onClose={() => setPreviewAttachment(null)}
+        />
       )}
     </div>
   );
