@@ -16,6 +16,7 @@ export default function FilePreviewModal({ attachment, onClose }: FilePreviewMod
   const [content, setContent] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
+  const [iframeWidth, setIframeWidth] = useState<number | null>(null);
 
   const isImage = attachment.mimeType.startsWith('image/');
   const isPdf = attachment.mimeType === 'application/pdf';
@@ -46,6 +47,17 @@ export default function FilePreviewModal({ attachment, onClose }: FilePreviewMod
   useEffect(() => {
     document.body.style.overflow = 'hidden';
     return () => { document.body.style.overflow = ''; };
+  }, []);
+
+  // Listen for iframe content width report
+  useEffect(() => {
+    const handler = (e: MessageEvent) => {
+      if (e.data?.type === 'contentWidth' && typeof e.data.width === 'number') {
+        setIframeWidth(e.data.width);
+      }
+    };
+    window.addEventListener('message', handler);
+    return () => window.removeEventListener('message', handler);
   }, []);
 
   const handleBackdropClick = useCallback((e: React.MouseEvent) => {
@@ -92,10 +104,16 @@ export default function FilePreviewModal({ attachment, onClose }: FilePreviewMod
             ) : (
               <div className="w-full overflow-auto rounded-lg border border-dark-border" style={{ height: '70vh', WebkitOverflowScrolling: 'touch' }}>
                 <iframe
-                  srcDoc={content || ''}
+                  srcDoc={(() => {
+                    const doc = content || '';
+                    const measureScript = `<script>document.addEventListener('DOMContentLoaded',function(){setTimeout(function(){var w=Math.max(document.body.scrollWidth,document.documentElement.scrollWidth);parent.postMessage({type:'contentWidth',width:w},'*');},100);});<\/script>`;
+                    if (doc.includes('<head>')) return doc.replace('<head>', '<head>' + measureScript);
+                    if (doc.includes('<html>')) return doc.replace('<html>', '<html><head>' + measureScript + '</head>');
+                    return '<html><head>' + measureScript + '</head><body>' + doc + '</body></html>';
+                  })()}
                   sandbox="allow-scripts"
                   className="border-0 bg-white"
-                  style={{ width: '100%', height: '100%', display: 'block' }}
+                  style={{ width: iframeWidth ? `${iframeWidth}px` : '100%', height: '100%', display: 'block' }}
                   title={attachment.originalName}
                 />
               </div>
