@@ -14,6 +14,7 @@ interface FilePreviewModalProps {
 
 export default function FilePreviewModal({ attachment, onClose }: FilePreviewModalProps) {
   const [content, setContent] = useState<string | null>(null);
+  const [pdfBlobUrl, setPdfBlobUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
 
@@ -28,12 +29,23 @@ export default function FilePreviewModal({ attachment, onClose }: FilePreviewMod
   const isMd = /\.md$/i.test(attachment.originalName);
 
   useEffect(() => {
-    if (!isText && !isHtml) { setLoading(false); return; }
+    if (!isText && !isHtml && !isPdf) { setLoading(false); return; }
+    if (isPdf) {
+      fetch(attachment.url)
+        .then(r => r.blob())
+        .then(blob => {
+          const url = URL.createObjectURL(blob);
+          setPdfBlobUrl(url);
+          setLoading(false);
+        })
+        .catch(() => { setError(true); setLoading(false); });
+      return () => { if (pdfBlobUrl) URL.revokeObjectURL(pdfBlobUrl); };
+    }
     fetch(attachment.url)
       .then(r => r.text())
       .then(text => { setContent(text); setLoading(false); })
       .catch(() => { setError(true); setLoading(false); });
-  }, [attachment.url, isText, isHtml]);
+  }, [attachment.url, isText, isHtml, isPdf]);
 
   // Close on Escape
   useEffect(() => {
@@ -111,11 +123,17 @@ export default function FilePreviewModal({ attachment, onClose }: FilePreviewMod
           ) : isAudio ? (
             <audio src={attachment.url} controls className="w-full mt-4" />
           ) : isPdf ? (
-            <iframe
-              src={attachment.url}
-              className="w-full h-[70vh] rounded-lg border border-dark-border"
-              title={attachment.originalName}
-            />
+            loading ? (
+              <div className="text-sm text-dark-muted animate-pulse py-8 text-center">加载中...</div>
+            ) : error ? (
+              <div className="text-sm text-red-400 py-8 text-center">加载失败</div>
+            ) : pdfBlobUrl ? (
+              <iframe
+                src={pdfBlobUrl}
+                className="w-full h-[70vh] rounded-lg border border-dark-border"
+                title={attachment.originalName}
+              />
+            ) : null
           ) : isText ? (
             loading ? (
               <div className="text-sm text-dark-muted animate-pulse py-8 text-center">加载中...</div>
