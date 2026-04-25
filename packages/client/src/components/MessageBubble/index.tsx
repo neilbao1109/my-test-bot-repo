@@ -526,52 +526,68 @@ export default function MessageBubble({ message, isStreaming, streamContent, hig
 // --- Text file preview component ---
 
 function TextFilePreview({ attachment }: { attachment: FileAttachment }) {
+  const [showPreview, setShowPreview] = useState(false);
   const [content, setContent] = useState<string | null>(null);
   const [expanded, setExpanded] = useState(false);
   const isMd = /\.md$/i.test(attachment.originalName);
 
-  useEffect(() => {
+  const loadPreview = () => {
+    setShowPreview(true);
+    if (content !== null) return;
     fetch(attachment.url)
       .then(r => r.text())
       .then(text => setContent(text.slice(0, 5000)))
       .catch(() => setContent(null));
-  }, [attachment.url]);
+  };
 
   return (
     <div className="mt-1 max-w-[70vw] md:max-w-md border border-dark-border rounded-lg overflow-hidden">
       {/* Header */}
-      <div className="flex items-center justify-between px-3 py-2 bg-dark-bg border-b border-dark-border">
+      <div className="flex items-center justify-between px-3 py-2 bg-dark-bg">
         <div className="flex items-center gap-2 min-w-0">
           <span className="text-sm">📄</span>
           <span className="text-xs text-dark-text font-medium truncate">{attachment.originalName}</span>
           <span className="text-[10px] text-dark-muted flex-shrink-0">{formatFileSize(attachment.size)}</span>
         </div>
-        <a href={attachment.url} target="_blank" rel="noopener noreferrer" className="text-xs text-primary-400 hover:text-primary-300 flex-shrink-0 ml-2">⬇</a>
+        <div className="flex items-center gap-2 flex-shrink-0 ml-2">
+          <button
+            onClick={() => showPreview ? setShowPreview(false) : loadPreview()}
+            className="text-[10px] text-primary-400 hover:text-primary-300 transition"
+          >
+            {showPreview ? '收起' : '预览'}
+          </button>
+          <a href={attachment.url} target="_blank" rel="noopener noreferrer" className="text-xs text-primary-400 hover:text-primary-300">⬇</a>
+        </div>
       </div>
-      {/* Content */}
-      {content === null ? (
-        <div className="px-3 py-4 text-xs text-dark-muted animate-pulse">Loading...</div>
-      ) : (
-        <div className={clsx('overflow-hidden transition-all', expanded ? 'max-h-[600px]' : 'max-h-48')}>
-          <div className="px-3 py-2 overflow-y-auto" style={{ maxHeight: expanded ? '600px' : '192px' }}>
-            {isMd ? (
-              <div className="prose prose-invert prose-xs max-w-none text-xs">
-                <ReactMarkdown>{content}</ReactMarkdown>
-              </div>
+      {/* Preview content */}
+      {showPreview && (
+        <>
+          <div className="border-t border-dark-border">
+            {content === null ? (
+              <div className="px-3 py-4 text-xs text-dark-muted animate-pulse">Loading...</div>
             ) : (
-              <pre className="text-xs text-dark-text whitespace-pre-wrap break-words font-mono leading-relaxed">{content}</pre>
+              <div className={clsx('overflow-hidden transition-all', expanded ? 'max-h-[600px]' : 'max-h-48')}>
+                <div className="px-3 py-2 overflow-y-auto" style={{ maxHeight: expanded ? '600px' : '192px' }}>
+                  {isMd ? (
+                    <div className="prose prose-invert prose-xs max-w-none text-xs">
+                      <ReactMarkdown>{content}</ReactMarkdown>
+                    </div>
+                  ) : (
+                    <pre className="text-xs text-dark-text whitespace-pre-wrap break-words font-mono leading-relaxed">{content}</pre>
+                  )}
+                </div>
+              </div>
             )}
           </div>
-        </div>
-      )}
-      {/* Expand toggle */}
-      {content && content.length > 500 && (
-        <button
-          onClick={() => setExpanded(!expanded)}
-          className="w-full px-3 py-1.5 text-[10px] text-dark-muted hover:text-dark-text bg-dark-bg border-t border-dark-border transition"
-        >
-          {expanded ? '▴ 收起' : '▾ 展开全部'}
-        </button>
+          {content && content.length > 500 && (
+            <button
+              onClick={() => setExpanded(!expanded)}
+              className="w-full px-3 py-1.5 text-[10px] text-dark-muted hover:text-dark-text bg-dark-bg border-t border-dark-border transition"
+            >
+              {expanded ? '▴ 收起' : '▾ 展开全部'}
+            </button>
+          )}
+        </>
       )}
     </div>
   );
