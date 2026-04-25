@@ -94,6 +94,7 @@ export default function SettingsPanel({ onBack }: SettingsPanelProps) {
         style={{ paddingBottom: `max(0.75rem, var(--safe-area-bottom))` }}
       >
         <p className="text-[10px] text-dark-muted text-center">ClawChat • Settings are saved locally</p>
+        <p className="text-[10px] text-dark-muted/50 text-center mt-1">Build: {__BUILD_HASH__} • {__BUILD_TIME__}</p>
       </div>
     </div>
   );

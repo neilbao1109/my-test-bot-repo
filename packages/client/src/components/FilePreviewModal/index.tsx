@@ -92,10 +92,11 @@ export default function FilePreviewModal({ attachment, onClose }: FilePreviewMod
               <iframe
                 srcDoc={(() => {
                   const doc = content || '';
-                  const viewport = '<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">';
-                  if (doc.includes('<head>')) return doc.replace('<head>', '<head>' + viewport);
-                  if (doc.includes('<html>')) return doc.replace('<html>', '<html><head>' + viewport + '</head>');
-                  return '<html><head>' + viewport + '</head><body>' + doc + '</body></html>';
+                  const viewport = '<meta name="viewport" content="width=device-width,initial-scale=0.5,minimum-scale=0.1,maximum-scale=5,user-scalable=yes">';
+                  const fitScript = `<script>document.addEventListener('DOMContentLoaded',function(){var b=document.body;var w=Math.max(b.scrollWidth,b.offsetWidth);var vw=window.innerWidth;if(w>vw){var s=vw/w;b.style.transformOrigin='0 0';b.style.transform='scale('+s+')';b.style.width=(100/s)+'%';}});<\/script>`;
+                  if (doc.includes('<head>')) return doc.replace('<head>', '<head>' + viewport + fitScript);
+                  if (doc.includes('<html>')) return doc.replace('<html>', '<html><head>' + viewport + fitScript + '</head>');
+                  return '<html><head>' + viewport + fitScript + '</head><body>' + doc + '</body></html>';
                 })()}
                 sandbox="allow-scripts"
                 className="w-full flex-1 min-h-0 rounded-lg border border-dark-border bg-white"
