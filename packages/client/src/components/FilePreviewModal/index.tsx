@@ -16,7 +16,6 @@ export default function FilePreviewModal({ attachment, onClose }: FilePreviewMod
   const [content, setContent] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
-  const [iframeWidth, setIframeWidth] = useState<number | null>(null);
 
   const isImage = attachment.mimeType.startsWith('image/');
   const isPdf = attachment.mimeType === 'application/pdf';
@@ -49,27 +48,16 @@ export default function FilePreviewModal({ attachment, onClose }: FilePreviewMod
     return () => { document.body.style.overflow = ''; };
   }, []);
 
-  // Listen for iframe content width report
-  useEffect(() => {
-    const handler = (e: MessageEvent) => {
-      if (e.data?.type === 'contentWidth' && typeof e.data.width === 'number') {
-        setIframeWidth(e.data.width);
-      }
-    };
-    window.addEventListener('message', handler);
-    return () => window.removeEventListener('message', handler);
-  }, []);
-
   const handleBackdropClick = useCallback((e: React.MouseEvent) => {
     if (e.target === e.currentTarget) onClose();
   }, [onClose]);
 
   const modal = (
     <div
-      className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/70 md:backdrop-blur-sm md:p-4"
+      className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4"
       onClick={handleBackdropClick}
     >
-      <div className="bg-dark-surface md:border md:border-dark-border md:rounded-xl shadow-2xl flex flex-col w-full h-full md:h-auto md:max-w-2xl md:max-h-[85vh] overflow-hidden">
+      <div className="bg-dark-surface border border-dark-border rounded-xl shadow-2xl flex flex-col w-full max-w-2xl max-h-[85vh] overflow-hidden">
         {/* Header */}
         <div className="flex items-center justify-between px-4 py-3 border-b border-dark-border bg-dark-bg flex-shrink-0">
           <div className="flex items-center gap-2 min-w-0">
@@ -95,7 +83,7 @@ export default function FilePreviewModal({ attachment, onClose }: FilePreviewMod
         </div>
 
         {/* Body */}
-        <div className="flex-1 overflow-y-auto p-2 md:p-4">
+        <div className="flex-1 overflow-y-auto p-4">
           {isHtml ? (
             loading ? (
               <div className="text-sm text-dark-muted animate-pulse py-8 text-center">加载中...</div>
@@ -104,16 +92,10 @@ export default function FilePreviewModal({ attachment, onClose }: FilePreviewMod
             ) : (
               <div className="w-full overflow-auto rounded-lg border border-dark-border" style={{ height: '70vh', WebkitOverflowScrolling: 'touch' }}>
                 <iframe
-                  srcDoc={(() => {
-                    const doc = content || '';
-                    const measureScript = `<script>document.addEventListener('DOMContentLoaded',function(){setTimeout(function(){var w=Math.max(document.body.scrollWidth,document.documentElement.scrollWidth);parent.postMessage({type:'contentWidth',width:w},'*');},100);});<\/script>`;
-                    if (doc.includes('<head>')) return doc.replace('<head>', '<head>' + measureScript);
-                    if (doc.includes('<html>')) return doc.replace('<html>', '<html><head>' + measureScript + '</head>');
-                    return '<html><head>' + measureScript + '</head><body>' + doc + '</body></html>';
-                  })()}
+                  srcDoc={content || ''}
                   sandbox="allow-scripts"
                   className="border-0 bg-white"
-                  style={{ width: iframeWidth ? `${iframeWidth}px` : '100%', height: '100%', display: 'block' }}
+                  style={{ width: '1024px', height: '100%', display: 'block' }}
                   title={attachment.originalName}
                 />
               </div>
