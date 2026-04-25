@@ -58,7 +58,7 @@ export default function FilePreviewModal({ attachment, onClose }: FilePreviewMod
     >
       <div className="bg-dark-surface border border-dark-border rounded-xl shadow-2xl flex flex-col w-full max-w-2xl h-[95dvh] md:max-h-[85vh] overflow-hidden">
         {/* Header */}
-        <div className="flex items-center justify-between px-4 py-3 border-b border-dark-border bg-dark-bg flex-shrink-0">
+        <div className="flex items-center justify-between px-4 py-3 border-b border-dark-border bg-dark-bg flex-shrink-0 sticky top-0 z-10">
           <div className="flex items-center gap-2 min-w-0">
             <span className="text-base">📄</span>
             <span className="text-sm text-dark-text font-medium truncate">{attachment.originalName}</span>
@@ -90,16 +90,10 @@ export default function FilePreviewModal({ attachment, onClose }: FilePreviewMod
               <div className="text-sm text-red-400 py-8 text-center">加载失败</div>
             ) : (
               <iframe
-                srcDoc={(() => {
-                  const doc = content || '';
-                  const viewport = '<meta name="viewport" content="width=device-width,initial-scale=0.5,minimum-scale=0.1,maximum-scale=5,user-scalable=yes">';
-                  const fitScript = `<script>document.addEventListener('DOMContentLoaded',function(){var b=document.body;var w=Math.max(b.scrollWidth,b.offsetWidth);var vw=window.innerWidth;if(w>vw){var s=vw/w;b.style.transformOrigin='0 0';b.style.transform='scale('+s+')';b.style.width=(100/s)+'%';}});<\/script>`;
-                  if (doc.includes('<head>')) return doc.replace('<head>', '<head>' + viewport + fitScript);
-                  if (doc.includes('<html>')) return doc.replace('<html>', '<html><head>' + viewport + fitScript + '</head>');
-                  return '<html><head>' + viewport + fitScript + '</head><body>' + doc + '</body></html>';
-                })()}
+                srcDoc={content || ''}
                 sandbox="allow-scripts"
                 className="w-full flex-1 min-h-0 rounded-lg border border-dark-border bg-white"
+                style={{ minHeight: '60vh' }}
                 title={attachment.originalName}
               />
             )
