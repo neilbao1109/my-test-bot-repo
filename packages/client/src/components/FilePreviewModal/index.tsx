@@ -20,8 +20,10 @@ export default function FilePreviewModal({ attachment, onClose }: FilePreviewMod
   const isPdf = attachment.mimeType === 'application/pdf';
   const isVideo = attachment.mimeType.startsWith('video/');
   const isAudio = attachment.mimeType.startsWith('audio/');
-  const isText = /^(text\/|application\/json|application\/javascript)/.test(attachment.mimeType)
-    || /\.(md|txt|json|js|ts|tsx|jsx|py|sh|css|html|yml|yaml|toml|csv|xml|sql|log|env|cfg|ini|conf)$/i.test(attachment.originalName);
+  const isHtml = attachment.mimeType === 'text/html'
+    || /\.html?$/i.test(attachment.originalName);
+  const isText = !isHtml && (/^(text\/|application\/json|application\/javascript)/.test(attachment.mimeType)
+    || /\.(md|txt|json|js|ts|tsx|jsx|py|sh|css|html|yml|yaml|toml|csv|xml|sql|log|env|cfg|ini|conf)$/i.test(attachment.originalName));
   const isMd = /\.md$/i.test(attachment.originalName);
 
   useEffect(() => {
@@ -81,7 +83,14 @@ export default function FilePreviewModal({ attachment, onClose }: FilePreviewMod
 
         {/* Body */}
         <div className="flex-1 overflow-y-auto p-4">
-          {isImage ? (
+          {isHtml ? (
+            <iframe
+              src={attachment.url}
+              sandbox="allow-scripts allow-same-origin"
+              className="w-full h-[70vh] rounded-lg border border-dark-border bg-white"
+              title={attachment.originalName}
+            />
+          ) : isImage ? (
             <img
               src={attachment.url}
               alt={attachment.originalName}
