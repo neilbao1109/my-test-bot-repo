@@ -5,6 +5,7 @@ import { createThread, getThread, getThreadByMessage } from '../services/thread.
 import { parseCommand, executeCommand } from '../services/command.js';
 import { initBotRegistry, getRespondingBots, isBotUser, getAutoJoinBotIds, getAllBots, streamBotResponse as registryStreamBotResponse } from '../services/bot-registry.js';
 import { pinMessage, unpinMessage, getPinnedMessages } from '../services/pin.js';
+import { copyFileToUploads } from '../routes/upload.js';
 import { getUser, setOnline, getOnlineUsers } from '../services/user.js';
 import { verifyToken } from '../services/auth.js';
 import { v4 as uuid } from 'uuid';
@@ -371,18 +372,45 @@ export function setupSocketHandlers(io: Server) {
             });
           }
 
-          const botMsg = createMessage({
+          // Parse MEDIA:<path> lines from bot response
+          const mediaRegex = /^MEDIA:(.+)$/gm;
+          const mediaMatches = [...fullContent.matchAll(mediaRegex)];
+          const cleanContent = fullContent.replace(/^MEDIA:.+\n?/gm, '').trim();
+
+          // Send file messages for each MEDIA line
+          for (const match of mediaMatches) {
+            const filePath = match[1].trim();
+            const attachment = copyFileToUploads(filePath);
+            if (attachment) {
+              const fileMsg = createMessage({
+                roomId: data.roomId,
+                userId: bot.id,
+                content: JSON.stringify(attachment),
+                type: 'file',
+                threadId: data.threadId,
+              });
+              io.to(data.roomId).emit('message:new', fileMsg);
+            }
+          }
+
+          // Save text content (with MEDIA lines stripped)
+          const botMsg = cleanContent ? createMessage({
             roomId: data.roomId,
             userId: bot.id,
-            content: fullContent,
+            content: cleanContent,
             threadId: data.threadId,
-          });
+          }) : null;
 
           io.to(data.roomId).emit('bot:stream', {
             messageId: botMessageId,
             chunk: '',
             done: true,
-            finalMessage: botMsg,
+            finalMessage: botMsg || createMessage({
+              roomId: data.roomId,
+              userId: bot.id,
+              content: fullContent,
+              threadId: data.threadId,
+            }),
           });
 
           if (data.threadId) {
