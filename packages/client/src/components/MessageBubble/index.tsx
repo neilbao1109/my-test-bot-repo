@@ -261,6 +261,8 @@ export default function MessageBubble({ message, isStreaming, streamContent, hig
             if (!attachment) return <p className="text-sm text-dark-muted italic">Invalid file</p>;
             const isImage = attachment.mimeType.startsWith('image/');
             const isPdf = attachment.mimeType === 'application/pdf';
+            const isText = /^(text\/|application\/json|application\/javascript)/.test(attachment.mimeType)
+              || /\.(md|txt|json|js|ts|tsx|jsx|py|sh|css|html|yml|yaml|toml|csv|xml|sql|log|env|cfg|ini|conf)$/i.test(attachment.originalName);
             if (isImage) {
               return (
                 <a href={attachment.url} target="_blank" rel="noopener noreferrer" className="block mt-1">
@@ -272,6 +274,9 @@ export default function MessageBubble({ message, isStreaming, streamContent, hig
                   <span className="text-xs text-dark-muted mt-1 block">{attachment.originalName} · {formatFileSize(attachment.size)}</span>
                 </a>
               );
+            }
+            if (isText) {
+              return <TextFilePreview attachment={attachment} />;
             }
             return (
               <a
@@ -513,6 +518,60 @@ export default function MessageBubble({ message, isStreaming, streamContent, hig
             </button>
           ))}
         </div>
+      )}
+    </div>
+  );
+}
+
+// --- Text file preview component ---
+
+function TextFilePreview({ attachment }: { attachment: FileAttachment }) {
+  const [content, setContent] = useState<string | null>(null);
+  const [expanded, setExpanded] = useState(false);
+  const isMd = /\.md$/i.test(attachment.originalName);
+
+  useEffect(() => {
+    fetch(attachment.url)
+      .then(r => r.text())
+      .then(text => setContent(text.slice(0, 5000)))
+      .catch(() => setContent(null));
+  }, [attachment.url]);
+
+  return (
+    <div className="mt-1 max-w-[70vw] md:max-w-md border border-dark-border rounded-lg overflow-hidden">
+      {/* Header */}
+      <div className="flex items-center justify-between px-3 py-2 bg-dark-bg border-b border-dark-border">
+        <div className="flex items-center gap-2 min-w-0">
+          <span className="text-sm">📄</span>
+          <span className="text-xs text-dark-text font-medium truncate">{attachment.originalName}</span>
+          <span className="text-[10px] text-dark-muted flex-shrink-0">{formatFileSize(attachment.size)}</span>
+        </div>
+        <a href={attachment.url} target="_blank" rel="noopener noreferrer" className="text-xs text-primary-400 hover:text-primary-300 flex-shrink-0 ml-2">⬇</a>
+      </div>
+      {/* Content */}
+      {content === null ? (
+        <div className="px-3 py-4 text-xs text-dark-muted animate-pulse">Loading...</div>
+      ) : (
+        <div className={clsx('overflow-hidden transition-all', expanded ? 'max-h-[600px]' : 'max-h-48')}>
+          <div className="px-3 py-2 overflow-y-auto" style={{ maxHeight: expanded ? '600px' : '192px' }}>
+            {isMd ? (
+              <div className="prose prose-invert prose-xs max-w-none text-xs">
+                <ReactMarkdown>{content}</ReactMarkdown>
+              </div>
+            ) : (
+              <pre className="text-xs text-dark-text whitespace-pre-wrap break-words font-mono leading-relaxed">{content}</pre>
+            )}
+          </div>
+        </div>
+      )}
+      {/* Expand toggle */}
+      {content && content.length > 500 && (
+        <button
+          onClick={() => setExpanded(!expanded)}
+          className="w-full px-3 py-1.5 text-[10px] text-dark-muted hover:text-dark-text bg-dark-bg border-t border-dark-border transition"
+        >
+          {expanded ? '▴ 收起' : '▾ 展开全部'}
+        </button>
       )}
     </div>
   );
