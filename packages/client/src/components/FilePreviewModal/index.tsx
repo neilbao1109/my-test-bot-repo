@@ -11,10 +11,21 @@ interface FilePreviewModalProps {
   onClose: () => void;
 }
 
+function useIsMobile() {
+  const [mobile, setMobile] = useState(() => typeof window !== 'undefined' && window.innerWidth < 768);
+  useEffect(() => {
+    const handler = () => setMobile(window.innerWidth < 768);
+    window.addEventListener('resize', handler);
+    return () => window.removeEventListener('resize', handler);
+  }, []);
+  return mobile;
+}
+
 export default function FilePreviewModal({ attachment, onClose }: FilePreviewModalProps) {
   const [content, setContent] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
+  const isMobile = useIsMobile();
 
   const isImage = attachment.mimeType.startsWith('image/');
   const isPdf = attachment.mimeType === 'application/pdf';
@@ -51,14 +62,61 @@ export default function FilePreviewModal({ attachment, onClose }: FilePreviewMod
     if (e.target === e.currentTarget) onClose();
   }, [onClose]);
 
+  // Mobile + HTML: fullscreen preview
+  if (isMobile && isHtml) {
+    return (
+      <div className="fixed inset-0 z-50 flex flex-col bg-dark-bg">
+        {/* Toolbar */}
+        <div
+          className="flex items-center justify-between px-3 py-2 bg-dark-surface border-b border-dark-border flex-shrink-0"
+          style={{ paddingTop: 'max(0.5rem, env(safe-area-inset-top))' }}
+        >
+          <button
+            onClick={onClose}
+            className="p-2 text-dark-text hover:text-primary-400 transition text-base"
+          >
+            ← 返回
+          </button>
+          <span className="text-xs text-dark-muted truncate mx-2 flex-1 text-center">
+            {attachment.originalName}
+          </span>
+          <a
+            href={attachment.url}
+            download={attachment.originalName}
+            className="p-2 text-xs text-primary-400 hover:text-primary-300 transition flex-shrink-0"
+          >
+            ⬇
+          </a>
+        </div>
+
+        {/* Full iframe */}
+        <div className="flex-1 min-h-0">
+          {loading ? (
+            <div className="text-sm text-dark-muted animate-pulse py-8 text-center">加载中...</div>
+          ) : error ? (
+            <div className="text-sm text-red-400 py-8 text-center">加载失败</div>
+          ) : (
+            <iframe
+              srcDoc={content || ''}
+              sandbox="allow-scripts"
+              className="w-full h-full border-0 bg-white"
+              title={attachment.originalName}
+            />
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // Desktop / non-HTML: modal
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-2 md:p-4"
       onClick={handleBackdropClick}
     >
-      <div className="bg-dark-surface border border-dark-border rounded-xl shadow-2xl flex flex-col w-full h-[95dvh] md:max-h-[85vh] overflow-hidden" style={{ maxWidth: 'min(672px, calc(100vw - 1rem))' }}>
+      <div className="bg-dark-surface border border-dark-border rounded-xl shadow-2xl flex flex-col w-full max-w-2xl max-h-[85vh] overflow-hidden">
         {/* Header */}
-        <div className="flex items-center justify-between px-4 py-3 border-b border-dark-border bg-dark-bg flex-shrink-0 sticky top-0 z-10">
+        <div className="flex items-center justify-between px-4 py-3 border-b border-dark-border bg-dark-bg flex-shrink-0">
           <div className="flex items-center gap-2 min-w-0">
             <span className="text-base">📄</span>
             <span className="text-sm text-dark-text font-medium truncate">{attachment.originalName}</span>
@@ -82,7 +140,7 @@ export default function FilePreviewModal({ attachment, onClose }: FilePreviewMod
         </div>
 
         {/* Body */}
-        <div className="flex-1 overflow-auto p-2 md:p-4 min-h-0 flex flex-col">
+        <div className="flex-1 overflow-auto p-4 min-h-0 flex flex-col">
           {isHtml ? (
             loading ? (
               <div className="text-sm text-dark-muted animate-pulse py-8 text-center">加载中...</div>
