@@ -56,7 +56,7 @@ export default function FilePreviewModal({ attachment, onClose }: FilePreviewMod
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-2 md:p-4"
       onClick={handleBackdropClick}
     >
-      <div className="bg-dark-surface border border-dark-border rounded-xl shadow-2xl flex flex-col w-full max-w-2xl h-[95dvh] md:max-h-[85vh] overflow-hidden">
+      <div className="bg-dark-surface border border-dark-border rounded-xl shadow-2xl flex flex-col w-full h-[95dvh] md:max-h-[85vh] overflow-hidden" style={{ maxWidth: 'min(672px, calc(100vw - 1rem))' }}>
         {/* Header */}
         <div className="flex items-center justify-between px-4 py-3 border-b border-dark-border bg-dark-bg flex-shrink-0 sticky top-0 z-10">
           <div className="flex items-center gap-2 min-w-0">
