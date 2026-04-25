@@ -92,16 +92,10 @@ export default function FilePreviewModal({ attachment, onClose }: FilePreviewMod
             ) : (
               <div className="w-full overflow-auto rounded-lg border border-dark-border" style={{ height: '70vh', WebkitOverflowScrolling: 'touch' }}>
                 <iframe
-                  srcDoc={(() => {
-                    const doc = content || '';
-                    const zoomStyle = '<style>body{zoom:0.5}</style>';
-                    if (doc.includes('<head>')) return doc.replace('<head>', '<head>' + zoomStyle);
-                    if (doc.includes('<html>')) return doc.replace('<html>', '<html><head>' + zoomStyle + '</head>');
-                    return '<html><head>' + zoomStyle + '</head><body>' + doc + '</body></html>';
-                  })()}
+                  srcDoc={content || ''}
                   sandbox="allow-scripts"
                   className="border-0 bg-white"
-                  style={{ width: '100%', height: '100%', display: 'block' }}
+                  style={{ width: '1024px', height: '100%', display: 'block' }}
                   title={attachment.originalName}
                 />
               </div>
