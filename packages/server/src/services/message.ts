@@ -166,6 +166,35 @@ export function getMessageById(messageId: string): Message | null {
   return row ? rowToMessage(row) : null;
 }
 
+/**
+ * Get messages in a room since a given timestamp (inclusive), capped at limit.
+ * Used for group chat context: fetch everything since the bot's last reply.
+ */
+export function getMessagesSince(roomId: string, sinceCreatedAt: string, limit = 50): Message[] {
+  const db = getDb();
+  const rows = db.prepare(`
+    SELECT * FROM messages
+    WHERE room_id = ? AND is_deleted = 0 AND thread_id IS NULL
+      AND created_at >= ?
+    ORDER BY created_at ASC
+    LIMIT ?
+  `).all(roomId, sinceCreatedAt, limit) as any[];
+  return rows.map(rowToMessage);
+}
+
+/**
+ * Find the most recent message by a specific user in a room.
+ */
+export function getLastMessageByUser(roomId: string, userId: string): Message | null {
+  const db = getDb();
+  const row = db.prepare(`
+    SELECT * FROM messages
+    WHERE room_id = ? AND user_id = ? AND is_deleted = 0 AND thread_id IS NULL
+    ORDER BY created_at DESC LIMIT 1
+  `).get(roomId, userId) as any;
+  return row ? rowToMessage(row) : null;
+}
+
 export function getLastMessage(roomId: string): Message | null {
   const db = getDb();
   const row = db.prepare(

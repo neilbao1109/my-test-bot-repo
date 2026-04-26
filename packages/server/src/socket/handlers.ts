@@ -1,5 +1,5 @@
 import { Server, Socket } from 'socket.io';
-import { createMessage, getMessages, getLastMessage, getMessageById, editMessage, deleteMessage, addReaction, searchMessages, getReplyChain } from '../services/message.js';
+import { createMessage, getMessages, getLastMessage, getLastMessageByUser, getMessagesSince, getMessageById, editMessage, deleteMessage, addReaction, searchMessages, getReplyChain } from '../services/message.js';
 import { createRoom, getRooms, getRoomMembers, addMemberToRoom, removeMemberFromRoom, renameRoom, deleteRoom, searchUsers, getRoom } from '../services/room.js';
 import { createThread, getThread, getThreadByMessage } from '../services/thread.js';
 import { parseCommand, executeCommand } from '../services/command.js';
@@ -332,19 +332,41 @@ export function setupSocketHandlers(io: Server) {
 
       // In group rooms, prepend recent chat history so the bot has context
       if (roomType === 'group' && respondingBots.length > 0) {
-        const GROUP_HISTORY_LIMIT = 30;
-        const recentMessages = getMessages(data.roomId, { limit: GROUP_HISTORY_LIMIT });
-        // Exclude the current message (just created above) and bot messages
+        const MAX_GROUP_HISTORY = 50;
+        const FALLBACK_HISTORY = 30;
+
+        // Find the bot's last reply in this room (= anchor for "what's new")
+        const lastBotMsg = getLastMessageByUser(data.roomId, respondingBots[0].id);
+
+        let recentMessages;
+        let historyLabel: string;
+
+        if (lastBotMsg) {
+          // Get everything since the bot's last reply (inclusive, so bot sees its own last response)
+          recentMessages = getMessagesSince(data.roomId, lastBotMsg.createdAt, MAX_GROUP_HISTORY);
+          historyLabel = `${recentMessages.length} messages since last bot interaction`;
+        } else {
+          // First mention ever — fallback to recent N
+          recentMessages = getMessages(data.roomId, { limit: FALLBACK_HISTORY });
+          historyLabel = `recent ${recentMessages.length} messages (first interaction)`;
+        }
+
+        // Exclude the current message (already in botContent) 
         const historyLines = recentMessages
           .filter(m => m.id !== message.id)
           .map(m => {
             const u = getUser(m.userId);
             const name = u?.username || m.userId;
-            const body = m.type === 'file' ? '[file]' : m.type === 'forward' ? '[forwarded messages]' : m.content.slice(0, 500);
-            return `[${name}] ${body}`;
+            const isBot = isBotUser(m.userId);
+            const tag = isBot ? ' [bot]' : '';
+            const body = m.type === 'file' ? '[file]'
+              : m.type === 'forward' ? '[forwarded messages]'
+              : m.content.slice(0, 500);
+            return `[${name}${tag}] ${body}`;
           });
+
         if (historyLines.length > 0) {
-          botContent = `--- Group Chat History (recent ${historyLines.length} messages) ---\n${historyLines.join('\n')}\n--- End History ---\n\n[${getUser(socket.userId)?.username || socket.userId}]: ${data.content}`;
+          botContent = `--- Group Chat History (${historyLabel}) ---\n${historyLines.join('\n')}\n--- End History ---\n\n[${getUser(socket.userId)?.username || socket.userId}]: ${data.content}`;
         }
       }
 
