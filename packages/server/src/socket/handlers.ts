@@ -326,7 +326,27 @@ export function setupSocketHandlers(io: Server) {
       }
 
       // Bot streaming responses — determine which bots should respond
-      const respondingBots = getRespondingBots(data.content, data.roomId, socket.userId);
+      const currentRoom = getRoom(data.roomId);
+      const roomType = currentRoom?.type as 'dm' | 'group' | undefined;
+      const respondingBots = getRespondingBots(data.content, data.roomId, socket.userId, roomType);
+
+      // In group rooms, prepend recent chat history so the bot has context
+      if (roomType === 'group' && respondingBots.length > 0) {
+        const GROUP_HISTORY_LIMIT = 30;
+        const recentMessages = getMessages(data.roomId, { limit: GROUP_HISTORY_LIMIT });
+        // Exclude the current message (just created above) and bot messages
+        const historyLines = recentMessages
+          .filter(m => m.id !== message.id)
+          .map(m => {
+            const u = getUser(m.userId);
+            const name = u?.username || m.userId;
+            const body = m.type === 'file' ? '[file]' : m.type === 'forward' ? '[forwarded messages]' : m.content.slice(0, 500);
+            return `[${name}] ${body}`;
+          });
+        if (historyLines.length > 0) {
+          botContent = `--- Group Chat History (recent ${historyLines.length} messages) ---\n${historyLines.join('\n')}\n--- End History ---\n\n[${getUser(socket.userId)?.username || socket.userId}]: ${data.content}`;
+        }
+      }
 
       // Process bots sequentially to avoid interleaving
       for (const bot of respondingBots) {

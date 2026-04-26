@@ -158,8 +158,9 @@ function escapeRegex(s: string): string {
  * @param content    message text
  * @param roomId     room where message was sent
  * @param senderId   who sent the message
+ * @param roomType   'dm' | 'group' — in group rooms, trigger='all' behaves like 'mention'
  */
-export function getRespondingBots(content: string, roomId: string, senderId: string): BotConfig[] {
+export function getRespondingBots(content: string, roomId: string, senderId: string, roomType?: 'dm' | 'group'): BotConfig[] {
   // Never respond to messages from bots (prevent loops)
   if (isBotUser(senderId)) return [];
 
@@ -169,17 +170,22 @@ export function getRespondingBots(content: string, roomId: string, senderId: str
   for (const bot of bots.values()) {
     switch (bot.trigger) {
       case 'all':
-        responding.push(bot);
+        // In group rooms, only respond when mentioned (silent observe otherwise)
+        if (roomType === 'group') {
+          if (mentioned.has(bot.id)) responding.push(bot);
+        } else {
+          responding.push(bot);
+        }
         break;
       case 'mention':
         if (mentioned.has(bot.id)) responding.push(bot);
         break;
       case 'room-member':
-        // Check if bot is a member of the room
-        if (mentioned.has(bot.id) || isBotInRoom(bot.id, roomId)) {
-          // For room-member, only respond if mentioned or if trigger is room-member and bot is in the room
-          // Actually room-member means: respond to all messages in rooms the bot has joined
-          if (isBotInRoom(bot.id, roomId)) responding.push(bot);
+        if (roomType === 'group') {
+          // In group rooms, room-member bots only respond when mentioned
+          if (mentioned.has(bot.id)) responding.push(bot);
+        } else if (isBotInRoom(bot.id, roomId)) {
+          responding.push(bot);
         }
         break;
     }
