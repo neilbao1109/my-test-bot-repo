@@ -7,6 +7,7 @@ import MessageBubble from '../MessageBubble';
 import CommandBar from '../CommandBar';
 import SearchBar from '../SearchBar';
 import PinnedBar from '../PinnedBar';
+import ForwardToolbar from '../ForwardToolbar';
 import UserAvatar from '../UserAvatar';
 
 function exportMessages(roomMessages: any[], roomName: string, members: any[]) {
@@ -241,6 +242,7 @@ export default function ChatView() {
 
       {/* Pinned messages bar */}
       <PinnedBar />
+      <ForwardToolbar />
 
       {/* Messages */}
       <div ref={messageListRef} onScroll={handleScroll} className="flex-1 overflow-y-auto py-4 min-h-0 overscroll-contain">

@@ -164,6 +164,12 @@ class SocketService {
     });
   }
 
+  forwardMessages(messageIds: string[], sourceRoomId: string, targetRoomId: string, mode: 'individual' | 'merged'): Promise<{ success?: boolean; count?: number; error?: string }> {
+    return new Promise((resolve) => {
+      this.socket?.emit('message:forward', { messageIds, sourceRoomId, targetRoomId, mode }, resolve);
+    });
+  }
+
   // Event listeners
   on(event: string, callback: (...args: any[]) => void) {
     this.socket?.on(event, callback);

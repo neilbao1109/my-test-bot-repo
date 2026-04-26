@@ -59,6 +59,9 @@ const QUICK_REACTIONS = ['👍', '❤️', '😂', '🎉', '🤔', '👀'];
 export default function MessageBubble({ message, isStreaming, streamContent, highlight, isSearchActive }: MessageBubbleProps) {
   const { user, roomMembers, activeRoomId, threadInfo, setReplyTo, messages: allMessages } = useAppStore();
   const isPinned = useAppStore((s) => activeRoomId ? (s.pinnedMessages[activeRoomId] || []).some((p) => p.messageId === message.id) : false);
+  const selectionMode = useAppStore((s) => s.selectionMode);
+  const isSelected = useAppStore((s) => s.selectedMessages.has(message.id));
+  const toggleMessageSelection = useAppStore((s) => s.toggleMessageSelection);
   const [showActions, setShowActions] = useState(false);
   const [showReactions, setShowReactions] = useState(false);
   const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
@@ -173,10 +176,23 @@ export default function MessageBubble({ message, isStreaming, streamContent, hig
         message.type === 'system' && 'opacity-80',
         isSearchActive && 'bg-primary-600/20 ring-1 ring-primary-500/40',
         highlight && !isSearchActive && 'bg-yellow-500/5',
+        selectionMode && isSelected && 'bg-primary-600/15',
       )}
-      onMouseEnter={() => !isMobile && setShowActions(true)}
+      onClick={selectionMode ? (e) => { e.stopPropagation(); toggleMessageSelection(message.id); } : undefined}
+      onMouseEnter={() => !isMobile && !selectionMode && setShowActions(true)}
       onMouseLeave={() => { !isMobile && setShowActions(false); setShowReactions(false); }}
     >
+      {/* Selection checkbox */}
+      {selectionMode && (
+        <div className="flex-shrink-0 flex items-center pt-1">
+          <div className={clsx(
+            'w-5 h-5 rounded border-2 flex items-center justify-center transition cursor-pointer',
+            isSelected ? 'bg-primary-500 border-primary-500 text-white' : 'border-dark-muted'
+          )}>
+            {isSelected && <span className="text-xs">✓</span>}
+          </div>
+        </div>
+      )}
       {/* Avatar */}
       <div className="flex-shrink-0 pt-0.5">
         <UserAvatar
@@ -231,7 +247,7 @@ export default function MessageBubble({ message, isStreaming, streamContent, hig
                 {quotedSender?.username || 'Unknown'}
               </p>
               <p className="text-xs text-dark-muted truncate">
-                {quoted.content.length > 80 ? quoted.content.slice(0, 80) + '…' : quoted.content}
+                {quoted.content.length > 80 ? quoted.content.slice(0, 80) + '...' : quoted.content}
               </p>
             </button>
           );
@@ -288,6 +304,28 @@ export default function MessageBubble({ message, isStreaming, streamContent, hig
                   <p className="text-xs text-dark-muted">{formatFileSize(attachment.size)}</p>
                 </div>
                 <span className="text-primary-400 text-xs flex-shrink-0">预览</span>
+              </div>
+            );
+          })() 
+        ) : message.type === 'forward' ? (
+          (() => {
+            let fwd: { sourceRoom?: string; messages?: Array<{ username: string; content: string; createdAt: string }> } | null = null;
+            try { fwd = JSON.parse(displayContent); } catch {}
+            if (!fwd?.messages?.length) return <p className="text-sm text-dark-muted italic">Invalid forward</p>;
+            return (
+              <div className="bg-dark-hover/30 border border-dark-border rounded-lg overflow-hidden mt-1 max-w-md">
+                <div className="px-3 py-2 border-b border-dark-border bg-dark-bg/50 flex items-center gap-2">
+                  <span className="text-sm">📨</span>
+                  <span className="text-xs text-dark-muted">聊天记录来自 #{fwd.sourceRoom || 'unknown'} ({fwd.messages.length}条)</span>
+                </div>
+                <div className="px-3 py-2 space-y-1.5 max-h-48 overflow-y-auto">
+                  {fwd.messages.map((m, i) => (
+                    <div key={i}>
+                      <span className="text-xs font-semibold text-primary-400">{m.username}</span>
+                      <p className="text-xs text-dark-text">{m.content.length > 200 ? m.content.slice(0, 200) + '…' : m.content}</p>
+                    </div>
+                  ))}
+                </div>
               </div>
             );
           })()
@@ -373,7 +411,7 @@ export default function MessageBubble({ message, isStreaming, streamContent, hig
           >
             <span>🧵</span>
             <span>{msgThreadInfo.replyCount} {msgThreadInfo.replyCount === 1 ? 'reply' : 'replies'}</span>
-            <span className="text-dark-muted">— View thread</span>
+            <span className="text-dark-muted">- View thread</span>
           </button>
         )}
       </div>
@@ -478,6 +516,13 @@ export default function MessageBubble({ message, isStreaming, streamContent, hig
           >
             {isPinned ? '📍' : '📌'}
           </button>
+          <button
+            onClick={() => { useAppStore.getState().toggleSelectionMode(); useAppStore.getState().toggleMessageSelection(message.id); }}
+            className="p-1.5 text-dark-muted hover:text-dark-text hover:bg-dark-hover rounded transition text-xs"
+            title="Forward"
+          >
+            ↗️
+          </button>
           {isOwn && (
             <>
               <button
@@ -499,7 +544,7 @@ export default function MessageBubble({ message, isStreaming, streamContent, hig
         </div>
       )}
 
-      {/* Reaction picker — positioned relative to parent */}
+      {/* Reaction picker - positioned relative to parent */}
       {showReactions && (
         <div
           ref={reactionRef}

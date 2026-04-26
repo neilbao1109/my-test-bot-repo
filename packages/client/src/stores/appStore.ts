@@ -118,6 +118,13 @@ interface AppState {
   setShowSettings: (show: boolean) => void;
   setTheme: (theme: 'dark' | 'light') => void;
   setImageQuality: (q: ImageQuality) => void;
+
+  // Message selection (forwarding)
+  selectionMode: boolean;
+  selectedMessages: Set<string>;
+  toggleSelectionMode: () => void;
+  toggleMessageSelection: (id: string) => void;
+  clearSelection: () => void;
 }
 
 export const useAppStore = create<AppState>((set, get) => ({
@@ -414,6 +421,20 @@ export const useAppStore = create<AppState>((set, get) => ({
     setDefaultImageQuality(q);
     set({ imageQuality: q });
   },
+
+  // Message selection (forwarding)
+  selectionMode: false,
+  selectedMessages: new Set<string>(),
+  toggleSelectionMode: () => set((s) => {
+    if (s.selectionMode) return { selectionMode: false, selectedMessages: new Set<string>() };
+    return { selectionMode: true, selectedMessages: new Set<string>() };
+  }),
+  toggleMessageSelection: (id) => set((s) => {
+    const next = new Set(s.selectedMessages);
+    if (next.has(id)) next.delete(id); else next.add(id);
+    return { selectedMessages: next };
+  }),
+  clearSelection: () => set({ selectionMode: false, selectedMessages: new Set<string>() }),
 }));
 
 // Sync image quality on load

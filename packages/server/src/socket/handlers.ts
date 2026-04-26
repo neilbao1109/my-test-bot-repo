@@ -1,5 +1,5 @@
 import { Server, Socket } from 'socket.io';
-import { createMessage, getMessages, getLastMessage, editMessage, deleteMessage, addReaction, searchMessages, getReplyChain } from '../services/message.js';
+import { createMessage, getMessages, getLastMessage, getMessageById, editMessage, deleteMessage, addReaction, searchMessages, getReplyChain } from '../services/message.js';
 import { createRoom, getRooms, getRoomMembers, addMemberToRoom, removeMemberFromRoom, renameRoom, deleteRoom, searchUsers, getRoom } from '../services/room.js';
 import { createThread, getThread, getThreadByMessage } from '../services/thread.js';
 import { parseCommand, executeCommand } from '../services/command.js';
@@ -506,6 +506,81 @@ export function setupSocketHandlers(io: Server) {
     socket.on('message:pins', (data: { roomId: string }, callback) => {
       const pins = getPinnedMessages(data.roomId);
       callback(pins);
+    });
+
+    // --- Forward ---
+    socket.on('message:forward', (data: { messageIds: string[]; sourceRoomId: string; targetRoomId: string; mode: 'individual' | 'merged' }, callback?) => {
+      if (!socket.userId) return;
+      if (!data.messageIds?.length || !data.sourceRoomId || !data.targetRoomId) {
+        if (callback) callback({ error: 'Missing required fields' });
+        return;
+      }
+
+      // Check membership in both rooms
+      const sourceMembers = getRoomMembers(data.sourceRoomId);
+      const targetMembers = getRoomMembers(data.targetRoomId);
+      if (!sourceMembers.some(m => m.id === socket.userId) || !targetMembers.some(m => m.id === socket.userId)) {
+        if (callback) callback({ error: 'Not a member of source or target room' });
+        return;
+      }
+
+      // Fetch all messages, preserve order
+      const messages = data.messageIds
+        .map(id => getMessageById(id))
+        .filter((m): m is NonNullable<typeof m> => m !== null && m.roomId === data.sourceRoomId);
+
+      if (messages.length === 0) {
+        if (callback) callback({ error: 'No valid messages found' });
+        return;
+      }
+
+      // Sort by createdAt
+      messages.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+
+      const sourceRoom = getRoom(data.sourceRoomId);
+      const sourceName = sourceRoom?.name || 'unknown';
+
+      if (data.mode === 'individual') {
+        // Forward each message individually
+        const forwarded = messages.map(m => {
+          const sender = getUser(m.userId);
+          const senderName = sender?.username || 'Unknown';
+          const prefix = `📨 转发自 #${sourceName}\n[${senderName}]:\n`;
+          const body = m.type === 'file' ? m.content : m.content;
+          return createMessage({
+            roomId: data.targetRoomId,
+            userId: socket.userId!,
+            content: prefix + body,
+            type: m.type === 'file' ? 'file' : 'text',
+          });
+        });
+        forwarded.forEach(msg => io.to(data.targetRoomId).emit('message:new', msg));
+        if (callback) callback({ success: true, count: forwarded.length });
+      } else {
+        // Merge into one forward card
+        const forwardPayload = {
+          sourceRoom: sourceName,
+          sourceRoomId: data.sourceRoomId,
+          messages: messages.map(m => {
+            const sender = getUser(m.userId);
+            return {
+              userId: m.userId,
+              username: sender?.username || 'Unknown',
+              content: m.type === 'file' ? '[文件]' : m.content,
+              type: m.type,
+              createdAt: m.createdAt,
+            };
+          }),
+        };
+        const msg = createMessage({
+          roomId: data.targetRoomId,
+          userId: socket.userId,
+          content: JSON.stringify(forwardPayload),
+          type: 'forward',
+        });
+        io.to(data.targetRoomId).emit('message:new', msg);
+        if (callback) callback({ success: true, count: 1 });
+      }
     });
 
     // --- Typing ---

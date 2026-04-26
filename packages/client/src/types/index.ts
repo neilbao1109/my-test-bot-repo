@@ -28,7 +28,7 @@ export interface Message {
   threadId: string | null;
   userId: string;
   content: string;
-  type: 'text' | 'command' | 'system' | 'file';
+  type: 'text' | 'command' | 'system' | 'file' | 'forward';
   replyTo: string | null;
   reactions: Record<string, string[]>;
   isEdited: boolean;
