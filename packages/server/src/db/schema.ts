@@ -71,7 +71,7 @@ function initSchema(db: Database.Database) {
       thread_id TEXT,
       user_id TEXT NOT NULL REFERENCES users(id),
       content TEXT NOT NULL,
-      type TEXT NOT NULL DEFAULT 'text' CHECK(type IN ('text', 'command', 'system', 'file')),
+      type TEXT NOT NULL DEFAULT 'text' CHECK(type IN ('text', 'command', 'system', 'file', 'forward')),
       reply_to TEXT REFERENCES messages(id),
       reactions TEXT NOT NULL DEFAULT '{}',
       is_edited INTEGER NOT NULL DEFAULT 0,
