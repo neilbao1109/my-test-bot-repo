@@ -1,8 +1,8 @@
 import { useState, useMemo } from 'react';
 import clsx from 'clsx';
 import { useAppStore } from '../../stores/appStore';
-import UserAvatar from '../UserAvatar';
 import SettingsPanel from './SettingsPanel';
+import AccountPanel from './AccountPanel';
 import FolderTabs from './FolderTabs';
 import FolderEditModal from './FolderEditModal';
 import type { ChatFolder } from '../../types';
@@ -35,10 +35,11 @@ function previewText(content: string, type: string): string {
 }
 
 export default function Sidebar() {
-  const { rooms, activeRoomId, setActiveRoom, user, showSidebar, roomMembers, onlineUsers, setShowCreateRoom, theme, setTheme, showSettings, setShowSettings, folders, activeFolderId } = useAppStore();
+  const { rooms, activeRoomId, setActiveRoom, showSidebar, roomMembers, onlineUsers, setShowCreateRoom, theme, setTheme, showSettings, setShowSettings, folders, activeFolderId } = useAppStore();
   const [showFolderModal, setShowFolderModal] = useState(false);
   const [editingFolder, setEditingFolder] = useState<ChatFolder | null>(null);
   const [showQuickMenu, setShowQuickMenu] = useState(false);
+  const [showAccount, setShowAccount] = useState(false);
 
   const isMobile = window.innerWidth < 768;
 
@@ -84,7 +85,7 @@ export default function Sidebar() {
           ? 'w-64 min-w-[16rem] opacity-100'
           : 'w-0 min-w-0 opacity-0 border-r-0 overflow-hidden'
     )}>
-      {/* Two-layer container for slide transition */}
+      {/* Three-layer container for slide transitions */}
       <div className="relative flex-1 flex overflow-hidden">
         {/* Main sidebar content */}
         <div className={clsx(
@@ -134,13 +135,6 @@ export default function Sidebar() {
         </div>
       </div>
 
-      {/* User info */}
-      {user && (
-        <div className="px-4 py-3 border-b border-dark-border flex items-center gap-2">
-          <UserAvatar username={user.username} isOnline={true} size="sm" />
-          <span className="text-sm text-dark-text truncate flex-1">{user.username}</span>
-        </div>
-      )}
 
       {/* Folder tabs */}
       <FolderTabs onCreateFolder={() => setShowFolderModal(true)} />
@@ -201,9 +195,17 @@ export default function Sidebar() {
         {/* Settings panel (slides in from right) */}
         <div className={clsx(
           'absolute inset-0 flex flex-col transition-transform duration-200 ease-in-out',
-          showSettings ? 'translate-x-0' : 'translate-x-full'
+          showSettings ? (showAccount ? '-translate-x-full' : 'translate-x-0') : 'translate-x-full'
         )}>
-          <SettingsPanel onBack={() => setShowSettings(false)} />
+          <SettingsPanel onBack={() => setShowSettings(false)} onShowAccount={() => setShowAccount(true)} />
+        </div>
+
+        {/* Account panel (slides in from right of settings) */}
+        <div className={clsx(
+          'absolute inset-0 flex flex-col transition-transform duration-200 ease-in-out',
+          showAccount ? 'translate-x-0' : 'translate-x-full'
+        )}>
+          <AccountPanel onBack={() => setShowAccount(false)} />
         </div>
       </div>
     </div>

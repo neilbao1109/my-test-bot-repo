@@ -1,4 +1,5 @@
 import { useAppStore } from '../../stores/appStore';
+import UserAvatar from '../UserAvatar';
 import type { ImageQuality } from '../../services/upload';
 
 const IMAGE_QUALITY_OPTIONS: { value: ImageQuality; label: string; desc: string }[] = [
@@ -10,10 +11,11 @@ const IMAGE_QUALITY_OPTIONS: { value: ImageQuality; label: string; desc: string 
 
 interface SettingsPanelProps {
   onBack: () => void;
+  onShowAccount: () => void;
 }
 
-export default function SettingsPanel({ onBack }: SettingsPanelProps) {
-  const { theme, setTheme, imageQuality, setImageQuality, user, logout } = useAppStore();
+export default function SettingsPanel({ onBack, onShowAccount }: SettingsPanelProps) {
+  const { theme, setTheme, imageQuality, setImageQuality, user } = useAppStore();
 
   return (
     <div className="flex flex-col h-full">
@@ -35,6 +37,19 @@ export default function SettingsPanel({ onBack }: SettingsPanelProps) {
 
       {/* Settings content */}
       <div className="flex-1 overflow-y-auto">
+        {/* User card */}
+        {user && (
+          <button
+            onClick={onShowAccount}
+            className="w-full px-4 py-3 border-b border-dark-border flex items-center gap-3 hover:bg-dark-hover transition text-left"
+          >
+            <UserAvatar username={user.username} isOnline={true} size="sm" />
+            <span className="text-sm font-medium text-dark-text flex-1 truncate">{user.username}</span>
+            <svg className="w-4 h-4 text-dark-muted flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+            </svg>
+          </button>
+        )}
         {/* Theme */}
         <Section title="🎨 Appearance">
           <div className="flex gap-2">
@@ -88,20 +103,11 @@ export default function SettingsPanel({ onBack }: SettingsPanelProps) {
         </Section>
       </div>
 
-      {/* Account & Footer */}
+      {/* Footer */}
       <div
-        className="p-4 border-t border-dark-border space-y-3"
+        className="p-4 border-t border-dark-border"
         style={{ paddingBottom: `max(0.75rem, var(--safe-area-bottom))` }}
       >
-        {user && (
-          <button
-            onClick={logout}
-            className="w-full py-2.5 px-3 text-sm text-red-400 hover:bg-red-500/10 rounded-lg transition flex items-center justify-center gap-2"
-          >
-            <span>⏻</span>
-            <span>Logout ({user.username})</span>
-          </button>
-        )}
         <p className="text-[10px] text-dark-muted text-center">ClawChat • Settings are saved locally</p>
         <p className="text-[10px] text-dark-muted/50 text-center mt-1">Build: {__BUILD_HASH__} • {__BUILD_TIME__}</p>
       </div>
