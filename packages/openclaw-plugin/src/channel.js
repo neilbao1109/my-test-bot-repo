@@ -88,6 +88,17 @@ export const clawchatPlugin = {
     blockStreaming: true,
   },
   reload: { configPrefixes: [`channels.${CHANNEL_ID}`] },
+  configSchema: {
+    type: "object",
+    properties: {
+      enabled: { type: "boolean" },
+      pushUrl: { type: "string" },
+      pushSecret: { type: "string" },
+      defaultRoom: { type: "string" },
+      name: { type: "string" },
+    },
+    additionalProperties: false,
+  },
   config: {
     listAccountIds: () => ["default"],
     resolveAccount: (cfg) => {
