@@ -96,7 +96,7 @@ export default function Sidebar() {
         )}>
       {/* Header */}
       <div className="p-4 border-b border-dark-border flex items-center justify-between"
-           style={{ paddingTop: `max(1rem, var(--safe-area-top))` }}>
+           >
         <div className="flex items-center gap-2">
           <button
             onClick={() => setShowSearchPanel(true)}

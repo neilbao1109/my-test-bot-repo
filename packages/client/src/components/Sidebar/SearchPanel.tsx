@@ -89,7 +89,7 @@ export default function SearchPanel({ onClose }: { onClose: () => void }) {
     <div className="flex flex-col h-full">
       {/* Search header */}
       <div className="p-3 border-b border-dark-border flex items-center gap-2"
-           style={{ paddingTop: `max(0.75rem, var(--safe-area-top))` }}>
+           >
         <svg className="w-4 h-4 text-dark-muted flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
         </svg>

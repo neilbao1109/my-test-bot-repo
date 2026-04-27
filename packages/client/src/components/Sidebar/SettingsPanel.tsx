@@ -22,7 +22,6 @@ export default function SettingsPanel({ onBack, onShowAccount }: SettingsPanelPr
       {/* Header */}
       <div
         className="p-4 border-b border-dark-border flex items-center gap-3"
-        style={{ paddingTop: `max(1rem, var(--safe-area-top))` }}
       >
         <button
           onClick={onBack}
@@ -106,7 +105,6 @@ export default function SettingsPanel({ onBack, onShowAccount }: SettingsPanelPr
       {/* Footer */}
       <div
         className="p-4 border-t border-dark-border"
-        style={{ paddingBottom: `max(0.75rem, var(--safe-area-bottom))` }}
       >
         <p className="text-[10px] text-dark-muted text-center">ClawChat • Settings are saved locally</p>
         <p className="text-[10px] text-dark-muted/50 text-center mt-1">Build: {__BUILD_HASH__} • {__BUILD_TIME__}</p>
