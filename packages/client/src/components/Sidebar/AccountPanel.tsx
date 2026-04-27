@@ -32,6 +32,9 @@ export default function AccountPanel({ onBack }: AccountPanelProps) {
           <div className="px-4 py-6 flex flex-col items-center gap-3 border-b border-dark-border">
             <UserAvatar username={user.username} isOnline={true} size="lg" />
             <span className="text-lg font-semibold text-dark-text">{user.username}</span>
+            {user.email && (
+              <span className="text-xs text-dark-muted">{user.email}</span>
+            )}
           </div>
         )}
 
