@@ -34,6 +34,7 @@ function rowToUser(row: any): User {
   return {
     id: row.id,
     username: row.username,
+    email: row.email || undefined,
     avatarUrl: row.avatar_url,
     isBot: !!row.is_bot,
     isOnline: !!row.is_online,
