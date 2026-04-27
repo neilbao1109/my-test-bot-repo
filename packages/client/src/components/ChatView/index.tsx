@@ -61,6 +61,7 @@ export default function ChatView() {
     typingUsers, showSidebar, toggleSidebar, toggleMembers,
     user, roomMembers, onlineUsers, toggleSearch, searchResults, searchActiveIdx, searchQuery,
     hasMore, loadingHistory, setLoadingHistory, setHasMore, prependMessages, backToList,
+    isContextMode, setContextMode, setMessages,
   } = useAppStore();
   const bottomRef = useRef<HTMLDivElement>(null);
   const messageListRef = useRef<HTMLDivElement>(null);
@@ -72,6 +73,14 @@ export default function ChatView() {
   const roomTyping = activeRoomId ? typingUsers[activeRoomId] || [] : [];
   const members = activeRoomId ? roomMembers[activeRoomId] || [] : [];
   const onlineCount = members.filter((m) => onlineUsers.has(m.id) || m.isOnline).length;
+  const inContextMode = activeRoomId ? isContextMode[activeRoomId] || false : false;
+
+  const returnToLatest = useCallback(() => {
+    if (!activeRoomId) return;
+    setContextMode(activeRoomId, false);
+    // Re-join room to reload latest messages
+    socketService.joinRoom(activeRoomId);
+  }, [activeRoomId, setContextMode]);
 
   // Get streaming messages for this room (not in threads)
   const roomStreamingMsgs = useMemo(() => Object.values(streamingMessages).filter(
@@ -343,6 +352,18 @@ export default function ChatView() {
 
         <div ref={bottomRef} />
       </div>
+
+      {/* Return to latest button when in context mode */}
+      {inContextMode && (
+        <div className="flex justify-center py-2 border-t border-dark-border bg-dark-surface/80">
+          <button
+            onClick={returnToLatest}
+            className="px-4 py-1.5 text-xs font-medium text-primary-400 bg-dark-hover rounded-full hover:bg-dark-border transition flex items-center gap-1"
+          >
+            ↓ 回到最新消息
+          </button>
+        </div>
+      )}
 
       {/* Input */}
       <CommandBar roomId={activeRoomId} onExport={() => exportMessages(roomMessages, activeRoom.name, members)} />

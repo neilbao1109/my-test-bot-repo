@@ -1,10 +1,12 @@
 import { useState, useEffect, useRef } from 'react';
 import { useAppStore } from '../../stores/appStore';
+import { socketService } from '../../services/socket';
 
 export default function PinnedBar() {
-  const { activeRoomId, pinnedMessages, roomMembers } = useAppStore();
+  const { activeRoomId, pinnedMessages, roomMembers, setMessages, setHasMore, setContextMode } = useAppStore();
   const [expanded, setExpanded] = useState(false);
   const [dismissed, setDismissed] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   const pins = activeRoomId ? pinnedMessages[activeRoomId] || [] : [];
   const members = activeRoomId ? roomMembers[activeRoomId] || [] : [];
@@ -24,12 +26,44 @@ export default function PinnedBar() {
     return members.find((m) => m.id === userId)?.username || 'Unknown';
   };
 
-  const scrollToMessage = (messageId: string) => {
+  const highlightMessage = (el: Element) => {
+    el.classList.add('bg-primary-600/20');
+    setTimeout(() => el.classList.remove('bg-primary-600/20'), 2000);
+  };
+
+  const scrollToMessage = async (messageId: string) => {
+    // Try to find message in current DOM
     const el = document.querySelector(`[data-msg-id="${messageId}"]`);
     if (el) {
       el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      el.classList.add('bg-primary-600/20');
-      setTimeout(() => el.classList.remove('bg-primary-600/20'), 2000);
+      highlightMessage(el);
+      return;
+    }
+
+    // Message not loaded — fetch context from server
+    if (!activeRoomId || loading) return;
+    setLoading(true);
+    try {
+      const result = await socketService.getMessageContext(messageId, activeRoomId);
+      if (result.error || !result.messages) return;
+
+      // Replace current messages with context
+      setMessages(activeRoomId, result.messages);
+      setHasMore(activeRoomId, result.hasOlder);
+      setContextMode(activeRoomId, result.hasNewer);
+
+      // Wait for DOM update then scroll
+      requestAnimationFrame(() => {
+        setTimeout(() => {
+          const newEl = document.querySelector(`[data-msg-id="${messageId}"]`);
+          if (newEl) {
+            newEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            highlightMessage(newEl);
+          }
+        }, 100);
+      });
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -42,13 +76,14 @@ export default function PinnedBar() {
         <span className="text-sm flex-shrink-0">📌</span>
         <button
           onClick={() => scrollToMessage(latestPin.messageId)}
+          disabled={loading}
           className="flex-1 min-w-0 text-left hover:bg-dark-hover/50 rounded px-1 py-0.5 transition"
         >
           <span className="text-xs text-primary-400 font-semibold">
             {getSenderName(latestPin.userId)}
           </span>
           <p className="text-xs text-dark-text truncate">
-            {latestPin.type === 'file' ? '📎 File' : latestPin.content.slice(0, 100)}
+            {loading ? '加载中...' : latestPin.type === 'file' ? '📎 File' : latestPin.content.slice(0, 100)}
           </p>
         </button>
 
@@ -77,6 +112,7 @@ export default function PinnedBar() {
             <div key={pin.id} className="flex items-center gap-2">
               <button
                 onClick={() => scrollToMessage(pin.messageId)}
+                disabled={loading}
                 className="flex-1 min-w-0 text-left hover:bg-dark-hover/50 rounded px-2 py-1 transition"
               >
                 <span className="text-xs text-primary-400 font-semibold">

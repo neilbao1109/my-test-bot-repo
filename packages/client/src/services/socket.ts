@@ -170,6 +170,12 @@ class SocketService {
     });
   }
 
+  getMessageContext(messageId: string, roomId: string): Promise<{ messages: Message[]; hasOlder: boolean; hasNewer: boolean; error?: string }> {
+    return new Promise((resolve) => {
+      this.socket?.emit('messages:context', { messageId, roomId }, resolve);
+    });
+  }
+
   // Event listeners
   on(event: string, callback: (...args: any[]) => void) {
     this.socket?.on(event, callback);

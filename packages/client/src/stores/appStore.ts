@@ -107,6 +107,10 @@ interface AppState {
   mobileView: 'list' | 'chat';
   backToList: () => void;
 
+  // Context mode (jumped to old pinned message)
+  isContextMode: Record<string, boolean>;
+  setContextMode: (roomId: string, mode: boolean) => void;
+
   // UI
   showSidebar: boolean;
   showThread: boolean;
@@ -401,6 +405,10 @@ export const useAppStore = create<AppState>((set, get) => ({
   // Mobile navigation
   mobileView: 'list' as 'list' | 'chat',
   backToList: () => set({ mobileView: 'list' }),
+
+  // Context mode
+  isContextMode: {},
+  setContextMode: (roomId, mode) => set((s) => ({ isContextMode: { ...s.isContextMode, [roomId]: mode } })),
 
   // UI
   showSidebar: localStorage.getItem('clawchat-sidebar') !== 'collapsed' && window.innerWidth >= 768,

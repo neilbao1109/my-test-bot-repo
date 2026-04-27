@@ -1,5 +1,5 @@
 import { Server, Socket } from 'socket.io';
-import { createMessage, getMessages, getLastMessage, getLastMessageByUser, getMessagesSince, getMessageById, editMessage, deleteMessage, addReaction, searchMessages, getReplyChain } from '../services/message.js';
+import { createMessage, getMessages, getLastMessage, getLastMessageByUser, getMessagesSince, getMessageById, getMessagesAroundId, editMessage, deleteMessage, addReaction, searchMessages, getReplyChain } from '../services/message.js';
 import { createRoom, getRooms, getRoomMembers, addMemberToRoom, removeMemberFromRoom, renameRoom, deleteRoom, searchUsers, getRoom } from '../services/room.js';
 import { createThread, getThread, getThreadByMessage } from '../services/thread.js';
 import { parseCommand, executeCommand } from '../services/command.js';
@@ -548,6 +548,22 @@ export function setupSocketHandlers(io: Server) {
     socket.on('message:pins', (data: { roomId: string }, callback) => {
       const pins = getPinnedMessages(data.roomId);
       callback(pins);
+    });
+
+    // --- Message Context (for jumping to old messages) ---
+    socket.on('messages:context', (data: { messageId: string; roomId: string; around?: number }, callback) => {
+      if (!socket.userId) return;
+      const members = getRoomMembers(data.roomId);
+      if (!members.some(m => m.id === socket.userId)) {
+        if (callback) callback({ error: 'Not a member of this room' });
+        return;
+      }
+      const result = getMessagesAroundId(data.messageId, data.roomId, data.around);
+      if (!result) {
+        if (callback) callback({ error: 'Message not found' });
+        return;
+      }
+      if (callback) callback(result);
     });
 
     // --- Forward ---

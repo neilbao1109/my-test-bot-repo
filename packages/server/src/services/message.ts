@@ -160,6 +160,31 @@ function rowToMessage(row: any): Message {
   };
 }
 
+export function getMessagesAroundId(messageId: string, roomId: string, around: number = 25): { messages: Message[]; hasOlder: boolean; hasNewer: boolean } | null {
+  const db = getDb();
+  const target = db.prepare('SELECT created_at FROM messages WHERE id = ? AND room_id = ? AND is_deleted = 0').get(messageId, roomId) as any;
+  if (!target) return null;
+  const targetTime = target.created_at;
+
+  // Messages at or before target (including target), ordered desc, take `around`
+  const olderRows = db.prepare(
+    `SELECT * FROM messages WHERE room_id = ? AND is_deleted = 0 AND thread_id IS NULL AND created_at <= ? ORDER BY created_at DESC LIMIT ?`
+  ).all(roomId, targetTime, around) as any[];
+
+  // Messages after target, ordered asc, take `around`
+  const newerRows = db.prepare(
+    `SELECT * FROM messages WHERE room_id = ? AND is_deleted = 0 AND thread_id IS NULL AND created_at > ? ORDER BY created_at ASC LIMIT ?`
+  ).all(roomId, targetTime, around) as any[];
+
+  // Check if there are more messages beyond our window
+  const hasOlder = olderRows.length === around;
+  const hasNewer = newerRows.length === around;
+
+  // Combine: older reversed (chronological) + newer
+  const allRows = [...olderRows.reverse(), ...newerRows];
+  return { messages: allRows.map(rowToMessage), hasOlder, hasNewer };
+}
+
 export function getMessageById(messageId: string): Message | null {
   const db = getDb();
   const row = db.prepare('SELECT * FROM messages WHERE id = ?').get(messageId) as any;
