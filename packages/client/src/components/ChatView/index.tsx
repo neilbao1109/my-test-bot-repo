@@ -60,7 +60,7 @@ export default function ChatView() {
     activeRoomId, messages, rooms, streamingMessages,
     typingUsers, showSidebar, toggleSidebar, toggleMembers,
     user, roomMembers, onlineUsers, toggleSearch, searchResults, searchActiveIdx, searchQuery,
-    hasMore, loadingHistory, setLoadingHistory, setHasMore, prependMessages,
+    hasMore, loadingHistory, setLoadingHistory, setHasMore, prependMessages, backToList,
   } = useAppStore();
   const bottomRef = useRef<HTMLDivElement>(null);
   const messageListRef = useRef<HTMLDivElement>(null);
@@ -191,7 +191,15 @@ export default function ChatView() {
       )}
       {/* Header */}
       <div className="flex items-center gap-3 px-4 py-3 border-b border-dark-border bg-dark-surface flex-shrink-0">
-        {/* Hamburger: toggle sidebar on all screen sizes */}
+        {/* Mobile: back button; Desktop: hamburger */}
+        {window.innerWidth < 768 ? (
+          <button
+            onClick={backToList}
+            className="text-primary-400 hover:text-primary-300 p-1 flex items-center gap-0.5 text-sm font-medium"
+          >
+            ‹ 返回
+          </button>
+        ) : (
         <button
           onClick={toggleSidebar}
           className="text-dark-muted hover:text-dark-text p-1"
@@ -200,6 +208,7 @@ export default function ChatView() {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
             </svg>
           </button>
+        )}
         <span className="text-lg">{activeRoom.type === 'dm' ? '💬' : '👥'}</span>
         <div className="flex-1 min-w-0">
           <RoomNameHeader room={activeRoom} userId={user?.id} />

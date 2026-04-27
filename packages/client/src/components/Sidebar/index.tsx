@@ -41,9 +41,6 @@ export default function Sidebar() {
 
   const isMobile = window.innerWidth < 768;
 
-  // On mobile, hide via CSS instead of unmounting to avoid re-mount re-render storms
-  const hiddenOnMobile = isMobile && !showSidebar;
-
   const getRoomOnlineCount = (roomId: string): number => {
     const members = roomMembers[roomId] || [];
     return members.filter((m) => onlineUsers.has(m.id) || m.isOnline).length;
@@ -55,7 +52,6 @@ export default function Sidebar() {
 
   const handleRoomSelect = (roomId: string) => {
     setActiveRoom(roomId);
-    if (isMobile) toggleSidebar();
   };
 
   // Filter rooms by active folder
@@ -82,7 +78,7 @@ export default function Sidebar() {
     <div className={clsx(
       'bg-dark-surface border-r border-dark-border flex flex-col h-full overflow-hidden transition-all duration-200 ease-in-out',
       isMobile
-        ? 'fixed inset-0 z-40 w-full'
+        ? 'w-full h-full'
         : showSidebar
           ? 'w-64 min-w-[16rem] opacity-100'
           : 'w-0 min-w-0 opacity-0 border-r-0 overflow-hidden'
@@ -204,12 +200,10 @@ export default function Sidebar() {
     </div>
   );
 
-  // On mobile, wrap with backdrop
+  // On mobile, no backdrop needed — App.tsx handles display:none switching
   if (isMobile) {
-    if (hiddenOnMobile) return <div style={{ display: 'none' }}>{sidebar}</div>;
     return (
       <>
-        <div className="fixed inset-0 z-30 bg-black/50" onClick={toggleSidebar} />
         {sidebar}
         {(showFolderModal || editingFolder) && (
           <FolderEditModal

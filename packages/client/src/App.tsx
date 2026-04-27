@@ -19,8 +19,19 @@ function MainContent() {
   return <ChatView />;
 }
 
+function useIsMobile() {
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+  useEffect(() => {
+    const onResize = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, []);
+  return isMobile;
+}
+
 export default function App() {
-  const { user, setUser, setRooms, setActiveRoom } = useAppStore();
+  const { user, setUser, setRooms, setActiveRoom, mobileView } = useAppStore();
+  const isMobile = useIsMobile();
   const [loading, setLoading] = useState(true);
   const [token, setToken] = useState<string | null>(null);
 
@@ -90,9 +101,13 @@ export default function App() {
   return (
     <>
       <div className="h-screen flex overflow-hidden bg-dark-bg max-w-[100vw]" id="app-shell">
-        <Sidebar />
-        <MainContent />
-        <MemberPanel />
+        <div style={{ display: isMobile && mobileView !== 'list' ? 'none' : undefined }} className={isMobile ? 'w-full h-full' : 'contents'}>
+          <Sidebar />
+        </div>
+        <div style={{ display: isMobile && mobileView !== 'chat' ? 'none' : undefined }} className={isMobile ? 'w-full h-full flex' : 'contents'}>
+          <MainContent />
+          <MemberPanel />
+        </div>
       </div>
       <CreateRoomModal />
     </>

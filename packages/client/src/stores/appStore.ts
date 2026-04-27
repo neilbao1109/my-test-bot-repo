@@ -103,6 +103,10 @@ interface AppState {
   updateFolder: (folder: ChatFolder) => void;
   removeFolder: (id: string) => void;
 
+  // Mobile navigation
+  mobileView: 'list' | 'chat';
+  backToList: () => void;
+
   // UI
   showSidebar: boolean;
   showThread: boolean;
@@ -163,7 +167,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   }),
   setActiveRoom: (roomId) => {
     localStorage.setItem('clawchat-active-room', roomId);
-    set({ activeRoomId: roomId });
+    set({ activeRoomId: roomId, mobileView: 'chat' });
   },
 
   // Messages
@@ -393,6 +397,10 @@ export const useAppStore = create<AppState>((set, get) => ({
     localStorage.setItem('clawchat-folders', JSON.stringify(next));
     return { folders: next, activeFolderId: s.activeFolderId === id ? 'all' : s.activeFolderId };
   }),
+
+  // Mobile navigation
+  mobileView: 'list' as 'list' | 'chat',
+  backToList: () => set({ mobileView: 'list' }),
 
   // UI
   showSidebar: localStorage.getItem('clawchat-sidebar') !== 'collapsed' && window.innerWidth >= 768,
