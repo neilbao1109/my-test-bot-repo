@@ -35,7 +35,7 @@ function previewText(content: string, type: string): string {
 }
 
 export default function Sidebar() {
-  const { rooms, activeRoomId, setActiveRoom, user, showSidebar, roomMembers, onlineUsers, setShowCreateRoom, logout, theme, setTheme, showSettings, setShowSettings, folders, activeFolderId } = useAppStore();
+  const { rooms, activeRoomId, setActiveRoom, user, showSidebar, roomMembers, onlineUsers, setShowCreateRoom, theme, setTheme, showSettings, setShowSettings, folders, activeFolderId } = useAppStore();
   const [showFolderModal, setShowFolderModal] = useState(false);
   const [editingFolder, setEditingFolder] = useState<ChatFolder | null>(null);
   const [showQuickMenu, setShowQuickMenu] = useState(false);
@@ -139,7 +139,6 @@ export default function Sidebar() {
         <div className="px-4 py-3 border-b border-dark-border flex items-center gap-2">
           <UserAvatar username={user.username} isOnline={true} size="sm" />
           <span className="text-sm text-dark-text truncate flex-1">{user.username}</span>
-          <button onClick={logout} className="text-xs text-dark-muted hover:text-red-400 transition" title="Logout">⏻</button>
         </div>
       )}
 

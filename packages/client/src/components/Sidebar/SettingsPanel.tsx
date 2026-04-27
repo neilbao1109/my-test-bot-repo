@@ -13,7 +13,7 @@ interface SettingsPanelProps {
 }
 
 export default function SettingsPanel({ onBack }: SettingsPanelProps) {
-  const { theme, setTheme, imageQuality, setImageQuality } = useAppStore();
+  const { theme, setTheme, imageQuality, setImageQuality, user, logout } = useAppStore();
 
   return (
     <div className="flex flex-col h-full">
@@ -88,11 +88,20 @@ export default function SettingsPanel({ onBack }: SettingsPanelProps) {
         </Section>
       </div>
 
-      {/* Footer */}
+      {/* Account & Footer */}
       <div
-        className="p-4 border-t border-dark-border"
+        className="p-4 border-t border-dark-border space-y-3"
         style={{ paddingBottom: `max(0.75rem, var(--safe-area-bottom))` }}
       >
+        {user && (
+          <button
+            onClick={logout}
+            className="w-full py-2.5 px-3 text-sm text-red-400 hover:bg-red-500/10 rounded-lg transition flex items-center justify-center gap-2"
+          >
+            <span>⏻</span>
+            <span>Logout ({user.username})</span>
+          </button>
+        )}
         <p className="text-[10px] text-dark-muted text-center">ClawChat • Settings are saved locally</p>
         <p className="text-[10px] text-dark-muted/50 text-center mt-1">Build: {__BUILD_HASH__} • {__BUILD_TIME__}</p>
       </div>
