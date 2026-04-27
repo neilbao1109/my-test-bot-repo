@@ -108,4 +108,41 @@ function initSchema(db: Database.Database) {
   if (!cols.some((c: any) => c.name === 'created_by')) {
     db.exec('ALTER TABLE rooms ADD COLUMN created_by TEXT');
   }
+
+  // Migration: fix stale foreign keys referencing "messages_old" in pinned_messages and threads
+  const pinnedDDL = db.prepare("SELECT sql FROM sqlite_master WHERE type='table' AND name='pinned_messages'").get() as any;
+  if (pinnedDDL?.sql?.includes('messages_old')) {
+    db.exec(`
+      CREATE TABLE pinned_messages_new (
+        id TEXT PRIMARY KEY,
+        message_id TEXT NOT NULL REFERENCES messages(id) ON DELETE CASCADE,
+        room_id TEXT NOT NULL REFERENCES rooms(id) ON DELETE CASCADE,
+        pinned_by TEXT NOT NULL REFERENCES users(id),
+        pinned_at TEXT NOT NULL DEFAULT (datetime('now')),
+        UNIQUE(message_id)
+      );
+      INSERT INTO pinned_messages_new SELECT * FROM pinned_messages;
+      DROP TABLE pinned_messages;
+      ALTER TABLE pinned_messages_new RENAME TO pinned_messages;
+      CREATE INDEX IF NOT EXISTS idx_pinned_room ON pinned_messages(room_id, pinned_at);
+    `);
+    console.log('[Migration] Rebuilt pinned_messages with correct FK');
+  }
+
+  const threadsDDL = db.prepare("SELECT sql FROM sqlite_master WHERE type='table' AND name='threads'").get() as any;
+  if (threadsDDL?.sql?.includes('messages_old')) {
+    db.exec(`
+      CREATE TABLE threads_new (
+        id TEXT PRIMARY KEY,
+        room_id TEXT NOT NULL REFERENCES rooms(id) ON DELETE CASCADE,
+        parent_message_id TEXT NOT NULL REFERENCES messages(id) ON DELETE CASCADE,
+        reply_count INTEGER NOT NULL DEFAULT 0,
+        last_reply_at TEXT NOT NULL DEFAULT (datetime('now'))
+      );
+      INSERT INTO threads_new SELECT * FROM threads;
+      DROP TABLE threads;
+      ALTER TABLE threads_new RENAME TO threads;
+    `);
+    console.log('[Migration] Rebuilt threads with correct FK');
+  }
 }
