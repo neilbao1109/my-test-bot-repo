@@ -6,8 +6,7 @@ export default function SearchBar() {
   const {
     showSearch, toggleSearch, searchQuery, setSearchQuery,
     searchResults, searchTotal, searchActiveIdx, setSearchActiveIdx,
-    setSearchResults, searchGlobal, setSearchGlobal, activeRoomId,
-    rooms, setActiveRoom,
+    setSearchResults, activeRoomId,
   } = useAppStore();
   const inputRef = useRef<HTMLInputElement>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout>>();
@@ -18,15 +17,15 @@ export default function SearchBar() {
     }
   }, [showSearch]);
 
-  const doSearch = useCallback((query: string, global: boolean) => {
+  const doSearch = useCallback((query: string) => {
     if (!query.trim()) {
       setSearchResults([], 0);
       return;
     }
     socketService.searchMessages(
       query,
-      global ? undefined : (activeRoomId || undefined),
-      global,
+      activeRoomId || undefined,
+      false,
       50,
     ).then(({ results, total }) => {
       setSearchResults(results, total);
@@ -36,15 +35,7 @@ export default function SearchBar() {
   const handleInput = (value: string) => {
     setSearchQuery(value);
     if (timerRef.current) clearTimeout(timerRef.current);
-    timerRef.current = setTimeout(() => doSearch(value, searchGlobal), 300);
-  };
-
-  const handleToggleGlobal = () => {
-    const next = !searchGlobal;
-    setSearchGlobal(next);
-    if (searchQuery?.trim()) {
-      doSearch(searchQuery, next);
-    }
+    timerRef.current = setTimeout(() => doSearch(value), 300);
   };
 
   const handlePrev = () => {
@@ -57,17 +48,13 @@ export default function SearchBar() {
     setSearchActiveIdx(searchActiveIdx < searchResults.length - 1 ? searchActiveIdx + 1 : 0);
   };
 
-  // Jump to the active result's room if cross-room
+  // Jump to the active result
   const activeResult = searchResults[searchActiveIdx];
   useEffect(() => {
-    if (activeResult && searchGlobal && activeResult.roomId !== activeRoomId) {
-      setActiveRoom(activeResult.roomId);
-    }
+    // no-op: results are always in current room
   }, [activeResult?.id]);
 
   if (!showSearch) return null;
-
-  const activeRoom = activeResult ? rooms.find(r => r.id === activeResult.roomId) : null;
 
   return (
     <div className="flex flex-col border-b border-dark-border bg-dark-surface px-4 py-2 gap-1.5">
@@ -83,17 +70,7 @@ export default function SearchBar() {
           placeholder="Search messages..."
           className="flex-1 bg-transparent text-sm text-dark-text placeholder-dark-muted focus:outline-none"
         />
-        {/* Scope toggle */}
-        <button
-          onClick={handleToggleGlobal}
-          className={`text-xs px-2 py-1 rounded transition flex-shrink-0 ${
-            searchGlobal
-              ? 'bg-primary-600/30 text-primary-400'
-              : 'bg-dark-hover text-dark-muted hover:text-dark-text'
-          }`}
-        >
-          {searchGlobal ? 'All Rooms' : 'This Room'}
-        </button>
+        {/* No scope toggle - search is current room only */}
         <button
           onClick={toggleSearch}
           className="text-dark-muted hover:text-dark-text p-1 flex-shrink-0"
@@ -106,11 +83,6 @@ export default function SearchBar() {
         <div className="flex items-center gap-2 text-xs text-dark-muted">
           {searchResults.length > 0 ? (
             <>
-              {searchGlobal && activeRoom && (
-                <span className="text-primary-400 truncate max-w-[120px]">
-                  #{activeRoom.name}
-                </span>
-              )}
               <span>{searchActiveIdx + 1} / {searchTotal}</span>
               <button onClick={handlePrev} className="hover:text-dark-text px-1">▲</button>
               <button onClick={handleNext} className="hover:text-dark-text px-1">▼</button>

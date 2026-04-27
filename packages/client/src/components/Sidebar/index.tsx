@@ -5,6 +5,7 @@ import SettingsPanel from './SettingsPanel';
 import AccountPanel from './AccountPanel';
 import FolderTabs from './FolderTabs';
 import FolderEditModal from './FolderEditModal';
+import SearchPanel from './SearchPanel';
 import type { ChatFolder } from '../../types';
 
 function formatTime(dateStr: string): string {
@@ -40,6 +41,7 @@ export default function Sidebar() {
   const [editingFolder, setEditingFolder] = useState<ChatFolder | null>(null);
   const [showQuickMenu, setShowQuickMenu] = useState(false);
   const [showAccount, setShowAccount] = useState(false);
+  const [showSearchPanel, setShowSearchPanel] = useState(false);
 
   const isMobile = window.innerWidth < 768;
 
@@ -96,9 +98,15 @@ export default function Sidebar() {
       <div className="p-4 border-b border-dark-border flex items-center justify-between"
            style={{ paddingTop: `max(1rem, var(--safe-area-top))` }}>
         <div className="flex items-center gap-2">
-          <div className="w-8 h-8 bg-primary-600 rounded-lg flex items-center justify-center">
-            <span className="text-sm font-bold text-dark-text">CC</span>
-          </div>
+          <button
+            onClick={() => setShowSearchPanel(true)}
+            className="w-8 h-8 bg-primary-600 rounded-lg flex items-center justify-center hover:bg-primary-500 transition"
+            title="Search"
+          >
+            <svg className="w-4 h-4 text-dark-text" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+          </button>
           <span className="font-semibold text-dark-text">ClawChat</span>
         </div>
         <div className="relative">
@@ -136,10 +144,13 @@ export default function Sidebar() {
       </div>
 
 
-      {/* Folder tabs */}
-      <FolderTabs onCreateFolder={() => setShowFolderModal(true)} />
+      {/* Folder tabs - hidden during search */}
+      {!showSearchPanel && <FolderTabs onCreateFolder={() => setShowFolderModal(true)} />}
 
-      {/* Room list */}
+      {/* Search panel or Room list */}
+      {showSearchPanel ? (
+        <SearchPanel onClose={() => setShowSearchPanel(false)} />
+      ) : (
       <div className="flex-1 overflow-y-auto py-2">
         {sortedRooms.map((room) => {
           const memberCount = (roomMembers[room.id] || []).length;
@@ -188,6 +199,7 @@ export default function Sidebar() {
           );
         })}
       </div>
+      )}
 
 
         </div>
