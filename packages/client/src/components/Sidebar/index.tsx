@@ -35,9 +35,10 @@ function previewText(content: string, type: string): string {
 }
 
 export default function Sidebar() {
-  const { rooms, activeRoomId, setActiveRoom, user, showSidebar, toggleSidebar, roomMembers, onlineUsers, setShowCreateRoom, logout, theme, setTheme, showSettings, setShowSettings, folders, activeFolderId } = useAppStore();
+  const { rooms, activeRoomId, setActiveRoom, user, showSidebar, roomMembers, onlineUsers, setShowCreateRoom, logout, theme, setTheme, showSettings, setShowSettings, folders, activeFolderId } = useAppStore();
   const [showFolderModal, setShowFolderModal] = useState(false);
   const [editingFolder, setEditingFolder] = useState<ChatFolder | null>(null);
+  const [showQuickMenu, setShowQuickMenu] = useState(false);
 
   const isMobile = window.innerWidth < 768;
 
@@ -99,12 +100,38 @@ export default function Sidebar() {
           </div>
           <span className="font-semibold text-dark-text">ClawChat</span>
         </div>
-        <button
-          onClick={toggleSidebar}
-          className="text-dark-muted hover:text-dark-text p-1 rounded md:hidden"
-        >
-          ✕
-        </button>
+        <div className="relative">
+          <button
+            onClick={() => setShowQuickMenu(!showQuickMenu)}
+            className="text-dark-muted hover:text-dark-text p-1.5 rounded-lg hover:bg-dark-hover transition"
+            title="Menu"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 5v.01M12 12v.01M12 19v.01" />
+            </svg>
+          </button>
+          {showQuickMenu && (
+            <>
+              <div className="fixed inset-0 z-40" onClick={() => setShowQuickMenu(false)} />
+              <div className="absolute right-0 top-full mt-1 z-50 bg-dark-surface border border-dark-border rounded-lg shadow-lg py-1 min-w-[160px]">
+                <button
+                  onClick={() => { setShowCreateRoom(true); setShowQuickMenu(false); }}
+                  className="w-full text-left px-4 py-2.5 text-sm text-dark-text hover:bg-dark-hover flex items-center gap-2 transition"
+                >
+                  <span>＋</span>
+                  <span>New Room</span>
+                </button>
+                <button
+                  onClick={() => { setShowSettings(true); setShowQuickMenu(false); }}
+                  className="w-full text-left px-4 py-2.5 text-sm text-dark-text hover:bg-dark-hover flex items-center gap-2 transition"
+                >
+                  <span>⚙️</span>
+                  <span>Settings</span>
+                </button>
+              </div>
+            </>
+          )}
+        </div>
       </div>
 
       {/* User info */}
@@ -169,24 +196,7 @@ export default function Sidebar() {
         })}
       </div>
 
-      {/* New room button */}
-      <div className="p-3 border-t border-dark-border flex items-center gap-2"
-           style={{ paddingBottom: `max(0.75rem, var(--safe-area-bottom))` }}>
-        <button
-          onClick={() => setShowSettings(true)}
-          className="py-2 px-3 text-sm text-dark-muted hover:text-dark-text hover:bg-dark-hover rounded-lg transition"
-          title="Settings"
-        >
-          ⚙️
-        </button>
-        <button
-          onClick={() => setShowCreateRoom(true)}
-          className="flex-1 py-2 px-3 text-sm text-dark-muted hover:text-dark-text hover:bg-dark-hover rounded-lg transition flex items-center gap-2"
-        >
-          <span>＋</span>
-          <span>New Room</span>
-        </button>
-      </div>
+
         </div>
 
         {/* Settings panel (slides in from right) */}
