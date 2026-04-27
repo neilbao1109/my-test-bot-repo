@@ -195,9 +195,12 @@ export default function ChatView() {
         {window.innerWidth < 768 ? (
           <button
             onClick={backToList}
-            className="text-primary-400 hover:text-primary-300 p-1 flex items-center gap-0.5 text-sm font-medium"
+            className="text-dark-muted hover:text-dark-text p-2 rounded transition"
+            title="返回"
           >
-            ‹ 返回
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+            </svg>
           </button>
         ) : (
         <button
