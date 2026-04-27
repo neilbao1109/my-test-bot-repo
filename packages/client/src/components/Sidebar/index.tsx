@@ -100,7 +100,7 @@ export default function Sidebar() {
         <div className="flex items-center gap-2">
           <button
             onClick={() => setShowSearchPanel(true)}
-            className="w-8 h-8 bg-primary-600 rounded-lg flex items-center justify-center hover:bg-primary-500 transition"
+            className="text-dark-muted hover:text-dark-text p-1.5 rounded-lg hover:bg-dark-hover transition"
             title="Search"
           >
             <svg className="w-4 h-4 text-dark-text" fill="none" stroke="currentColor" viewBox="0 0 24 24">
