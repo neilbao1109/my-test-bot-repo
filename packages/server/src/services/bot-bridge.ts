@@ -28,6 +28,7 @@ export class BotBridge {
   private sessionRooms = new Map<string, string>(); // reverse: sessionKey → roomId
   private activeStreams = new Map<string, ActiveStream>();
   private subscribedSessions = new Set<string>();
+  private activeResponseSessions = new Set<string>();
   private connectionMode: ConnectionMode;
 
   /** Callback for push messages (cron, heartbeat, etc.) */
@@ -145,7 +146,10 @@ export class BotBridge {
       }
     }
 
-    // 2. No active stream — this is a push message (cron, heartbeat, etc.)
+    // 2. Skip if this session has an active streamResponse (avoid duplicate)
+    if (this.activeResponseSessions.has(sessionKey)) return;
+
+    // 3. No active stream — this is a push message (cron, heartbeat, sub-agent announce, etc.)
     if (done) {
       const roomId = this.sessionRooms.get(sessionKey);
       if (roomId && this.onPushMessage) {
@@ -250,6 +254,9 @@ export class BotBridge {
       return;
     }
 
+    // Mark session as having active response to prevent handleSessionMessage duplicate
+    this.activeResponseSessions.add(sessionKey);
+
     const runId = `${sessionKey}:${crypto.randomBytes(4).toString('hex')}`;
 
     const stream: ActiveStream = { chunks: [], done: false, listeners: new Set() };
@@ -298,6 +305,7 @@ export class BotBridge {
       yield '⚠️ AI responded but could not extract the response text';
     } finally {
       this.activeStreams.delete(runId);
+      this.activeResponseSessions.delete(sessionKey);
     }
   }
 

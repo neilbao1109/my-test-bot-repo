@@ -2,7 +2,9 @@
   "name": "clawchat",
   "version": "0.1.0",
   "private": true,
-  "workspaces": ["packages/*"],
+  "workspaces": [
+    "packages/*"
+  ],
   "scripts": {
     "dev": "concurrently \"npm run dev:server\" \"npm run dev:client\"",
     "dev:server": "npm -w packages/server run dev",
@@ -12,6 +14,6 @@
   },
   "devDependencies": {
     "concurrently": "^9.1.0",
-    "typescript": "^5.7.0"
+    "typescript": "^5.9.3"
   }
 }
