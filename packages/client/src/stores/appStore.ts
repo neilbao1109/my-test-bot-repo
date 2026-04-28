@@ -171,7 +171,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   }),
   setActiveRoom: (roomId) => {
     localStorage.setItem('clawchat-active-room', roomId);
-    set({ activeRoomId: roomId, mobileView: 'chat' });
+    set({ activeRoomId: roomId });
   },
 
   // Messages

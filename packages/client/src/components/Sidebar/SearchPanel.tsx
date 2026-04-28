@@ -64,6 +64,7 @@ export default function SearchPanel({ onClose }: { onClose: () => void }) {
 
   const handleResultClick = (roomId: string) => {
     setActiveRoom(roomId);
+    useAppStore.setState({ mobileView: 'chat' });
     onClose();
   };
 

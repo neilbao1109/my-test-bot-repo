@@ -44,6 +44,7 @@ export default function CreateRoomModal() {
     const room = await socketService.createRoom(name.trim(), type, memberIds);
     useAppStore.getState().addRoom(room);
     useAppStore.getState().setActiveRoom(room.id);
+    useAppStore.setState({ mobileView: 'chat' });
     setShowCreateRoom(false);
   };
 

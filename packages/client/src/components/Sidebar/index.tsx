@@ -56,6 +56,7 @@ export default function Sidebar() {
 
   const handleRoomSelect = (roomId: string) => {
     setActiveRoom(roomId);
+    useAppStore.setState({ mobileView: 'chat' });
   };
 
   // Filter rooms by active folder
