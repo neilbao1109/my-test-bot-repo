@@ -40,7 +40,7 @@ export default function CommandBar({ roomId, threadId, onExport }: CommandBarPro
   const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
   const speechSupported = !!SpeechRecognition;
 
-  const { roomMembers, activeRoomId, replyToMessage, setReplyTo } = useAppStore();
+  const { roomMembers, activeRoomId, replyToMessage, setReplyTo, mobileView } = useAppStore();
   const members = activeRoomId ? roomMembers[activeRoomId] || [] : [];
   const botMembers = members.filter(m => m.isBot);
   const filteredBots = mentionQuery
@@ -239,14 +239,14 @@ export default function CommandBar({ roomId, threadId, onExport }: CommandBarPro
     setIsListening(true);
   }, [isListening, SpeechRecognition, input]);
 
-  // Auto-resize textarea
+  // Auto-resize textarea (also re-run when mobileView changes to recalc after display:none)
   useEffect(() => {
     const el = inputRef.current;
-    if (el) {
+    if (el && el.offsetParent !== null) {
       el.style.height = 'auto';
       el.style.height = Math.min(el.scrollHeight, 160) + 'px';
     }
-  }, [input]);
+  }, [input, mobileView]);
 
   // Cleanup speech recognition on unmount
   useEffect(() => {
