@@ -267,7 +267,7 @@ export class BotBridge {
       try {
         sendResult = await gw.rpc('chat.send', {
           sessionKey,
-          message: content,
+          message: `[clawchat:room_id=${context.roomId}]\n${content}`,
           idempotencyKey: crypto.randomBytes(16).toString('hex'),
         }, 10000);
       } catch (err: any) {
