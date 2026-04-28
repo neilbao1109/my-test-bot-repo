@@ -3,7 +3,7 @@ import { createMessage, getMessages, getLastMessage, getLastMessageByUser, getMe
 import { createRoom, getRooms, getRoomMembers, addMemberToRoom, removeMemberFromRoom, renameRoom, deleteRoom, searchUsers, getRoom } from '../services/room.js';
 import { createThread, getThread, getThreadByMessage } from '../services/thread.js';
 import { parseCommand, executeCommand } from '../services/command.js';
-import { initBotRegistry, getRespondingBots, isBotUser, getAutoJoinBotIds, getAllBots, streamBotResponse as registryStreamBotResponse, getBridge } from '../services/bot-registry.js';
+import { initBotRegistry, getRespondingBots, isBotUser, getAutoJoinBotIds, getAllBots, streamBotResponse as registryStreamBotResponse } from '../services/bot-registry.js';
 import { pinMessage, unpinMessage, getPinnedMessages } from '../services/pin.js';
 import { copyFileToUploads } from '../routes/upload.js';
 import { getUser, setOnline, getOnlineUsers } from '../services/user.js';
@@ -155,16 +155,6 @@ export function setupSocketHandlers(io: Server) {
       const room = createRoom(data.name, data.type, memberIds, socket.userId);
       callback(room);
       socket.join(room.id);
-
-      // Subscribe bot sessions for push routing in the new room
-      for (const botId of getAutoJoinBotIds()) {
-        const bridge = getBridge(botId);
-        if (bridge) {
-          bridge.subscribeRoomForPush(room.id).catch((err: any) => {
-            console.warn(`[BotRouting] Failed to subscribe new room ${room.id}: ${err.message}`);
-          });
-        }
-      }
 
       // Notify invited members
       if (data.memberIds) {

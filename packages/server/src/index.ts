@@ -59,8 +59,8 @@ initBotRegistry();
 
 setupSocketHandlers(io);
 
-// ── Bot session routing: subscribe all bot rooms for push/announce messages ──
-async function setupBotSessionRouting() {
+// ── Push notifications: subscribe bot sessions for cron/heartbeat messages ──
+async function setupPushNotifications() {
   const bots = getAllBots();
   for (const bot of bots) {
     const bridge = getBridge(bot.id);
@@ -68,11 +68,12 @@ async function setupBotSessionRouting() {
 
     // Find or create a #notifications room for this bot
     const notifRoomName = '🔔 Notifications';
+    // Get rooms for the bot user to find existing notifications room
     const botRooms = getRooms(bot.id);
     let notifRoom = botRooms.find(r => r.name === notifRoomName);
     if (!notifRoom) {
       notifRoom = createRoom(notifRoomName, 'dm', [bot.id], bot.id);
-      console.log(`[BotRouting] Created notifications room: ${notifRoom.id}`);
+      console.log(`[Push] Created notifications room: ${notifRoom.id}`);
     }
 
     // Ensure all non-bot users are members of the notifications room
@@ -81,9 +82,9 @@ async function setupBotSessionRouting() {
       if (!u.isBot) addMemberToRoom(notifRoom.id, u.id);
     }
 
-    // Set up push message handler — routes assistant messages to the correct room
+    // Set up push message handler
     bridge.onPushMessage = (roomId: string, botId: string, content: string) => {
-      console.log(`[BotRouting] Bot ${botId} push to room ${roomId}: ${content.slice(0, 80)}...`);
+      console.log(`[Push] Bot ${botId} push to room ${roomId}: ${content.slice(0, 80)}...`);
       const msg = createMessage({
         roomId,
         userId: botId,
@@ -92,23 +93,14 @@ async function setupBotSessionRouting() {
       io.to(roomId).emit('message:new', msg);
     };
 
-    // Subscribe ALL bot rooms (not just notifications) for push/announce routing
-    const allBotRooms = getRooms(bot.id);
-    let subscribed = 0;
-    for (const room of allBotRooms) {
-      try {
-        await bridge.subscribeRoomForPush(room.id);
-        subscribed++;
-      } catch (err: any) {
-        console.warn(`[BotRouting] Failed to subscribe room ${room.name}: ${err.message}`);
-      }
-    }
-    console.log(`[BotRouting] Bot ${bot.username}: subscribed ${subscribed}/${allBotRooms.length} rooms`);
+    // Subscribe the notifications room session
+    await bridge.subscribeRoomForPush(notifRoom.id);
+    console.log(`[Push] Bot ${bot.username} notifications room ready: ${notifRoom.id}`);
   }
 }
 
-setupBotSessionRouting().catch(err => {
-  console.error('[BotRouting] Setup failed:', err.message);
+setupPushNotifications().catch(err => {
+  console.error('[Push] Setup failed:', err.message);
 });
 
 // Ensure data directory exists

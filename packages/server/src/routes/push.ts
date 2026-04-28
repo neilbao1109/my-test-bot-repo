@@ -101,14 +101,9 @@ router.post('/push', (req, res) => {
     io.to(roomId).emit('message:new', msg);
 
     // Also emit a notification event for clients not in the room
-    // Resolve actual room name for notification
-    const db = getDb();
-    const roomRow = db.prepare('SELECT name FROM rooms WHERE id = ?').get(roomId) as { name: string } | undefined;
-    const roomName = roomRow?.name || NOTIFICATIONS_ROOM_NAME;
-
     io.emit('notification:push', {
       roomId,
-      roomName,
+      roomName: NOTIFICATIONS_ROOM_NAME,
       message: msg,
     });
 
