@@ -8,7 +8,6 @@ import { formatDistanceToNow } from 'date-fns';
 import type { Message, FileAttachment } from '../../types';
 import { useAppStore } from '../../stores/appStore';
 import { socketService } from '../../services/socket';
-import { extractEmbeds, EmbedRenderer } from '../EmbedRenderer';
 import { formatFileSize } from '../../utils/format';
 import UserAvatar from '../UserAvatar';
 import FilePreviewModal from '../FilePreviewModal';
@@ -330,60 +329,50 @@ export default function MessageBubble({ message, isStreaming, streamContent, hig
               </div>
             );
           })()
-        ) : (() => {
-          const { cleanContent, embeds } = extractEmbeds(displayContent);
-          return (
-            <>
-              {cleanContent && (
-                <div className="prose prose-invert prose-sm max-w-none break-words overflow-hidden">
-                  <ReactMarkdown
-                    remarkPlugins={[remarkGfmSafe]}
-                    rehypePlugins={[rehypeHighlight, rehypeAutolink]}
-                    components={{
-                      pre: ({ children }) => {
-                        const textContent = (() => {
-                          const extractText = (node: any): string => {
-                            if (typeof node === 'string') return node;
-                            if (!node) return '';
-                            if (node.props?.children) {
-                              return Array.isArray(node.props.children)
-                                ? node.props.children.map(extractText).join('')
-                                : extractText(node.props.children);
-                            }
-                            return '';
-                          };
-                          return extractText({ props: { children } });
-                        })();
+        ) : (
+          <div className="prose prose-invert prose-sm max-w-none break-words overflow-hidden">
+            <ReactMarkdown
+              remarkPlugins={[remarkGfmSafe]}
+              rehypePlugins={[rehypeHighlight, rehypeAutolink]}
+              components={{
+                pre: ({ children }) => {
+                  const textContent = (() => {
+                    const extractText = (node: any): string => {
+                      if (typeof node === 'string') return node;
+                      if (!node) return '';
+                      if (node.props?.children) {
+                        return Array.isArray(node.props.children)
+                          ? node.props.children.map(extractText).join('')
+                          : extractText(node.props.children);
+                      }
+                      return '';
+                    };
+                    return extractText({ props: { children } });
+                  })();
 
-                        return <CodeBlockPre text={textContent}>{children}</CodeBlockPre>;
-                      },
-                      code: ({ className, children, ...props }) => {
-                        const isInline = !className;
-                        if (isInline) {
-                          return <code className="bg-dark-bg px-1.5 py-0.5 rounded text-primary-300 text-xs" {...props}>{children}</code>;
-                        }
-                        return <code className={className} {...props}>{children}</code>;
-                      },
-                      table: ({ children, ...props }) => (
-                        <div className="table-wrapper">
-                          <table {...props}>{children}</table>
-                        </div>
-                      ),
-                    }}
-                  >
-                    {cleanContent}
-                  </ReactMarkdown>
-                  {isStreaming && (
-                    <span className="inline-block w-2 h-4 bg-primary-400 animate-pulse ml-0.5" />
-                  )}
-                </div>
-              )}
-              {embeds.map((embed, i) => (
-                <EmbedRenderer key={i} embed={embed} />
-              ))}
-            </>
-          );
-        })()}
+                  return <CodeBlockPre text={textContent}>{children}</CodeBlockPre>;
+                },
+                code: ({ className, children, ...props }) => {
+                  const isInline = !className;
+                  if (isInline) {
+                    return <code className="bg-dark-bg px-1.5 py-0.5 rounded text-primary-300 text-xs" {...props}>{children}</code>;
+                  }
+                  return <code className={className} {...props}>{children}</code>;
+                },
+                table: ({ children, ...props }) => (
+                  <div className="table-wrapper">
+                    <table {...props}>{children}</table>
+                  </div>
+                ),
+              }}
+            >
+              {displayContent}
+            </ReactMarkdown>
+            {isStreaming && (
+              <span className="inline-block w-2 h-4 bg-primary-400 animate-pulse ml-0.5" />
+            )}
+          </div>
+        )}
 
         {/* Reactions */}
         {Object.keys(message.reactions).length > 0 && (
