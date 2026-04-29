@@ -14,6 +14,7 @@ import apiRouter from './routes/api.js';
 import uploadRouter from './routes/upload.js';
 import authRouter from './routes/auth.js';
 import pushRouter from './routes/push.js';
+import canvasRouter from './routes/canvas.js';
 import { setupSocketHandlers, signalShutdown, drainBotStreams } from './socket/handlers.js';
 import { shutdown, getConnectionMode } from './services/bot-bridge.js';
 import { initBotRegistry, getAllBots, getBridge } from './services/bot-registry.js';
@@ -35,6 +36,7 @@ app.use('/api', authRouter);
 app.use('/api', apiRouter);
 app.use('/api', uploadRouter);
 app.use('/api', pushRouter);
+app.use('/api', canvasRouter);
 
 // Serve static client files in production
 const clientDist = path.join(__dirname, '../../client/dist');
