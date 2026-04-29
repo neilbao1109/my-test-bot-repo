@@ -432,13 +432,12 @@ export default function MessageBubble({ message, isStreaming, streamContent, hig
 
       {/* Action buttons */}
       {showActions && !isEditing && !isStreaming && (
-        <div ref={actionsRef} className="absolute right-4 -top-3 flex items-center gap-0.5 bg-dark-surface border border-dark-border rounded-lg shadow-lg p-0.5 z-40">
+        <div ref={actionsRef} className="absolute right-4 -top-3 grid grid-cols-3 gap-px bg-dark-surface border border-dark-border rounded-[10px] shadow-lg p-[3px] z-40">
           <button
             onClick={() => setShowReactions(!showReactions)}
-            className="p-1.5 text-dark-muted hover:text-dark-text hover:bg-dark-hover rounded transition text-xs"
-            title="React"
+            className="flex items-center gap-1 px-[5px] py-1.5 text-dark-muted hover:text-dark-text hover:bg-dark-hover rounded-md transition text-[11px]"
           >
-            😀
+            <span className="text-[13px] w-[15px] text-center flex-shrink-0">😀</span><span>React</span>
           </button>
           <button
             onClick={() => {
@@ -460,10 +459,9 @@ export default function MessageBubble({ message, isStreaming, streamContent, hig
               setCopied(true);
               setTimeout(() => setCopied(false), 1500);
             }}
-            className="p-1.5 text-dark-muted hover:text-dark-text hover:bg-dark-hover rounded transition text-xs"
-            title="Copy"
+            className="flex items-center gap-1 px-[5px] py-1.5 text-dark-muted hover:text-dark-text hover:bg-dark-hover rounded-md transition text-[11px]"
           >
-            {copied ? '✅' : '📋'}
+            <span className="text-[13px] w-[15px] text-center flex-shrink-0">{copied ? '✅' : '📋'}</span><span>Copy</span>
           </button>
           {message.type !== 'file' && (
             <button
@@ -489,55 +487,49 @@ export default function MessageBubble({ message, isStreaming, streamContent, hig
                 setSpeaking(true);
                 speechSynthesis.speak(utterance);
               }}
-              className="p-1.5 text-dark-muted hover:text-dark-text hover:bg-dark-hover rounded transition text-xs"
-              title={speaking ? 'Stop' : 'Read aloud'}
+              className="flex items-center gap-1 px-[5px] py-1.5 text-dark-muted hover:text-dark-text hover:bg-dark-hover rounded-md transition text-[11px]"
             >
-              {speaking ? '⏹️' : '🔊'}
+              <span className="text-[13px] w-[15px] text-center flex-shrink-0">{speaking ? '⏹️' : '🔊'}</span><span>{speaking ? 'Stop' : 'Read'}</span>
             </button>
           )}
           <button
             onClick={() => { setReplyTo(message); setShowActions(false); setTimeout(() => document.querySelector<HTMLTextAreaElement>('.command-bar-input')?.focus(), 50); }}
-            className="p-1.5 text-dark-muted hover:text-dark-text hover:bg-dark-hover rounded transition text-xs"
-            title="Reply"
+            className="flex items-center gap-1 px-[5px] py-1.5 text-dark-muted hover:text-dark-text hover:bg-dark-hover rounded-md transition text-[11px]"
           >
-            ↩️
+            <span className="text-[13px] w-[15px] text-center flex-shrink-0">↩️</span><span>Reply</span>
           </button>
           <button
             onClick={handleStartThread}
-            className="p-1.5 text-dark-muted hover:text-dark-text hover:bg-dark-hover rounded transition text-xs"
-            title="Thread"
+            className="flex items-center gap-1 px-[5px] py-1.5 text-dark-muted hover:text-dark-text hover:bg-dark-hover rounded-md transition text-[11px]"
           >
-            🧵
+            <span className="text-[13px] w-[15px] text-center flex-shrink-0">🧵</span><span>Thread</span>
           </button>
           <button
             onClick={handlePin}
-            className={clsx('p-1.5 hover:bg-dark-hover rounded transition text-xs', isPinned ? 'text-primary-400' : 'text-dark-muted hover:text-dark-text')}
-            title={isPinned ? 'Unpin' : 'Pin'}
+            className={clsx('flex items-center gap-1 px-[5px] py-1.5 hover:bg-dark-hover rounded-md transition text-[11px]', isPinned ? 'text-primary-400' : 'text-dark-muted hover:text-dark-text')}
           >
-            {isPinned ? '📍' : '📌'}
+            <span className="text-[13px] w-[15px] text-center flex-shrink-0">{isPinned ? '📍' : '📌'}</span><span>{isPinned ? 'Unpin' : 'Pin'}</span>
           </button>
           <button
             onClick={() => { useAppStore.getState().toggleSelectionMode(); useAppStore.getState().toggleMessageSelection(message.id); }}
-            className="p-1.5 text-dark-muted hover:text-dark-text hover:bg-dark-hover rounded transition text-xs"
-            title="Forward"
+            className="flex items-center gap-1 px-[5px] py-1.5 text-dark-muted hover:text-dark-text hover:bg-dark-hover rounded-md transition text-[11px]"
           >
-            ↗️
+            <span className="text-[13px] w-[15px] text-center flex-shrink-0">↗️</span><span>Forward</span>
           </button>
           {isOwn && (
             <>
+              <div className="col-span-3 h-px bg-dark-border mx-1" />
               <button
                 onClick={() => { setIsEditing(true); setEditContent(message.content); }}
-                className="p-1.5 text-dark-muted hover:text-dark-text hover:bg-dark-hover rounded transition text-xs"
-                title="Edit"
+                className="flex items-center gap-1 px-[5px] py-1.5 text-dark-muted hover:text-dark-text hover:bg-dark-hover rounded-md transition text-[11px]"
               >
-                ✏️
+                <span className="text-[13px] w-[15px] text-center flex-shrink-0">✏️</span><span>Edit</span>
               </button>
               <button
                 onClick={handleDelete}
-                className="p-1.5 text-dark-muted hover:text-red-400 hover:bg-dark-hover rounded transition text-xs"
-                title="Delete"
+                className="flex items-center gap-1 px-[5px] py-1.5 text-dark-muted hover:text-red-400 hover:bg-dark-hover rounded-md transition text-[11px]"
               >
-                🗑️
+                <span className="text-[13px] w-[15px] text-center flex-shrink-0">🗑️</span><span>Delete</span>
               </button>
             </>
           )}
