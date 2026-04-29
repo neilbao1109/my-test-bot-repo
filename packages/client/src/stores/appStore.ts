@@ -364,11 +364,12 @@ export const useAppStore = create<AppState>((set, get) => ({
   addReplyContext: (msg) => set((s) => {
     if (s.replyContext.length >= 5) return s;
     if (s.replyContext.some(m => m.id === msg.id)) return s;
-    return { replyContext: [...s.replyContext, msg] };
+    const updated = [...s.replyContext, msg].sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+    return { replyContext: updated };
   }),
   removeReplyContext: (id) => set((s) => ({ replyContext: s.replyContext.filter(m => m.id !== id) })),
   clearReplyContext: () => set({ replyContext: [], contextSelectionMode: false }),
-  setReplyContext: (msgs) => set({ replyContext: msgs.slice(0, 5) }),
+  setReplyContext: (msgs) => set({ replyContext: msgs.slice(0, 5).sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()) }),
   setContextSelectionMode: (mode) => set({ contextSelectionMode: mode }),
   // Backward compat
   get replyToMessage() { return get().replyContext[0] || null; },
