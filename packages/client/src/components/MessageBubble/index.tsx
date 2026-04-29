@@ -63,6 +63,7 @@ export default function MessageBubble({ message, isStreaming, streamContent, hig
   const isSelected = useAppStore((s) => s.selectedMessages.has(message.id));
   const toggleMessageSelection = useAppStore((s) => s.toggleMessageSelection);
   const [showActions, setShowActions] = useState(false);
+  const [showHoverDots, setShowHoverDots] = useState(false);
   const [showReactions, setShowReactions] = useState(false);
   const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
   const [isEditing, setIsEditing] = useState(false);
@@ -88,14 +89,14 @@ export default function MessageBubble({ message, isStreaming, streamContent, hig
     }
   }, [isEditing]);
 
-  // Close reaction picker / mobile actions on outside click
+  // Close reaction picker / actions on outside click
   useEffect(() => {
-    if (!showReactions && !(isMobile && showActions)) return;
+    if (!showReactions && !showActions) return;
     const handler = (e: MouseEvent | TouchEvent) => {
       if (reactionRef.current && !reactionRef.current.contains(e.target as Node)) {
         setShowReactions(false);
       }
-      if (isMobile && actionsRef.current && !actionsRef.current.contains(e.target as Node)) {
+      if (actionsRef.current && !actionsRef.current.contains(e.target as Node)) {
         setShowActions(false);
       }
     };
@@ -179,8 +180,8 @@ export default function MessageBubble({ message, isStreaming, streamContent, hig
         selectionMode && isSelected && 'bg-primary-600/15',
       )}
       onClick={selectionMode ? (e) => { e.stopPropagation(); toggleMessageSelection(message.id); } : undefined}
-      onMouseEnter={() => !isMobile && !selectionMode && setShowActions(true)}
-      onMouseLeave={() => { !isMobile && setShowActions(false); setShowReactions(false); }}
+      onMouseEnter={() => !isMobile && !selectionMode && setShowHoverDots(true)}
+      onMouseLeave={() => { if (!isMobile) { setShowHoverDots(false); setShowActions(false); setShowReactions(false); } }}
     >
       {/* Selection checkbox */}
       {selectionMode && (
@@ -416,8 +417,8 @@ export default function MessageBubble({ message, isStreaming, streamContent, hig
         )}
       </div>
 
-      {/* Mobile: ⋮ menu button */}
-      {isMobile && !isStreaming && !message.isDeleted && (
+      {/* ⋮ menu button - mobile always, desktop on hover */}
+      {(isMobile || showHoverDots || showActions) && !isStreaming && !message.isDeleted && (
         <button
           onClick={() => setShowActions(!showActions)}
           className="flex-shrink-0 self-start mt-1 p-1 text-dark-muted/40 hover:text-dark-muted rounded transition"
