@@ -145,4 +145,10 @@ function initSchema(db: Database.Database) {
     `);
     console.log('[Migration] Rebuilt threads with correct FK');
   }
+
+  // Migration: add context_ids column if missing
+  const msgCols2 = db.prepare("PRAGMA table_info('messages')").all() as any[];
+  if (!msgCols2.some((c: any) => c.name === 'context_ids')) {
+    db.exec('ALTER TABLE messages ADD COLUMN context_ids TEXT');
+  }
 }

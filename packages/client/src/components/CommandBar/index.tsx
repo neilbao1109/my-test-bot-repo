@@ -40,7 +40,7 @@ export default function CommandBar({ roomId, threadId, onExport }: CommandBarPro
   const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
   const speechSupported = !!SpeechRecognition;
 
-  const { roomMembers, activeRoomId, replyToMessage, setReplyTo, mobileView } = useAppStore();
+  const { roomMembers, activeRoomId, replyContext, clearReplyContext, removeReplyContext, setContextSelectionMode, mobileView } = useAppStore();
   const members = activeRoomId ? roomMembers[activeRoomId] || [] : [];
   const botMembers = members.filter(m => m.isBot);
   const filteredBots = mentionQuery
@@ -69,15 +69,15 @@ export default function CommandBar({ roomId, threadId, onExport }: CommandBarPro
   const handleSend = useCallback(() => {
     const trimmed = input.trim();
     if (!trimmed) return;
-    socketService.sendMessage(roomId, trimmed, threadId, replyToMessage?.id);
+    socketService.sendMessage(roomId, trimmed, threadId, undefined, undefined, replyContext.map(m => m.id));
     setInput('');
-    setReplyTo(null);
+    clearReplyContext();
     setShowSuggestions(false);
     if (typingRef.current) {
       socketService.stopTyping(roomId);
       typingRef.current = false;
     }
-  }, [input, roomId, threadId, replyToMessage]);
+  }, [input, roomId, threadId, replyContext]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     // Mention autocomplete
@@ -307,21 +307,49 @@ export default function CommandBar({ roomId, threadId, onExport }: CommandBarPro
       )}
 
       {/* Reply preview */}
-      {replyToMessage && (
-        <div className="flex items-center gap-2 px-4 py-2 border-t border-dark-border bg-dark-surface">
-          <span className="text-xs text-primary-400">↩️</span>
-          <div className="flex-1 min-w-0 border-l-2 border-primary-500 pl-2">
-            <p className="text-xs text-primary-400 font-semibold truncate">
-              {members.find(m => m.id === replyToMessage.userId)?.username || 'Unknown'}
-            </p>
-            <p className="text-xs text-dark-muted truncate">{replyToMessage.content}</p>
+      {replyContext.length > 0 && (
+        <div className="px-4 py-2 border-t border-dark-border bg-dark-surface">
+          <div className="flex items-center gap-2 mb-1">
+            <span className="text-xs text-primary-400">↩️</span>
+            <span className="text-xs text-dark-muted">
+              {replyContext.length === 1 ? 'Replying to' : `📎 ${replyContext.length} messages`}
+            </span>
+            <div className="flex-1" />
+            {replyContext.length < 5 && (
+              <button
+                onClick={() => setContextSelectionMode(true)}
+                className="text-xs text-primary-400 hover:text-primary-300 transition"
+              >
+                + Add
+              </button>
+            )}
+            <button
+              onClick={() => clearReplyContext()}
+              className="text-dark-muted hover:text-dark-text p-0.5 flex-shrink-0 text-xs"
+            >
+              ✕
+            </button>
           </div>
-          <button
-            onClick={() => setReplyTo(null)}
-            className="text-dark-muted hover:text-dark-text p-1 flex-shrink-0"
-          >
-            ✕
-          </button>
+          <div className="space-y-1 max-h-32 overflow-y-auto">
+            {replyContext.map((msg) => (
+              <div key={msg.id} className="flex items-center gap-2 border-l-2 border-primary-500 pl-2">
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs text-primary-400 font-semibold truncate">
+                    {members.find(m => m.id === msg.userId)?.username || 'Unknown'}
+                  </p>
+                  <p className="text-xs text-dark-muted truncate">{msg.content}</p>
+                </div>
+                {replyContext.length > 1 && (
+                  <button
+                    onClick={() => removeReplyContext(msg.id)}
+                    className="text-dark-muted hover:text-dark-text p-0.5 flex-shrink-0 text-xs"
+                  >
+                    ✕
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
         </div>
       )}
 

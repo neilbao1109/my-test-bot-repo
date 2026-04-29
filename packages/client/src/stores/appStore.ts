@@ -84,7 +84,15 @@ interface AppState {
   showSearch: boolean;
   toggleSearch: () => void;
 
-  // Reply
+  // Reply / Context
+  replyContext: Message[];
+  contextSelectionMode: boolean;
+  addReplyContext: (msg: Message) => void;
+  removeReplyContext: (id: string) => void;
+  clearReplyContext: () => void;
+  setReplyContext: (msgs: Message[]) => void;
+  setContextSelectionMode: (mode: boolean) => void;
+  // Backward compat aliases
   replyToMessage: Message | null;
   setReplyTo: (message: Message | null) => void;
 
@@ -350,9 +358,21 @@ export const useAppStore = create<AppState>((set, get) => ({
     return { showSearch: true };
   }),
 
-  // Reply
-  replyToMessage: null,
-  setReplyTo: (message) => set({ replyToMessage: message }),
+  // Reply / Context
+  replyContext: [],
+  contextSelectionMode: false,
+  addReplyContext: (msg) => set((s) => {
+    if (s.replyContext.length >= 5) return s;
+    if (s.replyContext.some(m => m.id === msg.id)) return s;
+    return { replyContext: [...s.replyContext, msg] };
+  }),
+  removeReplyContext: (id) => set((s) => ({ replyContext: s.replyContext.filter(m => m.id !== id) })),
+  clearReplyContext: () => set({ replyContext: [], contextSelectionMode: false }),
+  setReplyContext: (msgs) => set({ replyContext: msgs.slice(0, 5) }),
+  setContextSelectionMode: (mode) => set({ contextSelectionMode: mode }),
+  // Backward compat
+  get replyToMessage() { return get().replyContext[0] || null; },
+  setReplyTo: (message) => set({ replyContext: message ? [message] : [] }),
 
   // Pins
   pinnedMessages: {},

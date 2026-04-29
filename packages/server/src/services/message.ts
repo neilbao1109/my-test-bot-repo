@@ -9,15 +9,19 @@ export function createMessage(params: {
   type?: Message['type'];
   threadId?: string;
   replyTo?: string;
+  contextIds?: string[];
 }): Message {
   const db = getDb();
   const id = uuid();
   const now = new Date().toISOString();
+  const contextIdsJson = params.contextIds && params.contextIds.length > 0 ? JSON.stringify(params.contextIds) : null;
+  // For backward compat, set reply_to to first context id if not explicitly provided
+  const replyTo = params.replyTo || (params.contextIds && params.contextIds.length > 0 ? params.contextIds[0] : null);
 
   db.prepare(`
-    INSERT INTO messages (id, room_id, thread_id, user_id, content, type, reply_to, created_at, updated_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `).run(id, params.roomId, params.threadId || null, params.userId, params.content, params.type || 'text', params.replyTo || null, now, now);
+    INSERT INTO messages (id, room_id, thread_id, user_id, content, type, reply_to, context_ids, created_at, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `).run(id, params.roomId, params.threadId || null, params.userId, params.content, params.type || 'text', replyTo || null, contextIdsJson, now, now);
 
   // Update thread reply count if in a thread
   if (params.threadId) {
@@ -33,7 +37,8 @@ export function createMessage(params: {
     userId: params.userId,
     content: params.content,
     type: params.type || 'text',
-    replyTo: params.replyTo || null,
+    replyTo: replyTo || null,
+    contextIds: params.contextIds || [],
     reactions: {},
     isEdited: false,
     isDeleted: false,
@@ -152,6 +157,7 @@ function rowToMessage(row: any): Message {
     content: row.content,
     type: row.type,
     replyTo: row.reply_to,
+    contextIds: row.context_ids ? JSON.parse(row.context_ids) : [],
     reactions: JSON.parse(row.reactions || '{}'),
     isEdited: !!row.is_edited,
     isDeleted: !!row.is_deleted,

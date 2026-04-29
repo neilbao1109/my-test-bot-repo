@@ -62,6 +62,7 @@ export default function ChatView() {
     user, roomMembers, onlineUsers, toggleSearch, searchResults, searchActiveIdx, searchQuery,
     hasMore, loadingHistory, setLoadingHistory, setHasMore, prependMessages, backToList,
     isContextMode, setContextMode, setMessages,
+    contextSelectionMode, setContextSelectionMode, replyContext, addReplyContext, removeReplyContext,
   } = useAppStore();
   const bottomRef = useRef<HTMLDivElement>(null);
   const messageListRef = useRef<HTMLDivElement>(null);
@@ -291,8 +292,26 @@ export default function ChatView() {
         {roomMessages.map((msg) => {
           const isSearchHit = searchQuery && searchResults.some(r => r.id === msg.id);
           const isActiveHit = activeSearchMsg?.id === msg.id;
+          const isCtxSelected = contextSelectionMode && replyContext.some(m => m.id === msg.id);
           return (
-            <div key={msg.id} ref={(el) => { messageRefs.current[msg.id] = el; }}>
+            <div
+              key={msg.id}
+              ref={(el) => { messageRefs.current[msg.id] = el; }}
+              className={clsx(contextSelectionMode && 'cursor-pointer', isCtxSelected && 'bg-primary-600/15')}
+              onClick={contextSelectionMode ? (e) => {
+                e.stopPropagation();
+                if (isCtxSelected) {
+                  removeReplyContext(msg.id);
+                } else if (replyContext.length < 5) {
+                  addReplyContext(msg);
+                }
+              } : undefined}
+            >
+              {contextSelectionMode && (
+                <div className="absolute left-2 top-1/2 -translate-y-1/2 z-10">
+                  {/* Checkbox rendered inside MessageBubble via selection mode */}
+                </div>
+              )}
               <MessageBubble
                 message={msg}
                 highlight={isSearchHit ? searchQuery : undefined}
@@ -352,6 +371,19 @@ export default function ChatView() {
 
         <div ref={bottomRef} />
       </div>
+
+      {/* Context selection floating bar */}
+      {contextSelectionMode && (
+        <div className="flex justify-center items-center gap-3 py-2 px-4 border-t border-dark-border bg-dark-surface/90">
+          <span className="text-xs text-dark-muted">{replyContext.length} selected</span>
+          <button
+            onClick={() => setContextSelectionMode(false)}
+            className="px-4 py-1.5 text-xs font-medium text-white bg-primary-600 hover:bg-primary-700 rounded-full transition"
+          >
+            Done
+          </button>
+        </div>
+      )}
 
       {/* Return to latest button when in context mode */}
       {inContextMode && (

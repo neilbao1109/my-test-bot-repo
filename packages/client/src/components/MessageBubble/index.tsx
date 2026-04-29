@@ -57,7 +57,7 @@ interface MessageBubbleProps {
 const QUICK_REACTIONS = ['👍', '❤️', '😂', '🎉', '🤔', '👀'];
 
 export default function MessageBubble({ message, isStreaming, streamContent, highlight, isSearchActive }: MessageBubbleProps) {
-  const { user, roomMembers, activeRoomId, threadInfo, setReplyTo, messages: allMessages } = useAppStore();
+  const { user, roomMembers, activeRoomId, threadInfo, setReplyContext, addReplyContext, contextSelectionMode: ctxSelectMode, replyContext, messages: allMessages } = useAppStore();
   const isPinned = useAppStore((s) => activeRoomId ? (s.pinnedMessages[activeRoomId] || []).some((p) => p.messageId === message.id) : false);
   const selectionMode = useAppStore((s) => s.selectionMode);
   const isSelected = useAppStore((s) => s.selectedMessages.has(message.id));
@@ -226,31 +226,40 @@ export default function MessageBubble({ message, isStreaming, streamContent, hig
           )}
         </div>
 
-        {/* Reply quote block */}
-        {message.replyTo && (() => {
+        {/* Reply quote blocks (multi-context or single replyTo) */}
+        {(() => {
           const roomMsgs = activeRoomId ? allMessages[activeRoomId] || [] : [];
-          const quoted = roomMsgs.find(m => m.id === message.replyTo);
-          if (!quoted) return null;
-          const quotedSender = members.find(m => m.id === quoted.userId);
+          const contextIds = message.contextIds && message.contextIds.length > 0 ? message.contextIds : (message.replyTo ? [message.replyTo] : []);
+          if (contextIds.length === 0) return null;
           return (
-            <button
-              onClick={() => {
-                const el = document.querySelector(`[data-msg-id="${quoted.id}"]`);
-                if (el) {
-                  el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                  el.classList.add('bg-primary-600/20');
-                  setTimeout(() => el.classList.remove('bg-primary-600/20'), 2000);
-                }
-              }}
-              className="mt-1 mb-1 w-full text-left border-l-2 border-primary-500/50 pl-2 py-1 rounded-r bg-dark-hover/30 hover:bg-dark-hover/50 transition"
-            >
-              <p className="text-xs text-primary-400 font-semibold truncate">
-                {quotedSender?.username || 'Unknown'}
-              </p>
-              <p className="text-xs text-dark-muted truncate">
-                {quoted.content.length > 80 ? quoted.content.slice(0, 80) + '...' : quoted.content}
-              </p>
-            </button>
+            <div className="space-y-0.5">
+              {contextIds.map(cid => {
+                const quoted = roomMsgs.find(m => m.id === cid);
+                if (!quoted) return null;
+                const quotedSender = members.find(m => m.id === quoted.userId);
+                return (
+                  <button
+                    key={cid}
+                    onClick={() => {
+                      const el = document.querySelector(`[data-msg-id="${quoted.id}"]`);
+                      if (el) {
+                        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        el.classList.add('bg-primary-600/20');
+                        setTimeout(() => el.classList.remove('bg-primary-600/20'), 2000);
+                      }
+                    }}
+                    className="mt-1 mb-1 w-full text-left border-l-2 border-primary-500/50 pl-2 py-1 rounded-r bg-dark-hover/30 hover:bg-dark-hover/50 transition"
+                  >
+                    <p className="text-xs text-primary-400 font-semibold truncate">
+                      {quotedSender?.username || 'Unknown'}
+                    </p>
+                    <p className="text-xs text-dark-muted truncate">
+                      {quoted.content.length > 80 ? quoted.content.slice(0, 80) + '...' : quoted.content}
+                    </p>
+                  </button>
+                );
+              })}
+            </div>
           );
         })()}
 
@@ -494,7 +503,7 @@ export default function MessageBubble({ message, isStreaming, streamContent, hig
             </button>
           )}
           <button
-            onClick={() => { setReplyTo(message); setShowActions(false); setTimeout(() => document.querySelector<HTMLTextAreaElement>('.command-bar-input')?.focus(), 50); }}
+            onClick={() => { setReplyContext([message]); setShowActions(false); setTimeout(() => document.querySelector<HTMLTextAreaElement>('.command-bar-input')?.focus(), 50); }}
             className="flex items-center gap-1.5 px-2 py-2 text-dark-muted hover:text-dark-text hover:bg-dark-hover rounded-lg transition text-xs"
           >
             <span className="text-sm w-4 text-center flex-shrink-0">↩️</span><span>Reply</span>

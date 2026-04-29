@@ -249,7 +249,7 @@ export function setupSocketHandlers(io: Server) {
     });
 
     // --- Messages ---
-    socket.on('message:send', async (data: { roomId: string; content: string; threadId?: string; replyTo?: string; type?: string }) => {
+    socket.on('message:send', async (data: { roomId: string; content: string; threadId?: string; replyTo?: string; type?: string; contextIds?: string[] }) => {
       if (!socket.userId) return;
 
       // Check if it's a command
@@ -302,6 +302,7 @@ export function setupSocketHandlers(io: Server) {
         type: (data.type as 'text' | 'file') || undefined,
         threadId: data.threadId,
         replyTo: data.replyTo,
+        contextIds: data.contextIds,
       });
       io.to(data.roomId).emit('message:new', message);
 
@@ -310,12 +311,13 @@ export function setupSocketHandlers(io: Server) {
         updateThreadReplyCount(data.threadId, io, data.roomId);
       }
 
-      // Build reply context if replying to a message
+      // Build reply context if replying to a message (use contextIds or fall back to replyTo)
       let botContent = data.content;
-      if (message.replyTo) {
-        const chain = getReplyChain(message.replyTo);
-        if (chain.length > 0) {
-          const contextLines = chain.map(m => {
+      const ctxIds = data.contextIds && data.contextIds.length > 0 ? data.contextIds : (message.replyTo ? [message.replyTo] : []);
+      if (ctxIds.length > 0) {
+        const contextMsgs = ctxIds.map(id => getMessageById(id)).filter((m): m is NonNullable<typeof m> => m !== null);
+        if (contextMsgs.length > 0) {
+          const contextLines = contextMsgs.map(m => {
             const u = getUser(m.userId);
             const name = u?.username || m.userId;
             const body = m.type === 'file' ? '[file]' : m.content.slice(0, 300);

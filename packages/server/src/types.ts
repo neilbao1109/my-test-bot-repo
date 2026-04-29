@@ -30,6 +30,7 @@ export interface Message {
   content: string;
   type: 'text' | 'command' | 'system' | 'file' | 'forward';
   replyTo: string | null;
+  contextIds?: string[];
   reactions: Record<string, string[]>;
   isEdited: boolean;
   isDeleted: boolean;
