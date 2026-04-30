@@ -4,6 +4,7 @@ import { BotBridge } from './bot-bridge.js';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { v4 as uuidv4 } from 'uuid';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DATA_DIR = path.join(__dirname, '../../data');
@@ -29,6 +30,7 @@ export interface BotConfig {
 
 const bots = new Map<string, BotConfig>();
 const bridges = new Map<string, BotBridge>();
+const systemBotIds = new Set<string>();
 
 /**
  * Load bot configs from BOTS_CONFIG env (JSON array) or fall back
@@ -92,11 +94,34 @@ export function initBotRegistry(): void {
     ON CONFLICT(id) DO UPDATE SET username=excluded.username, avatar_url=excluded.avatar_url, is_bot=1, is_online=1
   `);
 
+  // Load system bots from config
   for (const cfg of configs) {
     upsert.run(cfg.id, cfg.username, cfg.avatarUrl || null);
     bots.set(cfg.id, cfg);
     bridges.set(cfg.id, new BotBridge(cfg));
-    console.log(`[BotRegistry] Registered bot: ${cfg.username} (${cfg.id}) trigger=${cfg.trigger}`);
+    systemBotIds.add(cfg.id);
+    console.log(`[BotRegistry] Registered system bot: ${cfg.username} (${cfg.id}) trigger=${cfg.trigger}`);
+  }
+
+  // Load user-registered bots from DB
+  const userBots = db.prepare('SELECT * FROM bots').all() as any[];
+  for (const row of userBots) {
+    const cfg: BotConfig = {
+      id: row.bot_id,
+      username: row.username,
+      avatarUrl: row.avatar_url || undefined,
+      gateway: {
+        url: row.gateway_url || undefined,
+        authToken: row.auth_token,
+        agentId: row.agent_id || undefined,
+        sshHost: row.ssh_host || undefined,
+      },
+      trigger: (row.trigger_type || 'all') as TriggerType,
+    };
+    upsert.run(cfg.id, cfg.username, cfg.avatarUrl || null);
+    bots.set(cfg.id, cfg);
+    bridges.set(cfg.id, new BotBridge(cfg));
+    console.log(`[BotRegistry] Registered user bot: ${cfg.username} (${cfg.id}) owner=${row.owner_id}`);
   }
 }
 
@@ -137,10 +162,180 @@ export function getAutoJoinBotIds(): string[] {
 
 /**
  * Get all bots available to a user.
- * Phase 1: returns all system bots (registered bots).
+ * Returns system bots + user's own bots.
  */
-export function getAvailableBots(_userId?: string): BotConfig[] {
-  return Array.from(bots.values());
+export function getAvailableBots(userId?: string): BotConfig[] {
+  if (!userId) return Array.from(bots.values()).filter(b => systemBotIds.has(b.id));
+  const db = getDb();
+  const userBotIds = (db.prepare('SELECT bot_id FROM bots WHERE owner_id = ?').all(userId) as any[]).map(r => r.bot_id);
+  const userBotSet = new Set(userBotIds);
+  return Array.from(bots.values()).filter(b => systemBotIds.has(b.id) || userBotSet.has(b.id));
+}
+
+/** Check if a bot is a system bot */
+export function isSystemBot(botId: string): boolean {
+  return systemBotIds.has(botId);
+}
+
+/** Get bots owned by a user */
+export function getUserBots(userId: string): BotConfig[] {
+  const db = getDb();
+  const rows = db.prepare('SELECT bot_id FROM bots WHERE owner_id = ?').all(userId) as any[];
+  return rows.map(r => bots.get(r.bot_id)).filter((b): b is BotConfig => !!b);
+}
+
+/** Register a new user-created bot */
+export function registerBot(config: {
+  username: string;
+  avatarUrl?: string;
+  gatewayUrl?: string;
+  authToken: string;
+  agentId?: string;
+  sshHost?: string;
+  trigger?: TriggerType;
+}, ownerId: string): BotConfig {
+  const db = getDb();
+  const id = `bot-${uuidv4()}`;
+
+  const botConfig: BotConfig = {
+    id,
+    username: config.username,
+    avatarUrl: config.avatarUrl,
+    gateway: {
+      url: config.gatewayUrl || undefined,
+      authToken: config.authToken,
+      agentId: config.agentId || undefined,
+      sshHost: config.sshHost || undefined,
+    },
+    trigger: config.trigger || 'all',
+  };
+
+  // Insert into users table
+  db.prepare(`
+    INSERT INTO users (id, username, avatar_url, is_bot, is_online)
+    VALUES (?, ?, ?, 1, 1)
+    ON CONFLICT(id) DO UPDATE SET username=excluded.username, avatar_url=excluded.avatar_url, is_bot=1, is_online=1
+  `).run(id, config.username, config.avatarUrl || null);
+
+  // Insert into bots table
+  db.prepare(`
+    INSERT INTO bots (bot_id, owner_id, username, avatar_url, gateway_url, auth_token, agent_id, ssh_host, trigger_type)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `).run(id, ownerId, config.username, config.avatarUrl || null, config.gatewayUrl || null, config.authToken, config.agentId || null, config.sshHost || null, config.trigger || 'all');
+
+  // Add to in-memory maps
+  bots.set(id, botConfig);
+  bridges.set(id, new BotBridge(botConfig));
+
+  console.log(`[BotRegistry] User ${ownerId} registered bot: ${config.username} (${id})`);
+  return botConfig;
+}
+
+/** Update a user bot (only owner can update) */
+export function updateBot(botId: string, updates: Partial<{
+  username: string;
+  avatarUrl: string;
+  gatewayUrl: string;
+  authToken: string;
+  agentId: string;
+  sshHost: string;
+  trigger: TriggerType;
+}>, ownerId: string): BotConfig | null {
+  if (isSystemBot(botId)) return null;
+  const db = getDb();
+  const row = db.prepare('SELECT * FROM bots WHERE bot_id = ? AND owner_id = ?').get(botId, ownerId) as any;
+  if (!row) return null;
+
+  const existing = bots.get(botId);
+  if (!existing) return null;
+
+  // Build updated config
+  const updated: BotConfig = {
+    ...existing,
+    username: updates.username ?? existing.username,
+    avatarUrl: updates.avatarUrl ?? existing.avatarUrl,
+    gateway: {
+      url: updates.gatewayUrl !== undefined ? (updates.gatewayUrl || undefined) : existing.gateway.url,
+      authToken: updates.authToken ?? existing.gateway.authToken,
+      agentId: updates.agentId !== undefined ? (updates.agentId || undefined) : existing.gateway.agentId,
+      sshHost: updates.sshHost !== undefined ? (updates.sshHost || undefined) : existing.gateway.sshHost,
+    },
+    trigger: updates.trigger ?? existing.trigger,
+  };
+
+  // Update DB
+  db.prepare(`
+    UPDATE bots SET username=?, avatar_url=?, gateway_url=?, auth_token=?, agent_id=?, ssh_host=?, trigger_type=?
+    WHERE bot_id=? AND owner_id=?
+  `).run(updated.username, updated.avatarUrl || null, updated.gateway.url || null, updated.gateway.authToken, updated.gateway.agentId || null, updated.gateway.sshHost || null, updated.trigger, botId, ownerId);
+
+  // Update users table
+  db.prepare('UPDATE users SET username=?, avatar_url=? WHERE id=?').run(updated.username, updated.avatarUrl || null, botId);
+
+  // Update in-memory
+  bots.set(botId, updated);
+
+  // Recreate bridge if gateway config changed
+  const gatewayChanged = updates.gatewayUrl !== undefined || updates.authToken !== undefined || updates.agentId !== undefined || updates.sshHost !== undefined;
+  if (gatewayChanged) {
+    const oldBridge = bridges.get(botId);
+    if (oldBridge) oldBridge.shutdown();
+    bridges.set(botId, new BotBridge(updated));
+  }
+
+  console.log(`[BotRegistry] Updated bot: ${updated.username} (${botId})`);
+  return updated;
+}
+
+/** Delete a user bot (only owner can delete) */
+export function deleteBot(botId: string, ownerId: string): boolean {
+  if (isSystemBot(botId)) return false;
+  const db = getDb();
+  const row = db.prepare('SELECT 1 FROM bots WHERE bot_id = ? AND owner_id = ?').get(botId, ownerId);
+  if (!row) return false;
+
+  // Remove from bots table (CASCADE handles bot_shares)
+  db.prepare('DELETE FROM bots WHERE bot_id = ?').run(botId);
+  // Remove from users table
+  db.prepare('DELETE FROM users WHERE id = ?').run(botId);
+
+  // Shutdown bridge and remove from maps
+  const bridge = bridges.get(botId);
+  if (bridge) bridge.shutdown();
+  bridges.delete(botId);
+  bots.delete(botId);
+
+  console.log(`[BotRegistry] Deleted bot: ${botId} by owner ${ownerId}`);
+  return true;
+}
+
+/** Test bot connection to gateway */
+export async function testBotConnection(config: {
+  gatewayUrl?: string;
+  authToken: string;
+  agentId?: string;
+  sshHost?: string;
+}): Promise<{ ok: boolean; error?: string; model?: string }> {
+  const tempConfig: BotConfig = {
+    id: `test-${uuidv4()}`,
+    username: '__test__',
+    gateway: {
+      url: config.gatewayUrl || undefined,
+      authToken: config.authToken,
+      agentId: config.agentId || undefined,
+      sshHost: config.sshHost || undefined,
+    },
+    trigger: 'all',
+  };
+  const bridge = new BotBridge(tempConfig);
+  try {
+    const status = await bridge.getStatus();
+    return { ok: status.connected, model: status.model };
+  } catch (err: any) {
+    return { ok: false, error: err.message || 'Connection failed' };
+  } finally {
+    bridge.shutdown();
+  }
 }
 
 /**
@@ -236,3 +431,4 @@ export function shutdownAll(): void {
     bridge.shutdown();
   }
 }
+

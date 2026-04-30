@@ -9,6 +9,7 @@ import ChatView from './components/ChatView';
 import ThreadPanel from './components/ThreadPanel';
 import MemberPanel from './components/MemberPanel';
 import CreateRoomModal from './components/CreateRoomModal';
+import BotRegistration from './components/BotRegistration';
 import type { User } from './types';
 
 function MainContent() {
@@ -67,6 +68,10 @@ export default function App() {
       }
       setUser(result.user);
       setRooms(result.rooms);
+      // Set pending invitation count from auth
+      if ((result as any).pendingInvitationCount !== undefined) {
+        useAppStore.getState().setPendingInvitationCount((result as any).pendingInvitationCount);
+      }
       // Store room members from auth response (includes members for DM display)
       for (const room of result.rooms) {
         if ((room as any).members) {
@@ -116,6 +121,7 @@ export default function App() {
         </div>
       </div>
       <CreateRoomModal />
+      <BotRegistration />
     </>
   );
 }

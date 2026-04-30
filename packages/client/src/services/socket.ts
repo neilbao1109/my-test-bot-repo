@@ -195,6 +195,49 @@ class SocketService {
     });
   }
 
+  testBotConnection(config: { gatewayUrl?: string; authToken: string; agentId?: string; sshHost?: string }): Promise<{ ok: boolean; error?: string; model?: string }> {
+    return new Promise((resolve) => {
+      this.socket?.emit('bot:test', config, resolve);
+    });
+  }
+
+  registerBot(config: { username: string; avatarUrl?: string; gatewayUrl?: string; authToken: string; agentId?: string; sshHost?: string; trigger?: string }): Promise<{ bot?: any; error?: string }> {
+    return new Promise((resolve) => {
+      this.socket?.emit('bot:register', config, resolve);
+    });
+  }
+
+  updateBot(botId: string, updates: Record<string, any>): Promise<{ bot?: any; error?: string }> {
+    return new Promise((resolve) => {
+      this.socket?.emit('bot:update', { botId, ...updates }, resolve);
+    });
+  }
+
+  deleteBot(botId: string): Promise<{ success: boolean }> {
+    return new Promise((resolve) => {
+      this.socket?.emit('bot:delete', { botId }, resolve);
+    });
+  }
+
+  // Invitations
+  getInvitations(): Promise<{ invitations: any[] }> {
+    return new Promise((resolve) => {
+      this.socket?.emit('invitation:list', {}, resolve);
+    });
+  }
+
+  acceptInvitation(invitationId: string): Promise<{ success: boolean; error?: string }> {
+    return new Promise((resolve) => {
+      this.socket?.emit('invitation:accept', { invitationId }, resolve);
+    });
+  }
+
+  rejectInvitation(invitationId: string): Promise<{ success: boolean; error?: string }> {
+    return new Promise((resolve) => {
+      this.socket?.emit('invitation:reject', { invitationId }, resolve);
+    });
+  }
+
   // Event listeners
   on(event: string, callback: (...args: any[]) => void) {
     this.socket?.on(event, callback);
