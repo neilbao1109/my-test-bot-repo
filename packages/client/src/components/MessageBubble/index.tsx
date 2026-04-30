@@ -57,11 +57,12 @@ interface MessageBubbleProps {
 const QUICK_REACTIONS = ['👍', '❤️', '😂', '🎉', '🤔', '👀'];
 
 export default function MessageBubble({ message, isStreaming, streamContent, highlight, isSearchActive }: MessageBubbleProps) {
-  const { user, roomMembers, activeRoomId, threadInfo, setReplyContext, addReplyContext, contextSelectionMode: ctxSelectMode, replyContext, messages: allMessages } = useAppStore();
+  const { user, roomMembers, activeRoomId, threadInfo, setReplyContext, addReplyContext, removeReplyContext, contextSelectionMode: ctxSelectMode, replyContext, messages: allMessages } = useAppStore();
   const isPinned = useAppStore((s) => activeRoomId ? (s.pinnedMessages[activeRoomId] || []).some((p) => p.messageId === message.id) : false);
   const selectionMode = useAppStore((s) => s.selectionMode);
   const isSelected = useAppStore((s) => s.selectedMessages.has(message.id));
   const toggleMessageSelection = useAppStore((s) => s.toggleMessageSelection);
+  const isCtxSelected = ctxSelectMode && replyContext.some(m => m.id === message.id);
   const [showActions, setShowActions] = useState(false);
   const [showHoverDots, setShowHoverDots] = useState(false);
   const [showReactions, setShowReactions] = useState(false);
@@ -178,8 +179,9 @@ export default function MessageBubble({ message, isStreaming, streamContent, hig
         isSearchActive && 'bg-primary-600/20 ring-1 ring-primary-500/40',
         highlight && !isSearchActive && 'bg-yellow-500/5',
         selectionMode && isSelected && 'bg-primary-600/15',
+        isCtxSelected && 'bg-primary-500/15',
       )}
-      onClick={selectionMode ? (e) => { e.stopPropagation(); toggleMessageSelection(message.id); } : undefined}
+      onClick={ctxSelectMode ? (e) => { e.stopPropagation(); if (isCtxSelected) { removeReplyContext(message.id); } else if (replyContext.length < 5) { addReplyContext(message); } } : selectionMode ? (e) => { e.stopPropagation(); toggleMessageSelection(message.id); } : undefined}
       onMouseEnter={() => !isMobile && !selectionMode && setShowHoverDots(true)}
       onMouseLeave={() => { if (!isMobile) { setShowHoverDots(false); setShowActions(false); setShowReactions(false); } }}
     >
@@ -191,6 +193,21 @@ export default function MessageBubble({ message, isStreaming, streamContent, hig
             isSelected ? 'bg-primary-500 border-primary-500 text-white' : 'border-dark-muted'
           )}>
             {isSelected && <span className="text-xs">✓</span>}
+          </div>
+        </div>
+      )}
+      {/* Context selection checkbox */}
+      {ctxSelectMode && (
+        <div className="flex-shrink-0 flex items-center pt-1 cursor-pointer">
+          <div className={clsx(
+            'w-[18px] h-[18px] rounded border-2 flex items-center justify-center transition',
+            isCtxSelected ? 'bg-primary-500 border-primary-500 text-white' : 'border-dark-muted'
+          )}>
+            {isCtxSelected && (
+              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+              </svg>
+            )}
           </div>
         </div>
       )}
