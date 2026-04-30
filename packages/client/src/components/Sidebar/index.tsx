@@ -73,7 +73,7 @@ export default function Sidebar() {
   const filteredRooms = rooms.filter((room) => {
     if (!activeFolder) return true;
     if (activeFolder.filter === 'all') return true;
-    if (activeFolder.filter === 'dm') return room.type === 'dm';
+    if (activeFolder.filter === 'dm') return room.type === 'dm' || room.type === 'bot';
     if (activeFolder.filter === 'group') return room.type === 'group';
     if (activeFolder.filter === 'custom') return activeFolder.roomIds?.includes(room.id) ?? false;
     return true;
@@ -193,14 +193,14 @@ export default function Sidebar() {
               style={{ width: 'calc(100% - 8px)' }}
             >
               <div className="relative mt-0.5 flex-shrink-0">
-                <span className="text-lg">{room.type === 'dm' ? '💬' : '👥'}</span>
+                <span className="text-lg">{room.type === 'dm' ? '💬' : room.type === 'bot' ? '🤖' : '👥'}</span>
                 {online && (
                   <span className="absolute -bottom-0.5 -right-0.5 w-2 h-2 bg-green-500 rounded-full border border-dark-surface" />
                 )}
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center justify-between gap-2">
-                  <span className="text-sm truncate font-medium">{room.type === 'dm' ? (getDmDisplayName(room.id) || room.name || 'Direct Message') : (room.name || 'Unnamed Room')}</span>
+                  <span className="text-sm truncate font-medium">{room.type === 'dm' ? (getDmDisplayName(room.id) || room.name || 'Direct Message') : (room.name || (room.type === 'bot' ? 'Bot Chat' : 'Unnamed Room'))}</span>
                   <div className="flex items-center gap-1.5 flex-shrink-0">
                     {room.type === 'group' && memberCount > 0 && (
                       <span className="text-[10px] text-dark-muted bg-dark-hover px-1.5 py-0.5 rounded-full">

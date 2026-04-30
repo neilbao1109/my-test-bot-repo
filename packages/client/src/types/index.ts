@@ -11,7 +11,7 @@ export interface User {
 export interface Room {
   id: string;
   name: string | null;
-  type: 'dm' | 'group';
+  type: 'dm' | 'group' | 'bot';
   createdBy?: string;
   createdAt: string;
   members?: User[];
@@ -84,6 +84,6 @@ export interface PinnedMessage {
 export interface ChatFolder {
   id: string;
   name: string;
-  filter: 'all' | 'dm' | 'group' | 'custom';
+  filter: 'all' | 'dm' | 'group' | 'bot' | 'custom';
   roomIds?: string[]; // only for custom folders
 }

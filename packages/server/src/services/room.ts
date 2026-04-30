@@ -18,7 +18,7 @@ export function findExistingDm(userA: string, userB: string): Room | null {
   return { id: row.id, name: row.name, type: row.type, createdBy: row.created_by || undefined, createdAt: row.created_at };
 }
 
-export function createRoom(name: string | null, type: 'dm' | 'group', memberIds: string[], createdBy?: string): Room {
+export function createRoom(name: string | null, type: 'dm' | 'group' | 'bot', memberIds: string[], createdBy?: string): Room {
   const db = getDb();
 
   // DM uniqueness: if type is dm and exactly 2 members, check for existing
