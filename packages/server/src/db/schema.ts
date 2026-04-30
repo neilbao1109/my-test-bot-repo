@@ -263,4 +263,23 @@ function initSchema(db: Database.Database) {
     })();
     console.log('[Migration] v3: bots schema aligned');
   }
+
+  if (version < 4) {
+    db.transaction(() => {
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS bot_shares (
+          id TEXT PRIMARY KEY,
+          bot_id TEXT NOT NULL REFERENCES bots(bot_id) ON DELETE CASCADE,
+          shared_by TEXT NOT NULL REFERENCES users(id),
+          shared_to TEXT NOT NULL REFERENCES users(id),
+          status TEXT NOT NULL DEFAULT 'pending' CHECK(status IN ('pending', 'accepted', 'rejected')),
+          created_at TEXT NOT NULL DEFAULT (datetime('now')),
+          UNIQUE(bot_id, shared_to)
+        );
+        CREATE INDEX IF NOT EXISTS idx_bot_shares_to ON bot_shares(shared_to, status);
+      `);
+      db.exec('PRAGMA user_version = 4');
+    })();
+    console.log('[Migration] v4: bot_shares table created');
+  }
 }

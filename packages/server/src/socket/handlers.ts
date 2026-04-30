@@ -4,6 +4,7 @@ import { createRoom, getRooms, getRoomMembers, addMemberToRoom, removeMemberFrom
 import { createThread, getThread, getThreadByMessage } from '../services/thread.js';
 import { parseCommand, executeCommand } from '../services/command.js';
 import { initBotRegistry, getRespondingBots, isBotUser, getAllBots, getBot, getAvailableBots, streamBotResponse as registryStreamBotResponse, registerBot, updateBot, deleteBot, testBotConnection } from '../services/bot-registry.js';
+import { shareBot, acceptBotShare, revokeBotShare, getBotShares, getPublicBots, addPublicBotToUser } from '../services/bot-share.js';
 import { pinMessage, unpinMessage, getPinnedMessages } from '../services/pin.js';
 import { createInvitation, acceptInvitation, rejectInvitation, getPendingInvitations, getInvitationCount } from '../services/invitation.js';
 import { copyFileToUploads } from '../routes/upload.js';
@@ -231,6 +232,10 @@ export function setupSocketHandlers(io: Server) {
         io.to(result.resourceId).emit('room:member-joined', { roomId: result.resourceId, members });
       }
 
+      if (result.type === 'bot_share' && result.resourceId) {
+        acceptBotShare(result.resourceId, socket.userId);
+      }
+
       // Notify invitation sender
       if (result.fromUser) {
         const senderSockets = userSockets.get(result.fromUser);
@@ -365,6 +370,60 @@ export function setupSocketHandlers(io: Server) {
       if (!socket.userId) return;
       const success = deleteBot(data.botId, socket.userId);
       callback({ success });
+    });
+
+    // bot:share - share a bot with another user
+    socket.on('bot:share', (data: { botId: string; userId: string }, callback) => {
+      if (!socket.userId) return;
+      const result = shareBot(data.botId, socket.userId, data.userId);
+      if (result.share) {
+        // Notify target user
+        const targetSockets = userSockets.get(data.userId);
+        if (targetSockets) {
+          for (const sid of targetSockets) {
+            const targetSocket = io.sockets.sockets.get(sid);
+            if (targetSocket) {
+              // The invitation was created inside shareBot, fetch pending invitations
+              targetSocket.emit('invitation:new', {
+                id: result.share.id,
+                type: 'bot_share',
+                fromUser: socket.userId,
+                toUser: data.userId,
+                resourceId: result.share.id,
+                status: 'pending',
+              });
+            }
+          }
+        }
+      }
+      if (callback) callback(result);
+    });
+
+    // bot:share:list - list shares for a bot
+    socket.on('bot:share:list', (data: { botId: string }, callback) => {
+      if (!socket.userId) return;
+      const shares = getBotShares(data.botId, socket.userId);
+      callback({ shares });
+    });
+
+    // bot:share:revoke - revoke a bot share
+    socket.on('bot:share:revoke', (data: { shareId: string }, callback) => {
+      if (!socket.userId) return;
+      const result = revokeBotShare(data.shareId, socket.userId);
+      if (callback) callback(result);
+    });
+
+    // bot:marketplace - list public bots
+    socket.on('bot:marketplace', (_data: any, callback) => {
+      const bots = getPublicBots();
+      callback({ bots });
+    });
+
+    // bot:marketplace:add - add a public bot to user's available list
+    socket.on('bot:marketplace:add', (data: { botId: string }, callback) => {
+      if (!socket.userId) return;
+      const result = addPublicBotToUser(data.botId, socket.userId);
+      if (callback) callback(result);
     });
 
     socket.on('user:search', (data: { query: string }, callback) => {
