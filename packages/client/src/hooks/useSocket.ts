@@ -135,6 +135,10 @@ export function useSocket() {
       store.setRoomMembers(data.roomId, data.members);
     });
 
+    socket.on('room:member-left', (data: { roomId: string; userId: string; members: User[] }) => {
+      store.setRoomMembers(data.roomId, data.members);
+    });
+
     socket.on('room:updated', (room: Room) => {
       store.updateRoom(room);
     });
@@ -194,6 +198,7 @@ export function useSocket() {
       socket.off('thread:created');
       socket.off('thread:updated');
       socket.off('room:member-joined');
+      socket.off('room:member-left');
       socket.off('room:updated');
       socket.off('room:added');
       socket.off('room:deleted');

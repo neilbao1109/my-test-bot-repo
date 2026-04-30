@@ -1,10 +1,32 @@
 import { v4 as uuid } from 'uuid';
 import { getDb } from '../db/schema.js';
-import { getAutoJoinBotIds } from '../services/bot-registry.js';
+import { getBot } from '../services/bot-registry.js';
 import type { Room, User } from '../types.js';
 
-export function createRoom(name: string, type: 'dm' | 'group', memberIds: string[], createdBy?: string): Room {
+/**
+ * Find an existing DM between two users via dm_pairs table.
+ */
+export function findExistingDm(userA: string, userB: string): Room | null {
   const db = getDb();
+  const [a, b] = userA < userB ? [userA, userB] : [userB, userA];
+  const row = db.prepare(`
+    SELECT r.* FROM dm_pairs dp
+    JOIN rooms r ON r.id = dp.room_id
+    WHERE dp.user_a = ? AND dp.user_b = ?
+  `).get(a, b) as any;
+  if (!row) return null;
+  return { id: row.id, name: row.name, type: row.type, createdBy: row.created_by || undefined, createdAt: row.created_at };
+}
+
+export function createRoom(name: string | null, type: 'dm' | 'group', memberIds: string[], createdBy?: string): Room {
+  const db = getDb();
+
+  // DM uniqueness: if type is dm and exactly 2 members, check for existing
+  if (type === 'dm' && memberIds.length === 2) {
+    const existing = findExistingDm(memberIds[0], memberIds[1]);
+    if (existing) return existing;
+  }
+
   const id = uuid();
   const now = new Date().toISOString();
 
@@ -14,10 +36,11 @@ export function createRoom(name: string, type: 'dm' | 'group', memberIds: string
   for (const userId of memberIds) {
     insertMember.run(id, userId);
   }
-  // Add auto-join bots to the room
-  const autoJoinBots = getAutoJoinBotIds();
-  for (const botId of autoJoinBots) {
-    insertMember.run(id, botId);
+
+  // Write dm_pairs for DM rooms
+  if (type === 'dm' && memberIds.length === 2) {
+    const [a, b] = memberIds[0] < memberIds[1] ? [memberIds[0], memberIds[1]] : [memberIds[1], memberIds[0]];
+    db.prepare('INSERT OR IGNORE INTO dm_pairs (user_a, user_b, room_id) VALUES (?, ?, ?)').run(a, b, id);
   }
 
   return { id, name, type, createdBy: createdBy || undefined, createdAt: now };
@@ -78,11 +101,22 @@ export function removeMemberFromRoom(roomId: string, userId: string): boolean {
   return result.changes > 0;
 }
 
+export function addBotToRoom(roomId: string, botId: string): boolean {
+  const bot = getBot(botId);
+  if (!bot) return false;
+  return addMemberToRoom(roomId, botId);
+}
+
+export function removeBotFromRoom(roomId: string, botId: string): boolean {
+  const bot = getBot(botId);
+  if (!bot) return false;
+  return removeMemberFromRoom(roomId, botId);
+}
+
 export function renameRoom(roomId: string, name: string, userId?: string): { room: Room | null; error?: string } {
   const db = getDb();
   const existing = getRoom(roomId);
   if (!existing) return { room: null, error: 'Room not found' };
-  // Only creator can rename (if creator is tracked)
   if (existing.createdBy && userId && existing.createdBy !== userId) {
     return { room: null, error: 'Only the room creator can rename' };
   }

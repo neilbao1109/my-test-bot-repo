@@ -14,7 +14,7 @@ export default function RoomPicker({ onSelect, onClose, excludeRoomId }: RoomPic
 
   const filtered = rooms
     .filter(r => r.id !== excludeRoomId)
-    .filter(r => !search || r.name.toLowerCase().includes(search.toLowerCase()));
+    .filter(r => !search || (r.name || '').toLowerCase().includes(search.toLowerCase()));
 
   const modal = (
     <div

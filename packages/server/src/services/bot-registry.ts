@@ -126,12 +126,21 @@ export function getAllBotIds(): string[] {
 }
 
 /**
+ * @deprecated Phase 1: no longer used. Will be removed in Phase 2.
  * Get bots that should be added to every new room ('all' trigger type).
  */
 export function getAutoJoinBotIds(): string[] {
   return Array.from(bots.values())
     .filter(b => b.trigger === 'all')
     .map(b => b.id);
+}
+
+/**
+ * Get all bots available to a user.
+ * Phase 1: returns all system bots (registered bots).
+ */
+export function getAvailableBots(_userId?: string): BotConfig[] {
+  return Array.from(bots.values());
 }
 
 /**

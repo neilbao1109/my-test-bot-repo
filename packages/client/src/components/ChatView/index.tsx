@@ -384,7 +384,7 @@ export default function ChatView() {
       )}
 
       {/* Input */}
-      <CommandBar roomId={activeRoomId} onExport={() => exportMessages(roomMessages, activeRoom.name, members)} />
+      <CommandBar roomId={activeRoomId} onExport={() => exportMessages(roomMessages, activeRoom.name || 'DM', members)} />
     </div>
   );
 }
@@ -395,13 +395,19 @@ import type { Room } from '../../types';
 
 function RoomNameHeader({ room, userId }: { room: Room; userId?: string }) {
   const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState(room.name);
+  const [draft, setDraft] = useState(room.name || '');
   const inputRef = useRef<HTMLInputElement>(null);
-  const canRename = !room.createdBy || room.createdBy === userId;
+  const canRename = room.type !== 'dm' && (!room.createdBy || room.createdBy === userId);
+  const members = useAppStore((s) => s.roomMembers[room.id] || []);
+
+  // For DM rooms, display the other participant's name
+  const displayName = room.type === 'dm'
+    ? (members.find(m => m.id !== userId)?.username || room.name || 'Direct Message')
+    : (room.name || 'Unnamed Room');
 
   useEffect(() => {
     if (editing) {
-      setDraft(room.name);
+      setDraft(room.name || '');
       setTimeout(() => inputRef.current?.select(), 0);
     }
   }, [editing]);
@@ -446,7 +452,7 @@ function RoomNameHeader({ room, userId }: { room: Room; userId?: string }) {
       onClick={() => canRename && setEditing(true)}
       title={canRename ? 'Click to rename' : undefined}
     >
-      {room.name}
+      {displayName}
       {canRename && (
         <span className="ml-1.5 text-dark-muted text-xs opacity-0 group-hover:opacity-100 transition">✏️</span>
       )}
