@@ -383,7 +383,7 @@ function escapeRegex(s: string): string {
  * @param senderId   who sent the message
  * @param roomType   'dm' | 'group' — in group rooms, trigger='all' behaves like 'mention'
  */
-export function getRespondingBots(content: string, roomId: string, senderId: string, roomType?: 'dm' | 'group'): BotConfig[] {
+export function getRespondingBots(content: string, roomId: string, senderId: string, roomType?: 'dm' | 'group' | 'bot'): BotConfig[] {
   // Never respond to messages from bots (prevent loops)
   if (isBotUser(senderId)) return [];
 

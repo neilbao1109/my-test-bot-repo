@@ -53,7 +53,7 @@ function initSchema(db: Database.Database) {
     CREATE TABLE IF NOT EXISTS rooms (
       id TEXT PRIMARY KEY,
       name TEXT NOT NULL,
-      type TEXT NOT NULL CHECK(type IN ('dm', 'group')),
+      type TEXT NOT NULL CHECK(type IN ('dm', 'group', 'bot')),
       created_by TEXT,
       created_at TEXT NOT NULL DEFAULT (datetime('now'))
     );
@@ -284,5 +284,35 @@ function initSchema(db: Database.Database) {
       db.exec('PRAGMA user_version = 4');
     })();
     console.log('[Migration] v4: bot_shares table created');
+  }
+
+  if (version < 5) {
+    db.transaction(() => {
+      db.exec(`PRAGMA foreign_keys = OFF`);
+      db.exec(`
+        CREATE TABLE rooms_new (
+          id TEXT PRIMARY KEY,
+          name TEXT,
+          type TEXT NOT NULL CHECK(type IN ('dm', 'group', 'bot')),
+          created_by TEXT,
+          created_at TEXT NOT NULL DEFAULT (datetime('now'))
+        );
+        INSERT INTO rooms_new SELECT * FROM rooms;
+        DROP TABLE rooms;
+        ALTER TABLE rooms_new RENAME TO rooms;
+      `);
+      db.exec(`PRAGMA foreign_keys = ON`);
+
+      db.exec(`
+        UPDATE rooms SET type='bot' WHERE type='dm' AND id IN (
+          SELECT rm.room_id FROM room_members rm
+          JOIN users u ON rm.user_id = u.id
+          WHERE u.is_bot = 1
+        )
+      `);
+
+      db.exec('PRAGMA user_version = 5');
+    })();
+    console.log('[Migration] v5: added bot room type');
   }
 }

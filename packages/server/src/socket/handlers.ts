@@ -150,13 +150,34 @@ export function setupSocketHandlers(io: Server) {
       socket.leave(data.roomId);
     });
 
-    socket.on('room:create', (data: { name?: string | null; type: 'dm' | 'group'; memberIds?: string[] }, callback) => {
+    socket.on('room:create', (data: { name?: string | null; type: 'dm' | 'group' | 'bot'; memberIds?: string[] }, callback) => {
       if (!socket.userId) return;
 
       if (data.type === 'dm') {
         // DM: directly add both users (uniqueness handled by createRoom)
         const memberIds = data.memberIds ? [socket.userId, ...data.memberIds] : [socket.userId];
         const room = createRoom(null, 'dm', memberIds, socket.userId);
+        callback(room);
+        socket.join(room.id);
+
+        if (data.memberIds) {
+          for (const memberId of data.memberIds) {
+            const memberSocketIds = userSockets.get(memberId);
+            if (memberSocketIds) {
+              for (const sid of memberSocketIds) {
+                const memberSocket = io.sockets.sockets.get(sid);
+                if (memberSocket) {
+                  memberSocket.join(room.id);
+                  memberSocket.emit('room:added', room);
+                }
+              }
+            }
+          }
+        }
+      } else if (data.type === 'bot') {
+        // Bot: like DM but no uniqueness constraint, requires name
+        const memberIds = data.memberIds ? [socket.userId, ...data.memberIds] : [socket.userId];
+        const room = createRoom(data.name || 'Bot Chat', 'bot', memberIds, socket.userId);
         callback(room);
         socket.join(room.id);
 
@@ -520,7 +541,7 @@ export function setupSocketHandlers(io: Server) {
 
       // Bot streaming responses — determine which bots should respond
       const currentRoom = getRoom(data.roomId);
-      const roomType = currentRoom?.type as 'dm' | 'group' | undefined;
+      const roomType = currentRoom?.type as 'dm' | 'group' | 'bot' | undefined;
       const respondingBots = getRespondingBots(data.content, data.roomId, socket.userId, roomType);
 
       // In group rooms, prepend recent chat history so the bot has context

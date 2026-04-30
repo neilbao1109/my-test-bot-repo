@@ -11,7 +11,7 @@ export interface User {
 export interface Room {
   id: string;
   name: string | null;
-  type: 'dm' | 'group';
+  type: 'dm' | 'group' | 'bot';
   createdBy?: string;
   createdAt: string;
 }

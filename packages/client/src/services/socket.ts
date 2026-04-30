@@ -47,7 +47,7 @@ class SocketService {
     this.socket?.emit('room:leave', { roomId });
   }
 
-  createRoom(name: string | null, type: 'dm' | 'group', memberIds?: string[]): Promise<Room> {
+  createRoom(name: string | null, type: 'dm' | 'group' | 'bot', memberIds?: string[]): Promise<Room> {
     return new Promise((resolve) => {
       this.socket?.emit('room:create', { name, type, memberIds }, resolve);
     });

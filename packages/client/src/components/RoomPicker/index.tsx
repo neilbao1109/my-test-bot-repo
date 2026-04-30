@@ -46,8 +46,8 @@ export default function RoomPicker({ onSelect, onClose, excludeRoomId }: RoomPic
                 onClick={() => onSelect(room.id)}
                 className="w-full text-left px-4 py-3 hover:bg-dark-hover transition flex items-center gap-3"
               >
-                <span className="text-base">{room.type === 'dm' ? '💬' : '#'}</span>
-                <span className="text-sm text-dark-text">{room.name}</span>
+                <span className="text-base">{room.type === 'dm' ? '💬' : room.type === 'bot' ? '🤖' : '#'}</span>
+                <span className="text-sm text-dark-text">{room.name || (room.type === 'bot' ? 'Bot Chat' : 'Unnamed')}</span>
               </button>
             ))
           )}

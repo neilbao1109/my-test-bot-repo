@@ -222,12 +222,14 @@ export default function ChatView() {
             </svg>
           </button>
         )}
-        <span className="text-lg">{activeRoom.type === 'dm' ? '💬' : '👥'}</span>
+        <span className="text-lg">{activeRoom.type === 'dm' ? '💬' : activeRoom.type === 'bot' ? '🤖' : '👥'}</span>
         <div className="flex-1 min-w-0">
           <RoomNameHeader room={activeRoom} userId={user?.id} />
           <p className="text-xs text-dark-muted">
             {activeRoom.type === 'dm'
               ? 'Direct Message'
+              : activeRoom.type === 'bot'
+              ? 'Bot Chat'
               : `${members.length} members, ${onlineCount} online`}
           </p>
         </div>
@@ -397,13 +399,13 @@ function RoomNameHeader({ room, userId }: { room: Room; userId?: string }) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(room.name || '');
   const inputRef = useRef<HTMLInputElement>(null);
-  const canRename = room.type !== 'dm' && (!room.createdBy || room.createdBy === userId);
+  const canRename = room.type !== 'dm' && (room.type === 'bot' || !room.createdBy || room.createdBy === userId);
   const members = useAppStore((s) => s.roomMembers[room.id] || []);
 
   // For DM rooms, display the other participant's name
   const displayName = room.type === 'dm'
     ? (members.find(m => m.id !== userId)?.username || room.name || 'Direct Message')
-    : (room.name || 'Unnamed Room');
+    : (room.name || (room.type === 'bot' ? 'Bot Chat' : 'Unnamed Room'));
 
   useEffect(() => {
     if (editing) {
