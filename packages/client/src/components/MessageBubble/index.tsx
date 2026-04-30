@@ -187,7 +187,7 @@ export default function MessageBubble({ message, isStreaming, streamContent, hig
     >
       {/* Selection checkbox */}
       {selectionMode && (
-        <div className="flex-shrink-0 flex items-center pt-1">
+        <div className="flex-shrink-0 flex items-start pt-2">
           <div className={clsx(
             'w-5 h-5 rounded border-2 flex items-center justify-center transition cursor-pointer',
             isSelected ? 'bg-primary-500 border-primary-500 text-white' : 'border-dark-muted'
