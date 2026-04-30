@@ -1,10 +1,12 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAppStore } from '../../stores/appStore';
 import { socketService } from '../../services/socket';
+import BotShareModal from '../BotShareModal';
 import './BotRegistration.css';
 
 export default function BotRegistration() {
   const { showBotRegistration, setShowBotRegistration } = useAppStore();
+  const [tab, setTab] = useState<'register' | 'my-bots'>('register');
   const [username, setUsername] = useState('');
   const [avatarUrl, setAvatarUrl] = useState('');
   const [gatewayUrl, setGatewayUrl] = useState('');
@@ -16,6 +18,19 @@ export default function BotRegistration() {
   const [testMessage, setTestMessage] = useState('');
   const [registering, setRegistering] = useState(false);
   const [error, setError] = useState('');
+  const [myBots, setMyBots] = useState<any[]>([]);
+  const [shareBot, setShareBot] = useState<{ id: string; name: string } | null>(null);
+
+  useEffect(() => {
+    if (showBotRegistration && tab === 'my-bots') {
+      loadMyBots();
+    }
+  }, [showBotRegistration, tab]);
+
+  const loadMyBots = async () => {
+    const result = await socketService.listAvailableBots();
+    setMyBots(result.bots || []);
+  };
 
   if (!showBotRegistration) return null;
 
@@ -85,9 +100,35 @@ export default function BotRegistration() {
       <div className="bg-dark-surface border border-dark-border rounded-xl shadow-2xl w-full max-w-md mx-4 max-h-[90vh] overflow-y-auto">
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-dark-border">
-          <h2 className="text-lg font-semibold text-dark-text">🤖 Register Bot</h2>
+          <h2 className="text-lg font-semibold text-dark-text">🤖 Bots</h2>
           <button onClick={handleClose} className="text-dark-muted hover:text-dark-text p-1 rounded transition">✕</button>
         </div>
+
+        {/* Tabs */}
+        <div className="flex border-b border-dark-border">
+          <button onClick={() => setTab('register')} className={`flex-1 py-2 text-sm font-medium transition ${tab === 'register' ? 'text-primary-400 border-b-2 border-primary-400' : 'text-dark-muted hover:text-dark-text'}`}>Register</button>
+          <button onClick={() => setTab('my-bots')} className={`flex-1 py-2 text-sm font-medium transition ${tab === 'my-bots' ? 'text-primary-400 border-b-2 border-primary-400' : 'text-dark-muted hover:text-dark-text'}`}>My Bots</button>
+        </div>
+
+        {tab === 'my-bots' ? (
+          <div className="p-5 space-y-2">
+            {myBots.length === 0 ? (
+              <p className="text-sm text-dark-muted text-center py-4">No bots yet</p>
+            ) : myBots.map(bot => (
+              <div key={bot.id} className="flex items-center justify-between px-3 py-2.5 bg-dark-bg rounded-lg border border-dark-border">
+                <div>
+                  <p className="text-sm font-medium text-dark-text">{bot.username}</p>
+                  <p className="text-xs text-dark-muted">{bot.trigger}</p>
+                </div>
+                <button onClick={() => setShareBot({ id: bot.id, name: bot.username })}
+                  className="text-xs px-3 py-1 bg-dark-hover text-dark-text rounded hover:bg-dark-border transition">
+                  🔗 Share
+                </button>
+              </div>
+            ))}
+          </div>
+        ) : (
+        <>
 
         <div className="p-5 space-y-3">
           {/* Bot Name */}
@@ -164,7 +205,9 @@ export default function BotRegistration() {
             {registering ? 'Registering...' : 'Register'}
           </button>
         </div>
+        </>)}
       </div>
+      {shareBot && <BotShareModal botId={shareBot.id} botName={shareBot.name} onClose={() => setShareBot(null)} />}
     </div>
   );
 }

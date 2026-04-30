@@ -151,25 +151,44 @@ export function getAllBotIds(): string[] {
 }
 
 /**
- * @deprecated Phase 1: no longer used. Will be removed in Phase 2.
- * Get bots that should be added to every new room ('all' trigger type).
- */
-export function getAutoJoinBotIds(): string[] {
-  return Array.from(bots.values())
-    .filter(b => b.trigger === 'all')
-    .map(b => b.id);
-}
-
-/**
  * Get all bots available to a user.
- * Returns system bots + user's own bots.
+ * Returns system bots + user's own bots + shared bots (accepted).
  */
 export function getAvailableBots(userId?: string): BotConfig[] {
   if (!userId) return Array.from(bots.values()).filter(b => systemBotIds.has(b.id));
   const db = getDb();
   const userBotIds = (db.prepare('SELECT bot_id FROM bots WHERE owner_id = ?').all(userId) as any[]).map(r => r.bot_id);
   const userBotSet = new Set(userBotIds);
-  return Array.from(bots.values()).filter(b => systemBotIds.has(b.id) || userBotSet.has(b.id));
+
+  // Get shared bots (inline query to avoid circular import with bot-share)
+  const sharedRows = db.prepare(`
+    SELECT b.* FROM bot_shares bs
+    JOIN bots b ON bs.bot_id = b.bot_id
+    WHERE bs.shared_to = ? AND bs.status = 'accepted'
+  `).all(userId) as any[];
+  const sharedBots: BotConfig[] = sharedRows.map(row => ({
+    id: row.bot_id,
+    username: row.username,
+    avatarUrl: row.avatar_url || undefined,
+    gateway: {
+      url: row.gateway_url || undefined,
+      authToken: row.auth_token,
+      agentId: row.agent_id || undefined,
+      sshHost: row.ssh_host || undefined,
+    },
+    trigger: (row.trigger_type || 'all') as TriggerType,
+  }));
+  const sharedBotIds = new Set(sharedBots.map((b: BotConfig) => b.id));
+
+  // Ensure shared bots are loaded into memory maps
+  for (const sb of sharedBots) {
+    if (!bots.has(sb.id)) {
+      bots.set(sb.id, sb);
+      bridges.set(sb.id, new BotBridge(sb));
+    }
+  }
+
+  return Array.from(bots.values()).filter(b => systemBotIds.has(b.id) || userBotSet.has(b.id) || sharedBotIds.has(b.id));
 }
 
 /** Check if a bot is a system bot */

@@ -10,6 +10,7 @@ import ThreadPanel from './components/ThreadPanel';
 import MemberPanel from './components/MemberPanel';
 import CreateRoomModal from './components/CreateRoomModal';
 import BotRegistration from './components/BotRegistration';
+import BotMarketplace from './components/BotMarketplace';
 import type { User } from './types';
 
 function MainContent() {
@@ -122,6 +123,7 @@ export default function App() {
       </div>
       <CreateRoomModal />
       <BotRegistration />
+      <BotMarketplace />
     </>
   );
 }

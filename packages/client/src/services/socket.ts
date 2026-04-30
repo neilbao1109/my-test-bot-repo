@@ -219,6 +219,36 @@ class SocketService {
     });
   }
 
+  shareBot(botId: string, userId: string): Promise<{ share?: any; error?: string }> {
+    return new Promise((resolve) => {
+      this.socket?.emit('bot:share', { botId, userId }, resolve);
+    });
+  }
+
+  getBotShares(botId: string): Promise<{ shares: any[] }> {
+    return new Promise((resolve) => {
+      this.socket?.emit('bot:share:list', { botId }, resolve);
+    });
+  }
+
+  revokeBotShare(shareId: string): Promise<{ success: boolean; error?: string }> {
+    return new Promise((resolve) => {
+      this.socket?.emit('bot:share:revoke', { shareId }, resolve);
+    });
+  }
+
+  getMarketplaceBots(): Promise<{ bots: any[] }> {
+    return new Promise((resolve) => {
+      this.socket?.emit('bot:marketplace', {}, resolve);
+    });
+  }
+
+  addMarketplaceBot(botId: string): Promise<{ success: boolean; error?: string }> {
+    return new Promise((resolve) => {
+      this.socket?.emit('bot:marketplace:add', { botId }, resolve);
+    });
+  }
+
   // Invitations
   getInvitations(): Promise<{ invitations: any[] }> {
     return new Promise((resolve) => {
