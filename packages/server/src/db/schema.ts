@@ -156,6 +156,7 @@ function initSchema(db: Database.Database) {
   const version = (db.prepare('PRAGMA user_version').get() as any).user_version;
 
   if (version < 1) {
+    db.exec(`PRAGMA foreign_keys = OFF`);
     db.transaction(() => {
       // Create dm_pairs table for DM uniqueness
       db.exec(`
@@ -170,8 +171,6 @@ function initSchema(db: Database.Database) {
       `);
 
       // Rebuild rooms table with name allowing NULL
-      // Temporarily disable FK to prevent CASCADE deleting room_members
-      db.exec(`PRAGMA foreign_keys = OFF`);
       db.exec(`
         CREATE TABLE rooms_new (
           id TEXT PRIMARY KEY,
@@ -184,10 +183,9 @@ function initSchema(db: Database.Database) {
         DROP TABLE rooms;
         ALTER TABLE rooms_new RENAME TO rooms;
       `);
-      db.exec(`PRAGMA foreign_keys = ON`);
-
       db.exec('PRAGMA user_version = 1');
     })();
+    db.exec(`PRAGMA foreign_keys = ON`);
     console.log('[Migration] v1: dm_pairs table created, rooms.name now nullable');
   }
 
@@ -287,8 +285,8 @@ function initSchema(db: Database.Database) {
   }
 
   if (version < 5) {
+    db.exec(`PRAGMA foreign_keys = OFF`);
     db.transaction(() => {
-      db.exec(`PRAGMA foreign_keys = OFF`);
       db.exec(`
         CREATE TABLE rooms_new (
           id TEXT PRIMARY KEY,
@@ -301,18 +299,18 @@ function initSchema(db: Database.Database) {
         DROP TABLE rooms;
         ALTER TABLE rooms_new RENAME TO rooms;
       `);
-      db.exec(`PRAGMA foreign_keys = ON`);
-
-      db.exec(`
-        UPDATE rooms SET type='bot' WHERE type='dm' AND id IN (
-          SELECT rm.room_id FROM room_members rm
-          JOIN users u ON rm.user_id = u.id
-          WHERE u.is_bot = 1
-        )
-      `);
-
       db.exec('PRAGMA user_version = 5');
     })();
+    db.exec(`PRAGMA foreign_keys = ON`);
+
+    // Convert existing bot DMs to 'bot' type
+    db.exec(`
+      UPDATE rooms SET type='bot' WHERE type='dm' AND id IN (
+        SELECT rm.room_id FROM room_members rm
+        JOIN users u ON rm.user_id = u.id
+        WHERE u.is_bot = 1
+      )
+    `);
     console.log('[Migration] v5: added bot room type');
   }
 }
