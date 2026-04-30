@@ -198,7 +198,7 @@ export default function MessageBubble({ message, isStreaming, streamContent, hig
       )}
       {/* Context selection checkbox */}
       {ctxSelectMode && (
-        <div className="flex-shrink-0 flex items-center pt-1 cursor-pointer">
+        <div className="flex-shrink-0 flex items-start pt-2 cursor-pointer">
           <div className={clsx(
             'w-[18px] h-[18px] rounded border-2 flex items-center justify-center transition',
             isCtxSelected ? 'bg-primary-500 border-primary-500 text-white' : 'border-dark-muted'
