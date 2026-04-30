@@ -193,13 +193,15 @@ function initSchema(db: Database.Database) {
       // User-registered bots
       db.exec(`
         CREATE TABLE IF NOT EXISTS bots (
-          id TEXT PRIMARY KEY,
+          bot_id TEXT PRIMARY KEY,
           owner_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+          username TEXT NOT NULL,
+          avatar_url TEXT,
           gateway_url TEXT,
           auth_token TEXT NOT NULL,
           agent_id TEXT,
           ssh_host TEXT,
-          trigger TEXT NOT NULL DEFAULT 'all' CHECK(trigger IN ('all', 'mention', 'room-member')),
+          trigger_type TEXT NOT NULL DEFAULT 'all' CHECK(trigger_type IN ('all', 'mention', 'room-member')),
           is_public INTEGER NOT NULL DEFAULT 0,
           created_at TEXT NOT NULL DEFAULT (datetime('now')),
           updated_at TEXT NOT NULL DEFAULT (datetime('now'))
@@ -226,5 +228,39 @@ function initSchema(db: Database.Database) {
       db.exec('PRAGMA user_version = 2');
     })();
     console.log('[Migration] v2: bots and invitations tables created');
+  }
+
+  if (version < 3) {
+    db.transaction(() => {
+      // Fix bots table columns: rename id→bot_id, trigger→trigger_type, add username/avatar_url
+      const botsInfo = db.prepare("PRAGMA table_info('bots')").all() as any[];
+      const hasOldSchema = botsInfo.some((c: any) => c.name === 'id') && !botsInfo.some((c: any) => c.name === 'bot_id');
+      if (hasOldSchema) {
+        db.exec(`
+          CREATE TABLE bots_new (
+            bot_id TEXT PRIMARY KEY,
+            owner_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            username TEXT NOT NULL DEFAULT '',
+            avatar_url TEXT,
+            gateway_url TEXT,
+            auth_token TEXT NOT NULL,
+            agent_id TEXT,
+            ssh_host TEXT,
+            trigger_type TEXT NOT NULL DEFAULT 'all' CHECK(trigger_type IN ('all', 'mention', 'room-member')),
+            is_public INTEGER NOT NULL DEFAULT 0,
+            created_at TEXT NOT NULL DEFAULT (datetime('now')),
+            updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+          );
+          INSERT INTO bots_new (bot_id, owner_id, username, avatar_url, gateway_url, auth_token, agent_id, ssh_host, trigger_type, is_public, created_at, updated_at)
+            SELECT id, owner_id, '', NULL, gateway_url, auth_token, agent_id, ssh_host, trigger, is_public, created_at, updated_at FROM bots;
+          DROP TABLE bots;
+          ALTER TABLE bots_new RENAME TO bots;
+          CREATE INDEX IF NOT EXISTS idx_bots_owner ON bots(owner_id);
+        `);
+        console.log('[Migration] v3: rebuilt bots table with correct columns');
+      }
+      db.exec('PRAGMA user_version = 3');
+    })();
+    console.log('[Migration] v3: bots schema aligned');
   }
 }
