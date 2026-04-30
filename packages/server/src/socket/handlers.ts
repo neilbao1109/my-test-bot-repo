@@ -5,6 +5,7 @@ import { createThread, getThread, getThreadByMessage } from '../services/thread.
 import { parseCommand, executeCommand } from '../services/command.js';
 import { initBotRegistry, getRespondingBots, isBotUser, getAllBots, getBot, getAvailableBots, streamBotResponse as registryStreamBotResponse, registerBot, updateBot, deleteBot, testBotConnection } from '../services/bot-registry.js';
 import { pinMessage, unpinMessage, getPinnedMessages } from '../services/pin.js';
+import { createInvitation, acceptInvitation, rejectInvitation, getPendingInvitations, getInvitationCount } from '../services/invitation.js';
 import { copyFileToUploads } from '../routes/upload.js';
 import { getUser, setOnline, getOnlineUsers } from '../services/user.js';
 import { verifyToken } from '../services/auth.js';
@@ -116,7 +117,9 @@ export function setupSocketHandlers(io: Server) {
         socket.join(room.id);
       }
 
-      callback({ user, rooms: rooms.map(r => {
+      const pendingInvitationCount = getInvitationCount(user.id);
+
+      callback({ user, pendingInvitationCount, rooms: rooms.map(r => {
         const lastMsg = getLastMessage(r.id);
         const members = getRoomMembers(r.id);
         const sender = lastMsg ? members.find(m => m.id === lastMsg.userId) : null;
@@ -148,22 +151,41 @@ export function setupSocketHandlers(io: Server) {
 
     socket.on('room:create', (data: { name?: string | null; type: 'dm' | 'group'; memberIds?: string[] }, callback) => {
       if (!socket.userId) return;
-      const memberIds = data.memberIds ? [socket.userId, ...data.memberIds] : [socket.userId];
-      const roomName = data.type === 'dm' ? null : (data.name || 'Unnamed Room');
-      const room = createRoom(roomName, data.type, memberIds, socket.userId);
-      callback(room);
-      socket.join(room.id);
 
-      // Notify invited members
-      if (data.memberIds) {
-        for (const memberId of data.memberIds) {
-          const memberSocketIds = userSockets.get(memberId);
-          if (memberSocketIds) {
-            for (const sid of memberSocketIds) {
-              const memberSocket = io.sockets.sockets.get(sid);
-              if (memberSocket) {
-                memberSocket.join(room.id);
-                memberSocket.emit('room:added', room);
+      if (data.type === 'dm') {
+        // DM: directly add both users (uniqueness handled by createRoom)
+        const memberIds = data.memberIds ? [socket.userId, ...data.memberIds] : [socket.userId];
+        const room = createRoom(null, 'dm', memberIds, socket.userId);
+        callback(room);
+        socket.join(room.id);
+
+        if (data.memberIds) {
+          for (const memberId of data.memberIds) {
+            const memberSocketIds = userSockets.get(memberId);
+            if (memberSocketIds) {
+              for (const sid of memberSocketIds) {
+                const memberSocket = io.sockets.sockets.get(sid);
+                if (memberSocket) {
+                  memberSocket.join(room.id);
+                  memberSocket.emit('room:added', room);
+                }
+              }
+            }
+          }
+        }
+      } else {
+        // Group: creator is added directly, others get invitations
+        const room = createRoom(data.name || 'Unnamed Room', 'group', [socket.userId], socket.userId);
+        callback(room);
+        socket.join(room.id);
+
+        if (data.memberIds) {
+          for (const memberId of data.memberIds) {
+            const invitation = createInvitation('room', socket.userId, memberId, room.id);
+            const memberSocketIds = userSockets.get(memberId);
+            if (memberSocketIds) {
+              for (const sid of memberSocketIds) {
+                io.sockets.sockets.get(sid)?.emit('invitation:new', invitation);
               }
             }
           }
@@ -173,25 +195,59 @@ export function setupSocketHandlers(io: Server) {
 
     socket.on('room:invite', (data: { roomId: string; userId: string }, callback?) => {
       if (!socket.userId) return;
-      const added = addMemberToRoom(data.roomId, data.userId);
-      if (added) {
-        const room = getRoom(data.roomId);
-        const members = getRoomMembers(data.roomId);
-        io.to(data.roomId).emit('room:member-joined', { roomId: data.roomId, members });
+      const invitation = createInvitation('room', socket.userId, data.userId, data.roomId);
 
-        // Join the invited user's sockets to the room
-        const memberSocketIds = userSockets.get(data.userId);
-        if (memberSocketIds) {
-          for (const sid of memberSocketIds) {
-            const memberSocket = io.sockets.sockets.get(sid);
-            if (memberSocket) {
-              memberSocket.join(data.roomId);
-              if (room) memberSocket.emit('room:added', room);
-            }
+      // Push notification to invited user
+      const memberSocketIds = userSockets.get(data.userId);
+      if (memberSocketIds) {
+        for (const sid of memberSocketIds) {
+          io.sockets.sockets.get(sid)?.emit('invitation:new', invitation);
+        }
+      }
+
+      if (callback) callback({ success: true, invitation });
+    });
+
+    // --- Invitations ---
+    socket.on('invitation:list', (_data: any, callback) => {
+      if (!socket.userId) return;
+      const invitations = getPendingInvitations(socket.userId);
+      callback({ invitations });
+    });
+
+    socket.on('invitation:accept', (data: { invitationId: string }, callback) => {
+      if (!socket.userId) return;
+      const result = acceptInvitation(data.invitationId, socket.userId);
+      if (!result.success) { callback(result); return; }
+
+      if (result.type === 'room' && result.resourceId) {
+        addMemberToRoom(result.resourceId, socket.userId);
+        const room = getRoom(result.resourceId);
+        const members = getRoomMembers(result.resourceId);
+
+        socket.join(result.resourceId);
+        if (room) socket.emit('room:added', room);
+
+        io.to(result.resourceId).emit('room:member-joined', { roomId: result.resourceId, members });
+      }
+
+      // Notify invitation sender
+      if (result.fromUser) {
+        const senderSockets = userSockets.get(result.fromUser);
+        if (senderSockets) {
+          for (const sid of senderSockets) {
+            io.sockets.sockets.get(sid)?.emit('invitation:resolved', { invitationId: data.invitationId, status: 'accepted' });
           }
         }
       }
-      if (callback) callback({ success: added });
+
+      callback({ success: true });
+    });
+
+    socket.on('invitation:reject', (data: { invitationId: string }, callback) => {
+      if (!socket.userId) return;
+      const result = rejectInvitation(data.invitationId, socket.userId);
+      callback(result);
     });
 
     socket.on('room:members', (data: { roomId: string }, callback) => {

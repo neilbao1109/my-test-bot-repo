@@ -168,6 +168,14 @@ export function useSocket() {
       }
     });
 
+    socket.on('invitation:new', () => {
+      store.incrementInvitationCount();
+    });
+
+    socket.on('invitation:resolved', () => {
+      store.decrementInvitationCount();
+    });
+
     // Re-auth and rejoin room on reconnect
     const handleReconnect = () => {
       const token = getToken();
@@ -205,6 +213,8 @@ export function useSocket() {
       socket.off('command:result');
       socket.off('message:pinned');
       socket.off('message:unpinned');
+      socket.off('invitation:new');
+      socket.off('invitation:resolved');
       socket.io.off('reconnect', handleReconnect);
     };
   }, [user]);

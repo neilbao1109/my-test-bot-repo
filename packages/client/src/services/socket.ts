@@ -219,6 +219,25 @@ class SocketService {
     });
   }
 
+  // Invitations
+  getInvitations(): Promise<{ invitations: any[] }> {
+    return new Promise((resolve) => {
+      this.socket?.emit('invitation:list', {}, resolve);
+    });
+  }
+
+  acceptInvitation(invitationId: string): Promise<{ success: boolean; error?: string }> {
+    return new Promise((resolve) => {
+      this.socket?.emit('invitation:accept', { invitationId }, resolve);
+    });
+  }
+
+  rejectInvitation(invitationId: string): Promise<{ success: boolean; error?: string }> {
+    return new Promise((resolve) => {
+      this.socket?.emit('invitation:reject', { invitationId }, resolve);
+    });
+  }
+
   // Event listeners
   on(event: string, callback: (...args: any[]) => void) {
     this.socket?.on(event, callback);

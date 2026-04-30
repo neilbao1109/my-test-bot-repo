@@ -143,6 +143,12 @@ interface AppState {
   toggleSelectionMode: () => void;
   toggleMessageSelection: (id: string) => void;
   clearSelection: () => void;
+
+  // Invitations
+  pendingInvitationCount: number;
+  setPendingInvitationCount: (count: number) => void;
+  incrementInvitationCount: () => void;
+  decrementInvitationCount: () => void;
 }
 
 export const useAppStore = create<AppState>((set, get) => ({
@@ -476,6 +482,12 @@ export const useAppStore = create<AppState>((set, get) => ({
     return { selectedMessages: next };
   }),
   clearSelection: () => set({ selectionMode: false, selectedMessages: new Set<string>() }),
+
+  // Invitations
+  pendingInvitationCount: 0,
+  setPendingInvitationCount: (count) => set({ pendingInvitationCount: count }),
+  incrementInvitationCount: () => set((s) => ({ pendingInvitationCount: s.pendingInvitationCount + 1 })),
+  decrementInvitationCount: () => set((s) => ({ pendingInvitationCount: Math.max(0, s.pendingInvitationCount - 1) })),
 }));
 
 // Sync image quality on load
