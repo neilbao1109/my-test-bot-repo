@@ -170,6 +170,8 @@ function initSchema(db: Database.Database) {
       `);
 
       // Rebuild rooms table with name allowing NULL
+      // Temporarily disable FK to prevent CASCADE deleting room_members
+      db.exec(`PRAGMA foreign_keys = OFF`);
       db.exec(`
         CREATE TABLE rooms_new (
           id TEXT PRIMARY KEY,
@@ -182,6 +184,7 @@ function initSchema(db: Database.Database) {
         DROP TABLE rooms;
         ALTER TABLE rooms_new RENAME TO rooms;
       `);
+      db.exec(`PRAGMA foreign_keys = ON`);
 
       db.exec('PRAGMA user_version = 1');
     })();
