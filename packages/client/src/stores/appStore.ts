@@ -124,6 +124,7 @@ interface AppState {
   showThread: boolean;
   showMembers: boolean;
   showCreateRoom: boolean;
+  showBotRegistration: boolean;
   showSettings: boolean;
   theme: 'dark' | 'light';
   imageQuality: ImageQuality;
@@ -131,6 +132,7 @@ interface AppState {
   toggleThread: () => void;
   toggleMembers: () => void;
   setShowCreateRoom: (show: boolean) => void;
+  setShowBotRegistration: (show: boolean) => void;
   setShowSettings: (show: boolean) => void;
   setTheme: (theme: 'dark' | 'light') => void;
   setImageQuality: (q: ImageQuality) => void;
@@ -436,6 +438,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   showThread: false,
   showMembers: false,
   showCreateRoom: false,
+  showBotRegistration: false,
   showSettings: false,
   theme: (localStorage.getItem('clawchat-theme') as 'dark' | 'light') || 'dark',
   imageQuality: (localStorage.getItem('clawchat-image-quality') as ImageQuality) || 'medium',
@@ -447,6 +450,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   toggleThread: () => set((s) => ({ showThread: !s.showThread })),
   toggleMembers: () => set((s) => ({ showMembers: !s.showMembers })),
   setShowCreateRoom: (show) => set({ showCreateRoom: show }),
+  setShowBotRegistration: (show) => set({ showBotRegistration: show }),
   setShowSettings: (show) => set({ showSettings: show }),
   setTheme: (theme) => {
     localStorage.setItem('clawchat-theme', theme);

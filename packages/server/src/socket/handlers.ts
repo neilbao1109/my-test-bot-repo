@@ -3,7 +3,7 @@ import { createMessage, getMessages, getLastMessage, getLastMessageByUser, getMe
 import { createRoom, getRooms, getRoomMembers, addMemberToRoom, removeMemberFromRoom, addBotToRoom, removeBotFromRoom, renameRoom, deleteRoom, searchUsers, getRoom } from '../services/room.js';
 import { createThread, getThread, getThreadByMessage } from '../services/thread.js';
 import { parseCommand, executeCommand } from '../services/command.js';
-import { initBotRegistry, getRespondingBots, isBotUser, getAllBots, getBot, getAvailableBots, streamBotResponse as registryStreamBotResponse } from '../services/bot-registry.js';
+import { initBotRegistry, getRespondingBots, isBotUser, getAllBots, getBot, getAvailableBots, streamBotResponse as registryStreamBotResponse, registerBot, updateBot, deleteBot, testBotConnection } from '../services/bot-registry.js';
 import { pinMessage, unpinMessage, getPinnedMessages } from '../services/pin.js';
 import { copyFileToUploads } from '../routes/upload.js';
 import { getUser, setOnline, getOnlineUsers } from '../services/user.js';
@@ -272,6 +272,43 @@ export function setupSocketHandlers(io: Server) {
       if (!socket.userId) return;
       const bots = getAvailableBots(socket.userId);
       callback({ bots });
+    });
+
+    // bot:test - test connection before registering
+    socket.on('bot:test', async (data, callback) => {
+      if (!socket.userId) return;
+      const result = await testBotConnection(data);
+      callback(result);
+    });
+
+    // bot:register - register a new bot
+    socket.on('bot:register', (data, callback) => {
+      if (!socket.userId) return;
+      try {
+        const bot = registerBot(data, socket.userId);
+        callback({ bot });
+      } catch (err: any) {
+        callback({ error: err.message });
+      }
+    });
+
+    // bot:update - update bot config
+    socket.on('bot:update', (data: { botId: string; [key: string]: any }, callback) => {
+      if (!socket.userId) return;
+      const { botId, ...updates } = data;
+      const bot = updateBot(botId, updates, socket.userId);
+      if (!bot) {
+        callback({ error: 'Bot not found or not owned by you' });
+        return;
+      }
+      callback({ bot });
+    });
+
+    // bot:delete - delete a bot
+    socket.on('bot:delete', (data: { botId: string }, callback) => {
+      if (!socket.userId) return;
+      const success = deleteBot(data.botId, socket.userId);
+      callback({ success });
     });
 
     socket.on('user:search', (data: { query: string }, callback) => {

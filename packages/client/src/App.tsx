@@ -9,6 +9,7 @@ import ChatView from './components/ChatView';
 import ThreadPanel from './components/ThreadPanel';
 import MemberPanel from './components/MemberPanel';
 import CreateRoomModal from './components/CreateRoomModal';
+import BotRegistration from './components/BotRegistration';
 import type { User } from './types';
 
 function MainContent() {
@@ -116,6 +117,7 @@ export default function App() {
         </div>
       </div>
       <CreateRoomModal />
+      <BotRegistration />
     </>
   );
 }

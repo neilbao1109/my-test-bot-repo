@@ -36,7 +36,7 @@ function previewText(content: string, type: string): string {
 }
 
 export default function Sidebar() {
-  const { rooms, activeRoomId, setActiveRoom, showSidebar, roomMembers, onlineUsers, setShowCreateRoom, theme, setTheme, showSettings, setShowSettings, folders, activeFolderId, user } = useAppStore();
+  const { rooms, activeRoomId, setActiveRoom, showSidebar, roomMembers, onlineUsers, setShowCreateRoom, setShowBotRegistration, theme, setTheme, showSettings, setShowSettings, folders, activeFolderId, user } = useAppStore();
   const [showFolderModal, setShowFolderModal] = useState(false);
   const [editingFolder, setEditingFolder] = useState<ChatFolder | null>(null);
   const [showQuickMenu, setShowQuickMenu] = useState(false);
@@ -137,6 +137,13 @@ export default function Sidebar() {
                 >
                   <span>＋</span>
                   <span>New Room</span>
+                </button>
+                <button
+                  onClick={() => { setShowBotRegistration(true); setShowQuickMenu(false); }}
+                  className="w-full text-left px-4 py-2.5 text-sm text-dark-text hover:bg-dark-hover flex items-center gap-2 transition"
+                >
+                  <span>🤖</span>
+                  <span>Register Bot</span>
                 </button>
                 <button
                   onClick={() => { setShowSettings(true); setShowQuickMenu(false); }}
