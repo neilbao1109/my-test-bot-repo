@@ -187,4 +187,44 @@ function initSchema(db: Database.Database) {
     })();
     console.log('[Migration] v1: dm_pairs table created, rooms.name now nullable');
   }
+
+  if (version < 2) {
+    db.transaction(() => {
+      // User-registered bots
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS bots (
+          id TEXT PRIMARY KEY,
+          owner_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+          gateway_url TEXT,
+          auth_token TEXT NOT NULL,
+          agent_id TEXT,
+          ssh_host TEXT,
+          trigger TEXT NOT NULL DEFAULT 'all' CHECK(trigger IN ('all', 'mention', 'room-member')),
+          is_public INTEGER NOT NULL DEFAULT 0,
+          created_at TEXT NOT NULL DEFAULT (datetime('now')),
+          updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+        );
+        CREATE INDEX IF NOT EXISTS idx_bots_owner ON bots(owner_id);
+      `);
+
+      // Universal invitation table
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS invitations (
+          id TEXT PRIMARY KEY,
+          type TEXT NOT NULL CHECK(type IN ('room', 'dm', 'bot_share')),
+          from_user TEXT NOT NULL REFERENCES users(id),
+          to_user TEXT NOT NULL REFERENCES users(id),
+          resource_id TEXT NOT NULL,
+          status TEXT NOT NULL DEFAULT 'pending' CHECK(status IN ('pending', 'accepted', 'rejected')),
+          created_at TEXT NOT NULL DEFAULT (datetime('now')),
+          updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+        );
+        CREATE INDEX IF NOT EXISTS idx_invitations_to ON invitations(to_user, status);
+        CREATE INDEX IF NOT EXISTS idx_invitations_resource ON invitations(resource_id);
+      `);
+
+      db.exec('PRAGMA user_version = 2');
+    })();
+    console.log('[Migration] v2: bots and invitations tables created');
+  }
 }
