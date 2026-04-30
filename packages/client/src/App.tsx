@@ -67,6 +67,12 @@ export default function App() {
       }
       setUser(result.user);
       setRooms(result.rooms);
+      // Store room members from auth response (includes members for DM display)
+      for (const room of result.rooms) {
+        if ((room as any).members) {
+          useAppStore.getState().setRoomMembers(room.id, (room as any).members);
+        }
+      }
       if (result.rooms.length > 0) {
         const lastRoomId = localStorage.getItem('clawchat-active-room');
         const validRoom = lastRoomId && result.rooms.find((r: any) => r.id === lastRoomId);

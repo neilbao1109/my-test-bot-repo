@@ -47,7 +47,7 @@ class SocketService {
     this.socket?.emit('room:leave', { roomId });
   }
 
-  createRoom(name: string, type: 'dm' | 'group', memberIds?: string[]): Promise<Room> {
+  createRoom(name: string | null, type: 'dm' | 'group', memberIds?: string[]): Promise<Room> {
     return new Promise((resolve) => {
       this.socket?.emit('room:create', { name, type, memberIds }, resolve);
     });
@@ -173,6 +173,25 @@ class SocketService {
   getMessageContext(messageId: string, roomId: string): Promise<{ messages: Message[]; hasOlder: boolean; hasNewer: boolean; error?: string }> {
     return new Promise((resolve) => {
       this.socket?.emit('messages:context', { messageId, roomId }, resolve);
+    });
+  }
+
+  // Bots
+  addBotToRoom(roomId: string, botId: string): Promise<{ success?: boolean; error?: string }> {
+    return new Promise((resolve) => {
+      this.socket?.emit('room:add-bot', { roomId, botId }, resolve);
+    });
+  }
+
+  removeBotFromRoom(roomId: string, botId: string): Promise<{ success?: boolean; error?: string }> {
+    return new Promise((resolve) => {
+      this.socket?.emit('room:remove-bot', { roomId, botId }, resolve);
+    });
+  }
+
+  listAvailableBots(): Promise<{ bots: any[] }> {
+    return new Promise((resolve) => {
+      this.socket?.emit('bot:list', {}, resolve);
     });
   }
 

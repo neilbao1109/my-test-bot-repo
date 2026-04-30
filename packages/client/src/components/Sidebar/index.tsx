@@ -36,7 +36,7 @@ function previewText(content: string, type: string): string {
 }
 
 export default function Sidebar() {
-  const { rooms, activeRoomId, setActiveRoom, showSidebar, roomMembers, onlineUsers, setShowCreateRoom, theme, setTheme, showSettings, setShowSettings, folders, activeFolderId } = useAppStore();
+  const { rooms, activeRoomId, setActiveRoom, showSidebar, roomMembers, onlineUsers, setShowCreateRoom, theme, setTheme, showSettings, setShowSettings, folders, activeFolderId, user } = useAppStore();
   const [showFolderModal, setShowFolderModal] = useState(false);
   const [editingFolder, setEditingFolder] = useState<ChatFolder | null>(null);
   const [showQuickMenu, setShowQuickMenu] = useState(false);
@@ -57,6 +57,14 @@ export default function Sidebar() {
   const handleRoomSelect = (roomId: string) => {
     setActiveRoom(roomId);
     useAppStore.setState({ mobileView: 'chat' });
+  };
+
+  /** For DM rooms, return the other participant's username */
+  const getDmDisplayName = (roomId: string): string | null => {
+    const members = roomMembers[roomId] || [];
+    if (!user) return null;
+    const other = members.find(m => m.id !== user.id && !m.isBot) || members.find(m => m.id !== user.id);
+    return other?.username || null;
   };
 
   // Filter rooms by active folder
@@ -176,7 +184,7 @@ export default function Sidebar() {
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center justify-between gap-2">
-                  <span className="text-sm truncate font-medium">{room.name}</span>
+                  <span className="text-sm truncate font-medium">{room.type === 'dm' ? (getDmDisplayName(room.id) || room.name || 'Direct Message') : (room.name || 'Unnamed Room')}</span>
                   <div className="flex items-center gap-1.5 flex-shrink-0">
                     {room.type === 'group' && memberCount > 0 && (
                       <span className="text-[10px] text-dark-muted bg-dark-hover px-1.5 py-0.5 rounded-full">

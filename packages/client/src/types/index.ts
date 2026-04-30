@@ -10,10 +10,11 @@ export interface User {
 
 export interface Room {
   id: string;
-  name: string;
+  name: string | null;
   type: 'dm' | 'group';
   createdBy?: string;
   createdAt: string;
+  members?: User[];
   lastMessage?: {
     content: string;
     type: string;

@@ -1,9 +1,9 @@
 import { Server, Socket } from 'socket.io';
 import { createMessage, getMessages, getLastMessage, getLastMessageByUser, getMessagesSince, getMessageById, getMessagesAroundId, editMessage, deleteMessage, addReaction, searchMessages, getReplyChain } from '../services/message.js';
-import { createRoom, getRooms, getRoomMembers, addMemberToRoom, removeMemberFromRoom, renameRoom, deleteRoom, searchUsers, getRoom } from '../services/room.js';
+import { createRoom, getRooms, getRoomMembers, addMemberToRoom, removeMemberFromRoom, addBotToRoom, removeBotFromRoom, renameRoom, deleteRoom, searchUsers, getRoom } from '../services/room.js';
 import { createThread, getThread, getThreadByMessage } from '../services/thread.js';
 import { parseCommand, executeCommand } from '../services/command.js';
-import { initBotRegistry, getRespondingBots, isBotUser, getAutoJoinBotIds, getAllBots, streamBotResponse as registryStreamBotResponse } from '../services/bot-registry.js';
+import { initBotRegistry, getRespondingBots, isBotUser, getAllBots, getBot, getAvailableBots, streamBotResponse as registryStreamBotResponse } from '../services/bot-registry.js';
 import { pinMessage, unpinMessage, getPinnedMessages } from '../services/pin.js';
 import { copyFileToUploads } from '../routes/upload.js';
 import { getUser, setOnline, getOnlineUsers } from '../services/user.js';
@@ -103,12 +103,7 @@ export function setupSocketHandlers(io: Server) {
 
       setOnline(user.id, true);
 
-      // Auto-create a DM room if none exists
       const rooms = getRooms(user.id);
-      if (rooms.length === 0) {
-        const dm = createRoom(`Chat with ClawBot`, 'dm', [user.id]);
-        rooms.push(dm);
-      }
 
       // Send presence snapshot
       const onlineUsers = getOnlineUsers();
@@ -123,9 +118,11 @@ export function setupSocketHandlers(io: Server) {
 
       callback({ user, rooms: rooms.map(r => {
         const lastMsg = getLastMessage(r.id);
-        const sender = lastMsg ? getRoomMembers(r.id).find(m => m.id === lastMsg.userId) : null;
+        const members = getRoomMembers(r.id);
+        const sender = lastMsg ? members.find(m => m.id === lastMsg.userId) : null;
         return {
           ...r,
+          members,
           lastMessage: lastMsg ? {
             content: lastMsg.content,
             type: lastMsg.type,
@@ -149,10 +146,11 @@ export function setupSocketHandlers(io: Server) {
       socket.leave(data.roomId);
     });
 
-    socket.on('room:create', (data: { name: string; type: 'dm' | 'group'; memberIds?: string[] }, callback) => {
+    socket.on('room:create', (data: { name?: string | null; type: 'dm' | 'group'; memberIds?: string[] }, callback) => {
       if (!socket.userId) return;
       const memberIds = data.memberIds ? [socket.userId, ...data.memberIds] : [socket.userId];
-      const room = createRoom(data.name, data.type, memberIds, socket.userId);
+      const roomName = data.type === 'dm' ? null : (data.name || 'Unnamed Room');
+      const room = createRoom(roomName, data.type, memberIds, socket.userId);
       callback(room);
       socket.join(room.id);
 
@@ -233,6 +231,47 @@ export function setupSocketHandlers(io: Server) {
         }
       }
       if (callback) callback({ success });
+    });
+
+    // --- Bot Management ---
+    socket.on('room:add-bot', (data: { roomId: string; botId: string }, callback?) => {
+      if (!socket.userId) return;
+      const members = getRoomMembers(data.roomId);
+      if (!members.some(m => m.id === socket.userId)) {
+        if (callback) callback({ error: 'Not a member of this room' });
+        return;
+      }
+      if (!getBot(data.botId)) {
+        if (callback) callback({ error: 'Bot not found' });
+        return;
+      }
+      const added = addBotToRoom(data.roomId, data.botId);
+      if (added) {
+        const updatedMembers = getRoomMembers(data.roomId);
+        io.to(data.roomId).emit('room:member-joined', { roomId: data.roomId, members: updatedMembers });
+      }
+      if (callback) callback({ success: added });
+    });
+
+    socket.on('room:remove-bot', (data: { roomId: string; botId: string }, callback?) => {
+      if (!socket.userId) return;
+      const members = getRoomMembers(data.roomId);
+      if (!members.some(m => m.id === socket.userId)) {
+        if (callback) callback({ error: 'Not a member of this room' });
+        return;
+      }
+      const removed = removeBotFromRoom(data.roomId, data.botId);
+      if (removed) {
+        const updatedMembers = getRoomMembers(data.roomId);
+        io.to(data.roomId).emit('room:member-left', { roomId: data.roomId, userId: data.botId, members: updatedMembers });
+      }
+      if (callback) callback({ success: removed });
+    });
+
+    socket.on('bot:list', (_data: any, callback) => {
+      if (!socket.userId) return;
+      const bots = getAvailableBots(socket.userId);
+      callback({ bots });
     });
 
     socket.on('user:search', (data: { query: string }, callback) => {

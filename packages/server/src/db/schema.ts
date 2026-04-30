@@ -151,4 +151,40 @@ function initSchema(db: Database.Database) {
   if (!msgCols2.some((c: any) => c.name === 'context_ids')) {
     db.exec('ALTER TABLE messages ADD COLUMN context_ids TEXT');
   }
+
+  // Versioned migrations using PRAGMA user_version
+  const version = (db.prepare('PRAGMA user_version').get() as any).user_version;
+
+  if (version < 1) {
+    db.transaction(() => {
+      // Create dm_pairs table for DM uniqueness
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS dm_pairs (
+          user_a TEXT NOT NULL REFERENCES users(id),
+          user_b TEXT NOT NULL REFERENCES users(id),
+          room_id TEXT NOT NULL REFERENCES rooms(id) ON DELETE CASCADE,
+          PRIMARY KEY (user_a, user_b),
+          CHECK(user_a < user_b)
+        );
+        CREATE INDEX IF NOT EXISTS idx_dm_pairs_room ON dm_pairs(room_id);
+      `);
+
+      // Rebuild rooms table with name allowing NULL
+      db.exec(`
+        CREATE TABLE rooms_new (
+          id TEXT PRIMARY KEY,
+          name TEXT,
+          type TEXT NOT NULL CHECK(type IN ('dm', 'group')),
+          created_by TEXT,
+          created_at TEXT NOT NULL DEFAULT (datetime('now'))
+        );
+        INSERT INTO rooms_new SELECT id, name, type, created_by, created_at FROM rooms;
+        DROP TABLE rooms;
+        ALTER TABLE rooms_new RENAME TO rooms;
+      `);
+
+      db.exec('PRAGMA user_version = 1');
+    })();
+    console.log('[Migration] v1: dm_pairs table created, rooms.name now nullable');
+  }
 }
