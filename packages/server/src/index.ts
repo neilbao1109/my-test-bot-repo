@@ -67,12 +67,12 @@ async function setupPushNotifications() {
     if (!bridge) continue;
 
     // Find or create a #notifications room for this bot
-    const notifRoomName = '🔔 Notifications';
+    const notifRoomName = 'Notifications';
     // Get rooms for the bot user to find existing notifications room
     const botRooms = getRooms(bot.id);
     let notifRoom = botRooms.find(r => r.name === notifRoomName);
     if (!notifRoom) {
-      notifRoom = createRoom(notifRoomName, 'dm', [bot.id], bot.id);
+      notifRoom = createRoom(notifRoomName, 'bot', [bot.id], bot.id);
       console.log(`[Push] Created notifications room: ${notifRoom.id}`);
     }
 
