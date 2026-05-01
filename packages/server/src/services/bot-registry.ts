@@ -387,6 +387,9 @@ export function getRespondingBots(content: string, roomId: string, senderId: str
   // Never respond to messages from bots (prevent loops)
   if (isBotUser(senderId)) return [];
 
+  // Never respond in user-to-user DMs
+  if (roomType === 'dm') return [];
+
   const mentioned = new Set(parseMentionedBots(content));
   const responding: BotConfig[] = [];
 
