@@ -6,7 +6,7 @@ import type { User } from '../../types';
 export default function CreateRoomModal() {
   const { showCreateRoom, setShowCreateRoom, user } = useAppStore();
   const [name, setName] = useState('');
-  const [type, setType] = useState<'dm' | 'group' | 'bot'>('dm');
+  const [type, setType] = useState<'dm' | 'group' | 'bot'>('group');
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<User[]>([]);
   const [selectedUsers, setSelectedUsers] = useState<User[]>([]);
@@ -15,7 +15,7 @@ export default function CreateRoomModal() {
   useEffect(() => {
     if (!showCreateRoom) {
       setName('');
-      setType('dm');
+      setType('group');
       setSearchQuery('');
       setSearchResults([]);
       setSelectedUsers([]);
@@ -63,12 +63,7 @@ export default function CreateRoomModal() {
   };
 
   const handleCreate = async () => {
-    if (type === 'dm') {
-      if (selectedUsers.length !== 1) return;
-      const memberIds = selectedUsers.map((u) => u.id);
-      const room = await socketService.createRoom(null, 'dm', memberIds);
-      if (room && !('error' in room)) await finishCreateRoom(room);
-    } else if (type === 'bot') {
+    if (type === 'bot') {
       if (selectedUsers.length !== 1 || !name.trim()) return;
       const memberIds = selectedUsers.map((u) => u.id);
       const room = await socketService.createRoom(name.trim(), 'bot', memberIds);
@@ -94,14 +89,14 @@ export default function CreateRoomModal() {
     }
   };
 
-  const isCreateDisabled = type === 'dm' ? selectedUsers.length !== 1 : type === 'bot' ? (selectedUsers.length !== 1 || !name.trim()) : !name.trim();
+  const isCreateDisabled = type === 'bot' ? (selectedUsers.length !== 1 || !name.trim()) : !name.trim();
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
       <div className="bg-dark-surface border border-dark-border rounded-xl shadow-2xl w-full max-w-md mx-4 max-h-[90vh] overflow-y-auto">
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-dark-border">
-          <h2 className="text-lg font-semibold text-dark-text">{type === 'dm' ? 'New Direct Message' : type === 'bot' ? 'New Bot Chat' : 'Create Room'}</h2>
+          <h2 className="text-lg font-semibold text-dark-text">{type === 'bot' ? 'New Bot Chat' : 'Create Room'}</h2>
           <button
             onClick={() => setShowCreateRoom(false)}
             className="text-dark-muted hover:text-dark-text p-1 rounded transition"
@@ -113,16 +108,6 @@ export default function CreateRoomModal() {
         <div className="p-5 space-y-4">
           {/* Room type */}
           <div className="flex gap-2">
-            <button
-              onClick={() => { setType('dm'); setSelectedUsers([]); setSearchQuery(''); }}
-              className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium transition ${
-                type === 'dm'
-                  ? 'bg-primary-600 text-white'
-                  : 'bg-dark-hover text-dark-muted hover:text-dark-text'
-              }`}
-            >
-              💬 Direct Message
-            </button>
             <button
               onClick={() => { setType('bot'); setSelectedUsers([]); setSearchQuery(''); }}
               className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium transition ${
@@ -163,9 +148,8 @@ export default function CreateRoomModal() {
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder={type === 'dm' ? 'Search user to message...' : type === 'bot' ? 'Search bot...' : 'Search users to invite...'}
+              placeholder={type === 'bot' ? 'Search bot...' : 'Search users to invite...'}
               className="w-full bg-dark-bg border border-dark-border rounded-lg px-3 py-2 text-sm text-dark-text placeholder-dark-muted focus:outline-none focus:ring-1 focus:ring-primary-500"
-              autoFocus={type === 'dm'}
             />
           </div>
 
@@ -231,7 +215,7 @@ export default function CreateRoomModal() {
             disabled={isCreateDisabled}
             className="px-4 py-2 text-sm font-medium text-white bg-primary-600 rounded-lg hover:bg-primary-500 disabled:opacity-50 disabled:cursor-not-allowed transition"
           >
-            {type === 'dm' ? 'Start Chat' : type === 'bot' ? 'Start Bot Chat' : 'Create'}
+            {type === 'bot' ? 'Start Bot Chat' : 'Create'}
           </button>
         </div>
       </div>
