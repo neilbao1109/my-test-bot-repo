@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef, useCallback } from 'react';
 import clsx from 'clsx';
 import { useAppStore } from '../../stores/appStore';
 import SettingsPanel from './SettingsPanel';
@@ -6,6 +6,7 @@ import AccountPanel from './AccountPanel';
 import FolderTabs from './FolderTabs';
 import FolderEditModal from './FolderEditModal';
 import SearchPanel from './SearchPanel';
+import { socketService } from '../../services/socket';
 import type { ChatFolder } from '../../types';
 import InvitationBadge from '../InvitationBadge';
 import ContactsTab from './ContactsTab';
@@ -44,6 +45,45 @@ export default function Sidebar() {
   const [showQuickMenu, setShowQuickMenu] = useState(false);
   const [showAccount, setShowAccount] = useState(false);
   const [showSearchPanel, setShowSearchPanel] = useState(false);
+
+  // Pull-to-refresh state
+  const [pullDistance, setPullDistance] = useState(0);
+  const [refreshing, setRefreshing] = useState(false);
+  const touchStartY = useRef(0);
+  const listRef = useRef<HTMLDivElement>(null);
+  const PULL_THRESHOLD = 50;
+
+  const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    if (listRef.current && listRef.current.scrollTop === 0) {
+      touchStartY.current = e.touches[0].clientY;
+    } else {
+      touchStartY.current = 0;
+    }
+  }, []);
+
+  const handleTouchMove = useCallback((e: React.TouchEvent) => {
+    if (!touchStartY.current || refreshing) return;
+    const dy = e.touches[0].clientY - touchStartY.current;
+    if (dy > 0 && listRef.current && listRef.current.scrollTop === 0) {
+      setPullDistance(Math.min(dy * 0.5, 80));
+    }
+  }, [refreshing]);
+
+  const handleTouchEnd = useCallback(async () => {
+    if (pullDistance >= PULL_THRESHOLD && !refreshing) {
+      setRefreshing(true);
+      setPullDistance(PULL_THRESHOLD);
+      try {
+        const result = await socketService.refreshRooms();
+        if (result?.rooms) {
+          useAppStore.getState().setRooms(result.rooms);
+        }
+      } catch (_) {}
+      setRefreshing(false);
+    }
+    setPullDistance(0);
+    touchStartY.current = 0;
+  }, [pullDistance, refreshing]);
 
   const isMobile = window.innerWidth < 768;
 
@@ -178,7 +218,27 @@ export default function Sidebar() {
       ) : showSearchPanel ? (
         <SearchPanel onClose={() => setShowSearchPanel(false)} />
       ) : (
-      <div className="flex-1 overflow-y-auto py-2">
+      <div
+        ref={listRef}
+        className="flex-1 overflow-y-auto py-2 relative"
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+      >
+        {/* Pull-to-refresh indicator */}
+        {(pullDistance > 0 || refreshing) && (
+          <div
+            className="flex items-center justify-center text-xs text-dark-muted transition-all"
+            style={{ height: refreshing ? PULL_THRESHOLD : pullDistance }}
+          >
+            {refreshing
+              ? <span className="animate-spin">⟳</span>
+              : pullDistance >= PULL_THRESHOLD
+                ? '↑ 释放刷新'
+                : '↓ 下拉刷新'
+            }
+          </div>
+        )}
         {sortedRooms.map((room) => {
           const memberCount = (roomMembers[room.id] || []).length;
           const online = isRoomOnline(room.id);

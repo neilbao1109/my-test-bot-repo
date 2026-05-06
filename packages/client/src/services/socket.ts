@@ -43,6 +43,12 @@ class SocketService {
     this.socket?.emit('room:join', { roomId });
   }
 
+  refreshRooms(): Promise<{ rooms: any[] }> {
+    return new Promise((resolve) => {
+      this.socket?.emit('room:list', resolve);
+    });
+  }
+
   leaveRoom(roomId: string) {
     this.socket?.emit('room:leave', { roomId });
   }

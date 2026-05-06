@@ -138,6 +138,28 @@ export function setupSocketHandlers(io: Server) {
       }) });
     });
 
+    // --- Room list refresh ---
+    socket.on('room:list', (callback: Function) => {
+      if (!socket.userId) return;
+      const rooms = getRooms(socket.userId);
+      const result = rooms.map(r => {
+        const lastMsg = getLastMessage(r.id);
+        const members = getRoomMembers(r.id);
+        const sender = lastMsg ? members.find(m => m.id === lastMsg.userId) : null;
+        return {
+          ...r,
+          members,
+          lastMessage: lastMsg ? {
+            content: lastMsg.content,
+            type: lastMsg.type,
+            senderName: sender?.username || 'Unknown',
+            createdAt: lastMsg.createdAt,
+          } : null,
+        };
+      });
+      callback({ rooms: result });
+    });
+
     // --- Rooms ---
     socket.on('room:join', (data: { roomId: string }) => {
       socket.join(data.roomId);
