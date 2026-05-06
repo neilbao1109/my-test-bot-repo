@@ -41,31 +41,43 @@ export default function CreateRoomModal() {
 
   if (!showCreateRoom) return null;
 
+  const finishCreateRoom = async (room: any) => {
+    const store = useAppStore.getState();
+    if (!store.rooms.some(r => r.id === room.id)) {
+      store.addRoom(room);
+    }
+    // Pre-join and wait for members to load
+    socketService.joinRoom(room.id);
+    await new Promise<void>((resolve) => {
+      const check = () => {
+        const members = useAppStore.getState().roomMembers[room.id];
+        if (members && members.length > 0) resolve();
+        else setTimeout(check, 50);
+      };
+      check();
+      setTimeout(resolve, 2000);
+    });
+    useAppStore.getState().setActiveRoom(room.id);
+    useAppStore.setState({ mobileView: 'chat' });
+    setShowCreateRoom(false);
+  };
+
   const handleCreate = async () => {
     if (type === 'dm') {
       if (selectedUsers.length !== 1) return;
       const memberIds = selectedUsers.map((u) => u.id);
       const room = await socketService.createRoom(null, 'dm', memberIds);
-      useAppStore.getState().addRoom(room);
-      useAppStore.getState().setActiveRoom(room.id);
-      useAppStore.setState({ mobileView: 'chat' });
-      setShowCreateRoom(false);
+      if (room && !('error' in room)) await finishCreateRoom(room);
     } else if (type === 'bot') {
       if (selectedUsers.length !== 1 || !name.trim()) return;
       const memberIds = selectedUsers.map((u) => u.id);
       const room = await socketService.createRoom(name.trim(), 'bot', memberIds);
-      useAppStore.getState().addRoom(room);
-      useAppStore.getState().setActiveRoom(room.id);
-      useAppStore.setState({ mobileView: 'chat' });
-      setShowCreateRoom(false);
+      if (room && !('error' in room)) await finishCreateRoom(room);
     } else {
       if (!name.trim()) return;
       const memberIds = selectedUsers.map((u) => u.id);
       const room = await socketService.createRoom(name.trim(), 'group', memberIds);
-      useAppStore.getState().addRoom(room);
-      useAppStore.getState().setActiveRoom(room.id);
-      useAppStore.setState({ mobileView: 'chat' });
-      setShowCreateRoom(false);
+      if (room && !('error' in room)) await finishCreateRoom(room);
     }
   };
 
