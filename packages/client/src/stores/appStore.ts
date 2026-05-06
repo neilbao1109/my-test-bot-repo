@@ -216,7 +216,24 @@ export const useAppStore = create<AppState>((set, get) => ({
     set((s) => {
       const roomMessages = s.messages[message.roomId] || [];
       if (roomMessages.some((m) => m.id === message.id)) return s;
+      // Update room's lastMessage for sidebar preview
+      const members = s.roomMembers[message.roomId] || [];
+      const sender = members.find(m => m.id === message.userId);
+      const updatedRooms = s.rooms.map(r =>
+        r.id === message.roomId
+          ? {
+              ...r,
+              lastMessage: {
+                content: message.content,
+                type: message.type,
+                senderName: sender?.username || 'Unknown',
+                createdAt: message.createdAt,
+              },
+            }
+          : r
+      );
       return {
+        rooms: updatedRooms,
         messages: {
           ...s.messages,
           [message.roomId]: [...roomMessages, message],
