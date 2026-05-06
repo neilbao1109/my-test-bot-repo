@@ -19,6 +19,22 @@ export default function FriendProfile() {
       if (!rooms.find(r => r.id === room.id)) {
         addRoom(room);
       }
+      // Pre-join room and wait for members to load
+      socketService.joinRoom(room.id);
+      // Wait for room:history to populate members in store
+      await new Promise<void>((resolve) => {
+        const check = () => {
+          const members = useAppStore.getState().roomMembers[room.id];
+          if (members && members.length > 0) {
+            resolve();
+          } else {
+            setTimeout(check, 50);
+          }
+        };
+        check();
+        // Timeout fallback
+        setTimeout(resolve, 2000);
+      });
       setActiveRoom(room.id);
       useAppStore.setState({ mobileView: 'chat', sidebarTab: 'chat' });
       setFriendProfileUser(null);
