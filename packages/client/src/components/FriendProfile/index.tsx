@@ -4,7 +4,7 @@ import { socketService } from '../../services/socket';
 import UserAvatar from '../UserAvatar';
 
 export default function FriendProfile() {
-  const { friendProfileUser, setFriendProfileUser, onlineUsers, setActiveRoom, removeFriendFromList } = useAppStore();
+  const { friendProfileUser, setFriendProfileUser, onlineUsers, setActiveRoom, addRoom, rooms, removeFriendFromList } = useAppStore();
   const [removing, setRemoving] = useState(false);
 
   if (!friendProfileUser) return null;
@@ -15,8 +15,12 @@ export default function FriendProfile() {
   const handleSendMessage = async () => {
     const room = await socketService.createRoom(null, 'dm', [user.id]);
     if (room && !('error' in room)) {
+      // Add room to store if not already present
+      if (!rooms.find(r => r.id === room.id)) {
+        addRoom(room);
+      }
       setActiveRoom(room.id);
-      useAppStore.setState({ mobileView: 'chat' });
+      useAppStore.setState({ mobileView: 'chat', sidebarTab: 'chat' });
       setFriendProfileUser(null);
     }
   };
