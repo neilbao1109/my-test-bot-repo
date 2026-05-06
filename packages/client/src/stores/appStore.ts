@@ -151,6 +151,22 @@ interface AppState {
   setPendingInvitationCount: (count: number) => void;
   incrementInvitationCount: () => void;
   decrementInvitationCount: () => void;
+
+  // Friends
+  friends: User[];
+  friendRequests: { incoming: any[]; outgoing: any[] };
+  setFriends: (friends: User[]) => void;
+  setFriendRequests: (requests: { incoming: any[]; outgoing: any[] }) => void;
+  addFriend: (user: User) => void;
+  removeFriendFromList: (userId: string) => void;
+
+  // Sidebar tab
+  sidebarTab: 'chat' | 'contacts';
+  setSidebarTab: (tab: 'chat' | 'contacts') => void;
+
+  // Friend profile
+  friendProfileUser: User | null;
+  setFriendProfileUser: (user: User | null) => void;
 }
 
 export const useAppStore = create<AppState>((set, get) => ({
@@ -492,6 +508,27 @@ export const useAppStore = create<AppState>((set, get) => ({
   setPendingInvitationCount: (count) => set({ pendingInvitationCount: count }),
   incrementInvitationCount: () => set((s) => ({ pendingInvitationCount: s.pendingInvitationCount + 1 })),
   decrementInvitationCount: () => set((s) => ({ pendingInvitationCount: Math.max(0, s.pendingInvitationCount - 1) })),
+
+  // Friends
+  friends: [],
+  friendRequests: { incoming: [], outgoing: [] },
+  setFriends: (friends) => set({ friends }),
+  setFriendRequests: (requests) => set({ friendRequests: requests }),
+  addFriend: (user) => set((s) => {
+    if (s.friends.some(f => f.id === user.id)) return s;
+    return { friends: [...s.friends, user].sort((a, b) => a.username.localeCompare(b.username)) };
+  }),
+  removeFriendFromList: (userId) => set((s) => ({
+    friends: s.friends.filter(f => f.id !== userId),
+  })),
+
+  // Sidebar tab
+  sidebarTab: 'chat',
+  setSidebarTab: (tab) => set({ sidebarTab: tab }),
+
+  // Friend profile
+  friendProfileUser: null,
+  setFriendProfileUser: (user) => set({ friendProfileUser: user }),
 }));
 
 // Sync image quality on load

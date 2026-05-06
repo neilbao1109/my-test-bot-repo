@@ -313,4 +313,42 @@ function initSchema(db: Database.Database) {
     `);
     console.log('[Migration] v5: added bot room type');
   }
+
+  if (version < 6) {
+    db.transaction(() => {
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS friendships (
+          id TEXT PRIMARY KEY,
+          user_a TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+          user_b TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+          status TEXT NOT NULL DEFAULT 'pending'
+            CHECK(status IN ('pending', 'accepted')),
+          requester TEXT NOT NULL REFERENCES users(id),
+          message TEXT,
+          created_at TEXT NOT NULL DEFAULT (datetime('now')),
+          accepted_at TEXT,
+          UNIQUE(user_a, user_b),
+          CHECK(user_a < user_b)
+        );
+        CREATE INDEX IF NOT EXISTS idx_friendships_status ON friendships(status);
+        CREATE INDEX IF NOT EXISTS idx_friendships_a ON friendships(user_a, status);
+        CREATE INDEX IF NOT EXISTS idx_friendships_b ON friendships(user_b, status);
+      `);
+
+      // Backfill friendships from existing dm_pairs
+      const dmPairs = db.prepare('SELECT user_a, user_b FROM dm_pairs').all() as any[];
+      const insertFriend = db.prepare(
+        `INSERT OR IGNORE INTO friendships (id, user_a, user_b, status, requester, created_at, accepted_at)
+         VALUES (?, ?, ?, 'accepted', ?, datetime('now'), datetime('now'))`
+      );
+      for (const pair of dmPairs) {
+        const id = `fr_${pair.user_a}_${pair.user_b}`;
+        insertFriend.run(id, pair.user_a, pair.user_b, pair.user_a);
+      }
+      console.log(`[Migration] v6: backfilled ${dmPairs.length} friendships from dm_pairs`);
+
+      db.exec('PRAGMA user_version = 6');
+    })();
+    console.log('[Migration] v6: friendships table created');
+  }
 }

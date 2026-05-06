@@ -8,6 +8,7 @@ import FolderEditModal from './FolderEditModal';
 import SearchPanel from './SearchPanel';
 import type { ChatFolder } from '../../types';
 import InvitationBadge from '../InvitationBadge';
+import ContactsTab from './ContactsTab';
 
 function formatTime(dateStr: string): string {
   const date = new Date(dateStr);
@@ -37,7 +38,7 @@ function previewText(content: string, type: string): string {
 }
 
 export default function Sidebar() {
-  const { rooms, activeRoomId, setActiveRoom, showSidebar, roomMembers, onlineUsers, setShowCreateRoom, setShowBotRegistration, setShowBotMarketplace, theme, setTheme, showSettings, setShowSettings, folders, activeFolderId, user } = useAppStore();
+  const { rooms, activeRoomId, setActiveRoom, showSidebar, roomMembers, onlineUsers, setShowCreateRoom, setShowBotRegistration, setShowBotMarketplace, theme, setTheme, showSettings, setShowSettings, folders, activeFolderId, user, sidebarTab, setSidebarTab, friendRequests } = useAppStore();
   const [showFolderModal, setShowFolderModal] = useState(false);
   const [editingFolder, setEditingFolder] = useState<ChatFolder | null>(null);
   const [showQuickMenu, setShowQuickMenu] = useState(false);
@@ -169,10 +170,12 @@ export default function Sidebar() {
 
 
       {/* Folder tabs - hidden during search */}
-      {!showSearchPanel && <FolderTabs onCreateFolder={() => setShowFolderModal(true)} />}
+      {!showSearchPanel && sidebarTab === 'chat' && <FolderTabs onCreateFolder={() => setShowFolderModal(true)} />}
 
-      {/* Search panel or Room list */}
-      {showSearchPanel ? (
+      {/* Search panel or Room list or Contacts */}
+      {sidebarTab === 'contacts' ? (
+        <ContactsTab />
+      ) : showSearchPanel ? (
         <SearchPanel onClose={() => setShowSearchPanel(false)} />
       ) : (
       <div className="flex-1 overflow-y-auto py-2">
@@ -225,6 +228,30 @@ export default function Sidebar() {
       </div>
       )}
 
+      {/* Bottom Tab Bar */}
+      <div className="flex border-t border-dark-border">
+        <button
+          onClick={() => setSidebarTab('chat')}
+          className={`flex-1 flex flex-col items-center gap-0.5 py-2 text-xs transition ${
+            sidebarTab === 'chat' ? 'text-primary-400' : 'text-dark-muted hover:text-dark-text'
+          }`}
+        >
+          <span className="text-base">💬</span>
+          <span>聊天</span>
+        </button>
+        <button
+          onClick={() => setSidebarTab('contacts')}
+          className={`flex-1 flex flex-col items-center gap-0.5 py-2 text-xs transition relative ${
+            sidebarTab === 'contacts' ? 'text-primary-400' : 'text-dark-muted hover:text-dark-text'
+          }`}
+        >
+          <span className="text-base">📇</span>
+          <span>通讯录</span>
+          {friendRequests.incoming.length > 0 && (
+            <span className="absolute top-1 right-1/4 w-2 h-2 bg-red-500 rounded-full" />
+          )}
+        </button>
+      </div>
 
         </div>
 

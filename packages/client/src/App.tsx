@@ -11,6 +11,7 @@ import MemberPanel from './components/MemberPanel';
 import CreateRoomModal from './components/CreateRoomModal';
 import BotRegistration from './components/BotRegistration';
 import BotMarketplace from './components/BotMarketplace';
+import FriendProfile from './components/FriendProfile';
 import type { User } from './types';
 
 function MainContent() {
@@ -79,6 +80,13 @@ export default function App() {
           useAppStore.getState().setRoomMembers(room.id, (room as any).members);
         }
       }
+      // Load friends list
+      socketService.getFriends().then(res => {
+        useAppStore.getState().setFriends(res.friends);
+      });
+      socketService.getFriendRequests().then(res => {
+        useAppStore.getState().setFriendRequests(res);
+      });
       if (result.rooms.length > 0) {
         const lastRoomId = localStorage.getItem('clawchat-active-room');
         const validRoom = lastRoomId && result.rooms.find((r: any) => r.id === lastRoomId);
@@ -124,6 +132,7 @@ export default function App() {
       <CreateRoomModal />
       <BotRegistration />
       <BotMarketplace />
+      <FriendProfile />
     </>
   );
 }

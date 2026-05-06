@@ -1,15 +1,23 @@
 import { useAppStore } from '../../stores/appStore';
 import { socketService } from '../../services/socket';
 import UserAvatar from '../UserAvatar';
+import { useState } from 'react';
 
 export default function MemberPanel() {
-  const { showMembers, toggleMembers, activeRoomId, roomMembers, rooms, onlineUsers, user } = useAppStore();
+  const { showMembers, toggleMembers, activeRoomId, roomMembers, rooms, onlineUsers, user, friends } = useAppStore();
+  const [sentRequests, setSentRequests] = useState<Set<string>>(new Set());
 
   if (!showMembers || !activeRoomId) return null;
 
   const members = roomMembers[activeRoomId] || [];
   const activeRoom = rooms.find((r) => r.id === activeRoomId);
   const isGroup = activeRoom?.type === 'group';
+  const friendIds = new Set(friends.map(f => f.id));
+
+  const handleAddFriend = async (userId: string) => {
+    await socketService.sendFriendRequest(userId);
+    setSentRequests(prev => new Set([...prev, userId]));
+  };
 
   const handleRemove = async (userId: string) => {
     if (!confirm('Remove this member from the room?')) return;
@@ -60,6 +68,18 @@ export default function MemberPanel() {
                       <span className="text-[10px] text-primary-400">BOT</span>
                     )}
                   </div>
+                  {isGroup && !m.isBot && m.id !== user?.id && !friendIds.has(m.id) && (
+                    sentRequests.has(m.id) ? (
+                      <span className="text-[10px] text-dark-muted">已发送</span>
+                    ) : (
+                      <button
+                        onClick={() => handleAddFriend(m.id)}
+                        className="text-[10px] bg-primary-600/20 text-primary-400 px-1.5 py-0.5 rounded hover:bg-primary-600/40 transition"
+                      >
+                        加好友
+                      </button>
+                    )
+                  )}
                 </div>
               ))}
 
@@ -82,6 +102,18 @@ export default function MemberPanel() {
                       <span className="text-[10px] text-primary-400">BOT</span>
                     )}
                   </div>
+                  {isGroup && !m.isBot && m.id !== user?.id && !friendIds.has(m.id) && (
+                    sentRequests.has(m.id) ? (
+                      <span className="text-[10px] text-dark-muted">已发送</span>
+                    ) : (
+                      <button
+                        onClick={() => handleAddFriend(m.id)}
+                        className="text-[10px] bg-primary-600/20 text-primary-400 px-1.5 py-0.5 rounded hover:bg-primary-600/40 transition"
+                      >
+                        加好友
+                      </button>
+                    )
+                  )}
                 </div>
               ))}
             </>

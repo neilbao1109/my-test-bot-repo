@@ -7,6 +7,7 @@ import { initBotRegistry, getRespondingBots, isBotUser, getAllBots, getBot, getA
 import { shareBot, acceptBotShare, revokeBotShare, getBotShares, getPublicBots, addPublicBotToUser } from '../services/bot-share.js';
 import { pinMessage, unpinMessage, getPinnedMessages } from '../services/pin.js';
 import { createInvitation, acceptInvitation, rejectInvitation, getPendingInvitations, getInvitationCount } from '../services/invitation.js';
+import { sendFriendRequest, acceptFriendRequest, rejectFriendRequest, removeFriend, getFriends, getFriendRequests, searchUsersByEmail, areFriends } from '../services/friendship.js';
 import { copyFileToUploads } from '../routes/upload.js';
 import { getUser, setOnline, getOnlineUsers } from '../services/user.js';
 import { verifyToken } from '../services/auth.js';
@@ -154,6 +155,15 @@ export function setupSocketHandlers(io: Server) {
       if (!socket.userId) return;
 
       if (data.type === 'dm') {
+        // DM: check friendship first
+        const otherIds = data.memberIds || [];
+        if (otherIds.length > 0) {
+          const otherId = otherIds[0];
+          if (!areFriends(socket.userId, otherId)) {
+            callback({ error: 'not_friends' });
+            return;
+          }
+        }
         // DM: directly add both users (uniqueness handled by createRoom)
         const memberIds = data.memberIds ? [socket.userId, ...data.memberIds] : [socket.userId];
         const room = createRoom(null, 'dm', memberIds, socket.userId);
@@ -853,6 +863,85 @@ export function setupSocketHandlers(io: Server) {
         io.to(data.targetRoomId).emit('message:new', msg);
         if (callback) callback({ success: true, count: 1 });
       }
+    });
+
+    // --- Friends ---
+    socket.on('friend:request', (data: { toUserId: string; message?: string }, callback) => {
+      if (!socket.userId) return;
+      const result = sendFriendRequest(socket.userId, data.toUserId, data.message);
+      if (result.error) { callback({ error: result.error }); return; }
+      // Notify target user
+      const targetSockets = userSockets.get(data.toUserId);
+      if (targetSockets) {
+        const fromUser = getUser(socket.userId);
+        for (const sid of targetSockets) {
+          io.sockets.sockets.get(sid)?.emit('friend:new', {
+            friendship: result.friendship,
+            user: fromUser,
+          });
+        }
+      }
+      callback({ friendship: result.friendship });
+    });
+
+    socket.on('friend:accept', (data: { friendshipId: string }, callback) => {
+      if (!socket.userId) return;
+      const result = acceptFriendRequest(data.friendshipId, socket.userId);
+      if (result.error) { callback({ error: result.error }); return; }
+      // Notify requester
+      if (result.friendship) {
+        const requesterSockets = userSockets.get(result.friendship.requester);
+        const acceptingUser = getUser(socket.userId);
+        if (requesterSockets) {
+          for (const sid of requesterSockets) {
+            io.sockets.sockets.get(sid)?.emit('friend:accepted', {
+              friendship: result.friendship,
+              user: acceptingUser,
+            });
+          }
+        }
+      }
+      callback({ friendship: result.friendship });
+    });
+
+    socket.on('friend:reject', (data: { friendshipId: string }, callback) => {
+      if (!socket.userId) return;
+      const result = rejectFriendRequest(data.friendshipId, socket.userId);
+      callback(result);
+    });
+
+    socket.on('friend:remove', (data: { userId: string }, callback) => {
+      if (!socket.userId) return;
+      const result = removeFriend(socket.userId, data.userId);
+      if (result.success) {
+        // Notify removed friend
+        const targetSockets = userSockets.get(data.userId);
+        if (targetSockets) {
+          for (const sid of targetSockets) {
+            io.sockets.sockets.get(sid)?.emit('friend:removed', { userId: socket.userId });
+          }
+        }
+      }
+      callback(result);
+    });
+
+    socket.on('friend:list', (_data: any, callback) => {
+      if (!socket.userId) return;
+      const friends = getFriends(socket.userId);
+      callback({ friends });
+    });
+
+    socket.on('friend:requests', (_data: any, callback) => {
+      if (!socket.userId) return;
+      const requests = getFriendRequests(socket.userId);
+      callback(requests);
+    });
+
+    socket.on('friend:search', (data: { query: string }, callback) => {
+      if (!socket.userId) return;
+      const users = searchUsersByEmail(data.query);
+      // Filter out self
+      callback({ users: users.filter(u => u.id !== socket.userId) });
     });
 
     // --- Typing ---

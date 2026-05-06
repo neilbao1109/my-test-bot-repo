@@ -256,6 +256,49 @@ class SocketService {
     });
   }
 
+  // Friends
+  sendFriendRequest(toUserId: string, message?: string): Promise<{ friendship?: any; error?: string }> {
+    return new Promise((resolve) => {
+      this.socket?.emit('friend:request', { toUserId, message }, resolve);
+    });
+  }
+
+  acceptFriendRequest(friendshipId: string): Promise<{ friendship?: any; error?: string }> {
+    return new Promise((resolve) => {
+      this.socket?.emit('friend:accept', { friendshipId }, resolve);
+    });
+  }
+
+  rejectFriendRequest(friendshipId: string): Promise<{ success?: boolean; error?: string }> {
+    return new Promise((resolve) => {
+      this.socket?.emit('friend:reject', { friendshipId }, resolve);
+    });
+  }
+
+  removeFriend(userId: string): Promise<{ success?: boolean; error?: string }> {
+    return new Promise((resolve) => {
+      this.socket?.emit('friend:remove', { userId }, resolve);
+    });
+  }
+
+  getFriends(): Promise<{ friends: any[] }> {
+    return new Promise((resolve) => {
+      this.socket?.emit('friend:list', {}, resolve);
+    });
+  }
+
+  getFriendRequests(): Promise<{ incoming: any[]; outgoing: any[] }> {
+    return new Promise((resolve) => {
+      this.socket?.emit('friend:requests', {}, resolve);
+    });
+  }
+
+  searchFriends(query: string): Promise<{ users: any[] }> {
+    return new Promise((resolve) => {
+      this.socket?.emit('friend:search', { query }, resolve);
+    });
+  }
+
   acceptInvitation(invitationId: string): Promise<{ success: boolean; error?: string }> {
     return new Promise((resolve) => {
       this.socket?.emit('invitation:accept', { invitationId }, resolve);

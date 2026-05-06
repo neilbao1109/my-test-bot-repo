@@ -176,6 +176,29 @@ export function useSocket() {
       store.decrementInvitationCount();
     });
 
+    // Friend events
+    socket.on('friend:new', (data: { friendship: any; user: any }) => {
+      const reqs = store.friendRequests;
+      store.setFriendRequests({
+        ...reqs,
+        incoming: [...reqs.incoming, { ...data.friendship, user: data.user }],
+      });
+    });
+
+    socket.on('friend:accepted', (data: { friendship: any; user: any }) => {
+      store.addFriend(data.user);
+      // Remove from outgoing
+      const reqs = store.friendRequests;
+      store.setFriendRequests({
+        ...reqs,
+        outgoing: reqs.outgoing.filter((r: any) => r.id !== data.friendship.id),
+      });
+    });
+
+    socket.on('friend:removed', (data: { userId: string }) => {
+      store.removeFriendFromList(data.userId);
+    });
+
     // Re-auth and rejoin room on reconnect
     const handleReconnect = () => {
       const token = getToken();
@@ -215,6 +238,9 @@ export function useSocket() {
       socket.off('message:unpinned');
       socket.off('invitation:new');
       socket.off('invitation:resolved');
+      socket.off('friend:new');
+      socket.off('friend:accepted');
+      socket.off('friend:removed');
       socket.io.off('reconnect', handleReconnect);
     };
   }, [user]);
