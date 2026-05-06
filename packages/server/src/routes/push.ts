@@ -8,7 +8,7 @@ import { getIo } from '../services/io.js';
 const router = Router();
 
 const PUSH_SECRET = process.env.CLAWCHAT_PUSH_SECRET || '';
-const NOTIFICATIONS_ROOM_NAME = '🔔 Notifications';
+const NOTIFICATIONS_ROOM_NAME = 'Notifications';
 
 /**
  * Find or create the shared Notifications room.
