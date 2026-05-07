@@ -129,7 +129,8 @@ export default function Sidebar() {
   const filteredRooms = rooms.filter((room) => {
     if (!activeFolder) return true;
     if (activeFolder.filter === 'all') return true;
-    if (activeFolder.filter === 'dm') return room.type === 'dm' || room.type === 'bot';
+    if (activeFolder.filter === 'dm') return room.type === 'dm';
+    if (activeFolder.filter === 'bot') return room.type === 'bot';
     if (activeFolder.filter === 'group') return room.type === 'group';
     if (activeFolder.filter === 'custom') return activeFolder.roomIds?.includes(room.id) ?? false;
     return true;

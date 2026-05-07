@@ -436,11 +436,21 @@ export const useAppStore = create<AppState>((set, get) => ({
   })),
 
   // Folders
-  folders: JSON.parse(localStorage.getItem('clawchat-folders') || 'null') || [
-    { id: 'all', name: 'All', filter: 'all' },
-    { id: 'dms', name: 'DMs', filter: 'dm' },
-    { id: 'groups', name: 'Groups', filter: 'group' },
-  ] as ChatFolder[],
+  folders: (() => {
+    let f = JSON.parse(localStorage.getItem('clawchat-folders') || 'null') || [
+      { id: 'all', name: 'All', filter: 'all' },
+      { id: 'dms', name: 'DMs', filter: 'dm' },
+      { id: 'bots', name: 'Bots', filter: 'bot' },
+      { id: 'groups', name: 'Groups', filter: 'group' },
+    ];
+    // Ensure Bots folder exists for existing users
+    if (!f.some((x: any) => x.filter === 'bot')) {
+      const groupIdx = f.findIndex((x: any) => x.filter === 'group');
+      f.splice(groupIdx >= 0 ? groupIdx : f.length, 0, { id: 'bots', name: 'Bots', filter: 'bot' });
+      localStorage.setItem('clawchat-folders', JSON.stringify(f));
+    }
+    return f as ChatFolder[];
+  })(),
   activeFolderId: localStorage.getItem('clawchat-active-folder') || 'all',
   setFolders: (folders) => {
     localStorage.setItem('clawchat-folders', JSON.stringify(folders));
