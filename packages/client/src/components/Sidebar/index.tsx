@@ -46,33 +46,46 @@ export default function Sidebar() {
   const [showAccount, setShowAccount] = useState(false);
   const [showSearchPanel, setShowSearchPanel] = useState(false);
 
-  // Pull-to-refresh state
-  const [pullDistance, setPullDistance] = useState(0);
+  // Pull-to-refresh (ref-based to avoid re-renders during drag)
   const [refreshing, setRefreshing] = useState(false);
   const touchStartY = useRef(0);
+  const pullDistRef = useRef(0);
   const listRef = useRef<HTMLDivElement>(null);
+  const indicatorRef = useRef<HTMLDivElement>(null);
   const PULL_THRESHOLD = 50;
 
   const handleTouchStart = useCallback((e: React.TouchEvent) => {
-    if (listRef.current && listRef.current.scrollTop === 0) {
+    if (listRef.current && listRef.current.scrollTop === 0 && !refreshing) {
       touchStartY.current = e.touches[0].clientY;
     } else {
       touchStartY.current = 0;
     }
-  }, []);
+  }, [refreshing]);
 
   const handleTouchMove = useCallback((e: React.TouchEvent) => {
     if (!touchStartY.current || refreshing) return;
     const dy = e.touches[0].clientY - touchStartY.current;
     if (dy > 0 && listRef.current && listRef.current.scrollTop === 0) {
-      setPullDistance(Math.min(dy * 0.5, 80));
+      const dist = Math.min(dy * 0.4, 80);
+      pullDistRef.current = dist;
+      if (indicatorRef.current) {
+        indicatorRef.current.style.height = `${dist}px`;
+        indicatorRef.current.style.opacity = '1';
+        indicatorRef.current.textContent = dist >= PULL_THRESHOLD ? '\u2191 \u91ca\u653e\u5237\u65b0' : '\u2193 \u4e0b\u62c9\u5237\u65b0';
+      }
     }
   }, [refreshing]);
 
   const handleTouchEnd = useCallback(async () => {
-    if (pullDistance >= PULL_THRESHOLD && !refreshing) {
+    const dist = pullDistRef.current;
+    pullDistRef.current = 0;
+    touchStartY.current = 0;
+    if (dist >= PULL_THRESHOLD && !refreshing) {
+      if (indicatorRef.current) {
+        indicatorRef.current.style.height = `${PULL_THRESHOLD}px`;
+        indicatorRef.current.textContent = '\u27f3 \u5237\u65b0\u4e2d...';
+      }
       setRefreshing(true);
-      setPullDistance(PULL_THRESHOLD);
       try {
         const result = await socketService.refreshRooms();
         if (result?.rooms) {
@@ -81,9 +94,11 @@ export default function Sidebar() {
       } catch (_) {}
       setRefreshing(false);
     }
-    setPullDistance(0);
-    touchStartY.current = 0;
-  }, [pullDistance, refreshing]);
+    if (indicatorRef.current) {
+      indicatorRef.current.style.height = '0px';
+      indicatorRef.current.style.opacity = '0';
+    }
+  }, [refreshing]);
 
   const isMobile = window.innerWidth < 768;
 
@@ -226,19 +241,11 @@ export default function Sidebar() {
         onTouchEnd={handleTouchEnd}
       >
         {/* Pull-to-refresh indicator */}
-        {(pullDistance > 0 || refreshing) && (
-          <div
-            className="flex items-center justify-center text-xs text-dark-muted transition-all"
-            style={{ height: refreshing ? PULL_THRESHOLD : pullDistance }}
-          >
-            {refreshing
-              ? <span className="animate-spin">⟳</span>
-              : pullDistance >= PULL_THRESHOLD
-                ? '↑ 释放刷新'
-                : '↓ 下拉刷新'
-            }
-          </div>
-        )}
+        <div
+          ref={indicatorRef}
+          className="flex items-center justify-center text-xs text-dark-muted overflow-hidden transition-opacity"
+          style={{ height: 0, opacity: 0 }}
+        />
         {sortedRooms.map((room) => {
           const memberCount = (roomMembers[room.id] || []).length;
           const online = isRoomOnline(room.id);
