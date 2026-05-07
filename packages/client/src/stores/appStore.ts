@@ -161,8 +161,8 @@ interface AppState {
   removeFriendFromList: (userId: string) => void;
 
   // Sidebar tab
-  sidebarTab: 'chat' | 'contacts';
-  setSidebarTab: (tab: 'chat' | 'contacts') => void;
+  sidebarTab: 'chat' | 'contacts' | 'settings';
+  setSidebarTab: (tab: 'chat' | 'contacts' | 'settings') => void;
 
   // Friend profile
   friendProfileUser: User | null;

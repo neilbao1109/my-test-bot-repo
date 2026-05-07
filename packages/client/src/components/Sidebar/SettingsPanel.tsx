@@ -10,30 +10,14 @@ const IMAGE_QUALITY_OPTIONS: { value: ImageQuality; label: string; desc: string 
 ];
 
 interface SettingsPanelProps {
-  onBack: () => void;
   onShowAccount: () => void;
 }
 
-export default function SettingsPanel({ onBack, onShowAccount }: SettingsPanelProps) {
+export default function SettingsPanel({ onShowAccount }: SettingsPanelProps) {
   const { theme, setTheme, imageQuality, setImageQuality, user } = useAppStore();
 
   return (
     <div className="flex flex-col h-full">
-      {/* Header */}
-      <div
-        className="p-4 border-b border-dark-border flex items-center gap-3"
-      >
-        <button
-          onClick={onBack}
-          className="p-1 text-dark-muted hover:text-dark-text rounded transition"
-        >
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-          </svg>
-        </button>
-        <span className="font-semibold text-dark-text">Settings</span>
-      </div>
-
       {/* Settings content */}
       <div className="flex-1 overflow-y-auto">
         {/* User card */}

@@ -39,7 +39,7 @@ function previewText(content: string, type: string): string {
 }
 
 export default function Sidebar() {
-  const { rooms, activeRoomId, setActiveRoom, showSidebar, roomMembers, onlineUsers, setShowCreateRoom, setShowBotRegistration, setShowBotMarketplace, theme, setTheme, showSettings, setShowSettings, folders, activeFolderId, user, sidebarTab, setSidebarTab, friendRequests } = useAppStore();
+  const { rooms, activeRoomId, setActiveRoom, showSidebar, roomMembers, onlineUsers, setShowCreateRoom, setShowBotRegistration, setShowBotMarketplace, theme, setTheme, folders, activeFolderId, user, sidebarTab, setSidebarTab, friendRequests } = useAppStore();
   const [showFolderModal, setShowFolderModal] = useState(false);
   const [editingFolder, setEditingFolder] = useState<ChatFolder | null>(null);
   const [showQuickMenu, setShowQuickMenu] = useState(false);
@@ -154,13 +154,9 @@ export default function Sidebar() {
           ? 'w-64 min-w-[16rem] opacity-100'
           : 'w-0 min-w-0 opacity-0 border-r-0 overflow-hidden'
     )}>
-      {/* Three-layer container for slide transitions */}
+      {/* Main content */}
       <div className="relative flex-1 flex overflow-hidden">
-        {/* Main sidebar content */}
-        <div className={clsx(
-          'absolute inset-0 flex flex-col transition-transform duration-200 ease-in-out',
-          showSettings ? '-translate-x-full' : 'translate-x-0'
-        )}>
+        <div className="absolute inset-0 flex flex-col">
       {/* Header */}
       <div className="p-4 border-b border-dark-border flex items-center justify-between"
            >
@@ -211,13 +207,6 @@ export default function Sidebar() {
                   <span>🏪</span>
                   <span>Bot Market</span>
                 </button>
-                <button
-                  onClick={() => { setShowSettings(true); setShowQuickMenu(false); }}
-                  className="w-full text-left px-4 py-2.5 text-sm text-dark-text hover:bg-dark-hover flex items-center gap-2 transition"
-                >
-                  <span>⚙️</span>
-                  <span>Settings</span>
-                </button>
               </div>
             </>
           )}
@@ -228,8 +217,14 @@ export default function Sidebar() {
       {/* Folder tabs - hidden during search */}
       {!showSearchPanel && sidebarTab === 'chat' && <FolderTabs onCreateFolder={() => setShowFolderModal(true)} />}
 
-      {/* Search panel or Room list or Contacts */}
-      {sidebarTab === 'contacts' ? (
+      {/* Search panel or Room list or Contacts or Settings */}
+      {sidebarTab === 'settings' ? (
+        showAccount ? (
+          <AccountPanel onBack={() => setShowAccount(false)} />
+        ) : (
+          <SettingsPanel onShowAccount={() => setShowAccount(true)} />
+        )
+      ) : sidebarTab === 'contacts' ? (
         <ContactsTab />
       ) : showSearchPanel ? (
         <SearchPanel onClose={() => setShowSearchPanel(false)} />
@@ -319,24 +314,17 @@ export default function Sidebar() {
             <span className="absolute top-1 right-1/4 w-2 h-2 bg-red-500 rounded-full" />
           )}
         </button>
+        <button
+          onClick={() => { setSidebarTab('settings'); setShowAccount(false); }}
+          className={`flex-1 flex flex-col items-center gap-0.5 py-2 text-xs transition ${
+            sidebarTab === 'settings' ? 'text-primary-400' : 'text-dark-muted hover:text-dark-text'
+          }`}
+        >
+          <span className="text-base">⚙️</span>
+          <span>设置</span>
+        </button>
       </div>
 
-        </div>
-
-        {/* Settings panel (slides in from right) */}
-        <div className={clsx(
-          'absolute inset-0 flex flex-col transition-transform duration-200 ease-in-out',
-          showSettings ? (showAccount ? '-translate-x-full' : 'translate-x-0') : 'translate-x-full'
-        )}>
-          <SettingsPanel onBack={() => setShowSettings(false)} onShowAccount={() => setShowAccount(true)} />
-        </div>
-
-        {/* Account panel (slides in from right of settings) */}
-        <div className={clsx(
-          'absolute inset-0 flex flex-col transition-transform duration-200 ease-in-out',
-          showAccount ? 'translate-x-0' : 'translate-x-full'
-        )}>
-          <AccountPanel onBack={() => setShowAccount(false)} />
         </div>
       </div>
     </div>
