@@ -18,6 +18,7 @@ const DATA_DIR = path.join(__dirname, '../../data');
 interface GatewayConfig {
   url: string;
   authToken: string;
+  bootstrapToken?: string;
   clientId?: string;
 }
 
@@ -56,8 +57,17 @@ export class OpenClawClient extends EventEmitter {
   // ── Identity persistence ──
 
   private get identityPath(): string {
-    return path.join(DATA_DIR, 'device-identity.json');
+    const id = this.config.clientId;
+    if (!id || id === 'default') {
+      // Backward compat: use old path if it exists or clientId is default/undefined
+      const oldPath = path.join(DATA_DIR, 'device-identity.json');
+      if (!id || fs.existsSync(oldPath)) return oldPath;
+    }
+    return path.join(DATA_DIR, `device-identity-${id}.json`);
   }
+
+  get deviceToken(): string | undefined { return this.identity?.deviceToken; }
+  get deviceId(): string { return this.identity?.deviceId; }
 
   /**
    * Extract raw 32-byte ed25519 public key from SPKI DER.
@@ -242,7 +252,7 @@ export class OpenClawClient extends EventEmitter {
       //   auth.token ?? auth.deviceToken ?? auth.bootstrapToken ?? null
       // Since we always send auth.token, use that.
       const scopes = ['operator.read', 'operator.write'];
-      const signatureToken = this.config.authToken || '';
+      const signatureToken = this.config.authToken || this.identity.deviceToken || this.config.bootstrapToken || '';
       const signPayload = [
         'v3',
         this.identity.deviceId,
@@ -279,7 +289,12 @@ export class OpenClawClient extends EventEmitter {
       const connectId = this.genId();
 
       // Build auth — prefer stored device token for reconnects
-      const auth: Record<string, string> = { token: this.config.authToken };
+      const auth: Record<string, string> = {};
+      if (this.config.bootstrapToken) {
+        auth.bootstrapToken = this.config.bootstrapToken;
+      } else {
+        auth.token = this.config.authToken;
+      }
       if (this.identity.deviceToken) {
         auth.deviceToken = this.identity.deviceToken;
       }
@@ -400,5 +415,11 @@ export class OpenClawClient extends EventEmitter {
     this.ws = null;
     this.connected = false;
     this.handshakeComplete = false;
+  }
+
+  async reconnect(): Promise<void> {
+    this.disconnect();
+    await new Promise(r => setTimeout(r, 500));
+    await this.connect();
   }
 }

@@ -1,6 +1,7 @@
 import { getDb } from '../db/schema.js';
 import type { BotContext, BotStatus } from '../types.js';
 import { BotBridge } from './bot-bridge.js';
+import { OpenClawClient } from './openclaw-client.js';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -326,6 +327,111 @@ export function deleteBot(botId: string, ownerId: string): boolean {
 
   console.log(`[BotRegistry] Deleted bot: ${botId} by owner ${ownerId}`);
   return true;
+}
+
+// ── Pair Flow ──
+
+interface PendingPair {
+  client: OpenClawClient;
+  url: string;
+  bootstrapToken: string;
+  createdAt: number;
+}
+
+const pendingPairs = new Map<string, PendingPair>();
+
+// Cleanup expired pairs every 60s
+setInterval(() => {
+  const now = Date.now();
+  for (const [id, pair] of pendingPairs) {
+    if (now - pair.createdAt > 10 * 60 * 1000) {
+      pair.client.disconnect();
+      pendingPairs.delete(id);
+    }
+  }
+}, 60000);
+
+export async function pairConnect(setupCode: string): Promise<{
+  ok: boolean;
+  pairId?: string;
+  deviceId?: string;
+  gatewayUrl?: string;
+  error?: string;
+}> {
+  let decoded: { url: string; bootstrapToken: string; expiresAtMs: number };
+  try {
+    const json = Buffer.from(setupCode, 'base64url').toString('utf-8');
+    decoded = JSON.parse(json);
+  } catch {
+    try {
+      const fixed = setupCode.replace(/-/g, '+').replace(/_/g, '/');
+      const json = Buffer.from(fixed, 'base64').toString('utf-8');
+      decoded = JSON.parse(json);
+    } catch {
+      return { ok: false, error: 'Invalid setup code format' };
+    }
+  }
+
+  if (Date.now() > decoded.expiresAtMs) {
+    return { ok: false, error: 'Setup code expired' };
+  }
+
+  if (!decoded.url || !decoded.bootstrapToken) {
+    return { ok: false, error: 'Invalid setup code: missing url or token' };
+  }
+
+  const pairId = `pair-${uuidv4()}`;
+  const client = new OpenClawClient({
+    url: decoded.url,
+    authToken: '',
+    bootstrapToken: decoded.bootstrapToken,
+    clientId: pairId,
+  });
+
+  try {
+    await client.connect();
+    pendingPairs.set(pairId, { client, url: decoded.url, bootstrapToken: decoded.bootstrapToken, createdAt: Date.now() });
+    return { ok: true, pairId, deviceId: client.deviceId, gatewayUrl: decoded.url };
+  } catch (err: any) {
+    const msg = err.message || '';
+    if (msg.includes('PAIRING_REQUIRED') || msg.includes('pairing') || msg.includes('not-paired') || msg.includes('connect failed')) {
+      pendingPairs.set(pairId, { client, url: decoded.url, bootstrapToken: decoded.bootstrapToken, createdAt: Date.now() });
+      return { ok: true, pairId, deviceId: client.deviceId, gatewayUrl: decoded.url };
+    }
+    client.disconnect();
+    return { ok: false, error: msg || 'Connection failed' };
+  }
+}
+
+export async function pairStatus(pairId: string): Promise<{
+  ok: boolean;
+  status?: 'pending' | 'approved';
+  deviceToken?: string;
+  gatewayUrl?: string;
+  error?: string;
+}> {
+  const pair = pendingPairs.get(pairId);
+  if (!pair) return { ok: false, error: 'Pair session not found or expired' };
+
+  if (pair.client.deviceToken) {
+    const result = { ok: true as const, status: 'approved' as const, deviceToken: pair.client.deviceToken, gatewayUrl: pair.url };
+    pair.client.disconnect();
+    pendingPairs.delete(pairId);
+    return result;
+  }
+
+  try {
+    await pair.client.reconnect();
+    if (pair.client.deviceToken) {
+      const result = { ok: true as const, status: 'approved' as const, deviceToken: pair.client.deviceToken, gatewayUrl: pair.url };
+      pair.client.disconnect();
+      pendingPairs.delete(pairId);
+      return result;
+    }
+    return { ok: true, status: 'approved', gatewayUrl: pair.url };
+  } catch {
+    return { ok: true, status: 'pending' };
+  }
 }
 
 /** Test bot connection to gateway */

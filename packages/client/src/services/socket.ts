@@ -207,6 +207,18 @@ class SocketService {
     });
   }
 
+  pairConnect(setupCode: string): Promise<{ ok: boolean; pairId?: string; deviceId?: string; gatewayUrl?: string; error?: string }> {
+    return new Promise((resolve) => {
+      this.socket?.emit('bot:pair-connect', { setupCode }, resolve);
+    });
+  }
+
+  pairStatus(pairId: string): Promise<{ ok: boolean; status?: string; deviceToken?: string; gatewayUrl?: string; error?: string }> {
+    return new Promise((resolve) => {
+      this.socket?.emit('bot:pair-status', { pairId }, resolve);
+    });
+  }
+
   registerBot(config: { username: string; avatarUrl?: string; gatewayUrl?: string; authToken: string; agentId?: string; sshHost?: string; trigger?: string }): Promise<{ bot?: any; error?: string }> {
     return new Promise((resolve) => {
       this.socket?.emit('bot:register', config, resolve);

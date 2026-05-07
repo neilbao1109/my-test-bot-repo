@@ -3,7 +3,7 @@ import { createMessage, getMessages, getLastMessage, getLastMessageByUser, getMe
 import { createRoom, getRooms, getRoomMembers, addMemberToRoom, removeMemberFromRoom, addBotToRoom, removeBotFromRoom, renameRoom, deleteRoom, searchUsers, getRoom } from '../services/room.js';
 import { createThread, getThread, getThreadByMessage } from '../services/thread.js';
 import { parseCommand, executeCommand } from '../services/command.js';
-import { initBotRegistry, getRespondingBots, isBotUser, getAllBots, getBot, getAvailableBots, streamBotResponse as registryStreamBotResponse, registerBot, updateBot, deleteBot, testBotConnection } from '../services/bot-registry.js';
+import { initBotRegistry, getRespondingBots, isBotUser, getAllBots, getBot, getAvailableBots, streamBotResponse as registryStreamBotResponse, registerBot, updateBot, deleteBot, testBotConnection, pairConnect, pairStatus } from '../services/bot-registry.js';
 import { shareBot, acceptBotShare, revokeBotShare, getBotShares, getPublicBots, addPublicBotToUser } from '../services/bot-share.js';
 import { pinMessage, unpinMessage, getPinnedMessages } from '../services/pin.js';
 import { createInvitation, acceptInvitation, rejectInvitation, getPendingInvitations, getInvitationCount } from '../services/invitation.js';
@@ -392,6 +392,20 @@ export function setupSocketHandlers(io: Server) {
     socket.on('bot:test', async (data, callback) => {
       if (!socket.userId) return;
       const result = await testBotConnection(data);
+      callback(result);
+    });
+
+    // bot:pair-connect — initiate pair with setup code
+    socket.on('bot:pair-connect', async (data: { setupCode: string }, callback: Function) => {
+      if (!socket.userId) return;
+      const result = await pairConnect(data.setupCode);
+      callback(result);
+    });
+
+    // bot:pair-status — poll pair approval status
+    socket.on('bot:pair-status', async (data: { pairId: string }, callback: Function) => {
+      if (!socket.userId) return;
+      const result = await pairStatus(data.pairId);
       callback(result);
     });
 
