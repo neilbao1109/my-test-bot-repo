@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useAppStore } from '../../stores/appStore';
 import UserAvatar from '../UserAvatar';
 import type { ImageQuality } from '../../services/upload';
@@ -9,50 +10,42 @@ const IMAGE_QUALITY_OPTIONS: { value: ImageQuality; label: string; desc: string 
   { value: 'low', label: '省流', desc: '最长边 800px' },
 ];
 
+const QUALITY_LABELS: Record<ImageQuality, string> = {
+  original: '原图',
+  high: '高清',
+  medium: '标准',
+  low: '省流',
+};
+
 interface SettingsPanelProps {
   onShowAccount: () => void;
 }
 
 export default function SettingsPanel({ onShowAccount }: SettingsPanelProps) {
   const { theme, setTheme, imageQuality, setImageQuality, user } = useAppStore();
+  const [subPage, setSubPage] = useState<null | 'appearance' | 'imageUpload'>(null);
 
-  return (
-    <div className="flex flex-col h-full">
-      {/* Settings content */}
-      <div className="flex-1 overflow-y-auto">
-        {/* User card */}
-        {user && (
-          <button
-            onClick={onShowAccount}
-            className="w-full px-4 py-3 border-b border-dark-border flex items-center gap-3 hover:bg-dark-hover transition text-left"
-          >
-            <UserAvatar username={user.username} isOnline={true} size="sm" />
-            <span className="text-sm font-medium text-dark-text flex-1 truncate">{user.username}</span>
-            <svg className="w-4 h-4 text-dark-muted flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-            </svg>
-          </button>
-        )}
-        {/* Theme */}
-        <Section title="🎨 Appearance">
+  // Sub-page: Appearance
+  if (subPage === 'appearance') {
+    return (
+      <div className="flex flex-col h-full">
+        <SubPageHeader title="外观" onBack={() => setSubPage(null)} />
+        <div className="flex-1 overflow-y-auto px-4 py-4">
           <div className="flex gap-2">
-            <ThemeButton
-              active={theme === 'dark'}
-              onClick={() => setTheme('dark')}
-              icon="🌙"
-              label="Dark"
-            />
-            <ThemeButton
-              active={theme === 'light'}
-              onClick={() => setTheme('light')}
-              icon="☀️"
-              label="Light"
-            />
+            <ThemeButton active={theme === 'dark'} onClick={() => setTheme('dark')} icon="🌙" label="Dark" />
+            <ThemeButton active={theme === 'light'} onClick={() => setTheme('light')} icon="☀️" label="Light" />
           </div>
-        </Section>
+        </div>
+      </div>
+    );
+  }
 
-        {/* Image Upload Quality */}
-        <Section title="📷 Image Upload">
+  // Sub-page: Image Upload
+  if (subPage === 'imageUpload') {
+    return (
+      <div className="flex flex-col h-full">
+        <SubPageHeader title="图片上传" onBack={() => setSubPage(null)} />
+        <div className="flex-1 overflow-y-auto px-4 py-4">
           <p className="text-xs text-dark-muted mb-3">
             Compress images before uploading to save bandwidth
           </p>
@@ -68,9 +61,7 @@ export default function SettingsPanel({ onShowAccount }: SettingsPanelProps) {
                 }`}
               >
                 <span className={`w-4 h-4 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${
-                  imageQuality === opt.value
-                    ? 'border-primary-500'
-                    : 'border-dark-muted'
+                  imageQuality === opt.value ? 'border-primary-500' : 'border-dark-muted'
                 }`}>
                   {imageQuality === opt.value && (
                     <span className="w-2 h-2 rounded-full bg-primary-500" />
@@ -83,13 +74,43 @@ export default function SettingsPanel({ onShowAccount }: SettingsPanelProps) {
               </button>
             ))}
           </div>
-        </Section>
+        </div>
+      </div>
+    );
+  }
+
+  // Main settings page
+  return (
+    <div className="flex flex-col h-full">
+      <div className="flex-1 overflow-y-auto">
+        {/* Account row */}
+        {user && (
+          <SettingsRow
+            icon={<UserAvatar username={user.username} isOnline={true} size="sm" />}
+            label={user.username}
+            onClick={onShowAccount}
+          />
+        )}
+
+        {/* Appearance row */}
+        <SettingsRow
+          icon={<span className="text-lg">🎨</span>}
+          label="外观"
+          value={theme === 'dark' ? 'Dark' : 'Light'}
+          onClick={() => setSubPage('appearance')}
+        />
+
+        {/* Image Upload row */}
+        <SettingsRow
+          icon={<span className="text-lg">📷</span>}
+          label="图片上传"
+          value={QUALITY_LABELS[imageQuality]}
+          onClick={() => setSubPage('imageUpload')}
+        />
       </div>
 
       {/* Footer */}
-      <div
-        className="p-4 border-t border-dark-border"
-      >
+      <div className="p-4 border-t border-dark-border">
         <p className="text-[10px] text-dark-muted text-center">ClawChat • Settings are saved locally</p>
         <p className="text-[10px] text-dark-muted/50 text-center mt-1">Build: {__BUILD_HASH__} • {__BUILD_TIME__}</p>
       </div>
@@ -97,11 +118,38 @@ export default function SettingsPanel({ onShowAccount }: SettingsPanelProps) {
   );
 }
 
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
+function SettingsRow({ icon, label, value, onClick }: {
+  icon: React.ReactNode;
+  label: string;
+  value?: string;
+  onClick: () => void;
+}) {
   return (
-    <div className="px-4 py-4 border-b border-dark-border">
-      <h3 className="text-xs font-semibold text-dark-muted uppercase tracking-wider mb-3">{title}</h3>
-      {children}
+    <button
+      onClick={onClick}
+      className="w-full px-4 py-3 border-b border-dark-border flex items-center gap-3 hover:bg-dark-hover transition text-left"
+    >
+      <div className="flex-shrink-0">{icon}</div>
+      <span className="text-sm font-medium text-dark-text flex-1 truncate">{label}</span>
+      {value && (
+        <span className="text-xs text-dark-muted mr-1">{value}</span>
+      )}
+      <svg className="w-4 h-4 text-dark-muted flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+      </svg>
+    </button>
+  );
+}
+
+function SubPageHeader({ title, onBack }: { title: string; onBack: () => void }) {
+  return (
+    <div className="flex items-center gap-2 px-4 py-3 border-b border-dark-border">
+      <button onClick={onBack} className="text-dark-muted hover:text-dark-text p-1 rounded transition">
+        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+        </svg>
+      </button>
+      <h3 className="font-semibold text-dark-text text-sm">{title}</h3>
     </div>
   );
 }
