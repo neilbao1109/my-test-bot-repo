@@ -147,6 +147,7 @@ export default function BotRegistration() {
         authToken: finalAuthToken,
         sshHost: connectMode === 'token' ? (sshHost.trim() || undefined) : undefined,
         trigger,
+        identityKey: connectMode === 'pair' ? pairId : undefined,
       });
       if (result.error) {
         setError(result.error);

@@ -90,7 +90,7 @@ export class BotBridge {
       this.client = new OpenClawClient({
         url: gatewayUrl,
         authToken: this.config.gateway.authToken,
-        clientId: `clawchat-${this.config.id}`,
+        clientId: this.config.identityKey || `clawchat-${this.config.id}`,
       });
 
       this.client.on('event:session.message', (payload: any) => this.handleSessionMessage(payload));
@@ -110,7 +110,7 @@ export class BotBridge {
       this.client = new OpenClawClient({
         url: newUrl,
         authToken: this.config.gateway.authToken,
-        clientId: `clawchat-${this.config.id}`,
+        clientId: this.config.identityKey || `clawchat-${this.config.id}`,
       });
       this.client.on('event:session.message', (payload: any) => this.handleSessionMessage(payload));
       await this.client.connect();

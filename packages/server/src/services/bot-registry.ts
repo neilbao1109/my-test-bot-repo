@@ -25,6 +25,7 @@ export interface BotConfig {
     sshHost?: string;
   };
   trigger: TriggerType;
+  identityKey?: string;  // clientId for per-bot device identity
 }
 
 // ── Registry ──
@@ -118,6 +119,7 @@ export function initBotRegistry(): void {
         sshHost: row.ssh_host || undefined,
       },
       trigger: (row.trigger_type || 'all') as TriggerType,
+      identityKey: row.identity_key || undefined,
     };
     upsert.run(cfg.id, cfg.username, cfg.avatarUrl || null);
     bots.set(cfg.id, cfg);
@@ -213,6 +215,7 @@ export function registerBot(config: {
   agentId?: string;
   sshHost?: string;
   trigger?: TriggerType;
+  identityKey?: string;
 }, ownerId: string): BotConfig {
   const db = getDb();
   const id = `bot-${uuidv4()}`;
@@ -228,6 +231,7 @@ export function registerBot(config: {
       sshHost: config.sshHost || undefined,
     },
     trigger: config.trigger || 'all',
+    identityKey: config.identityKey || undefined,
   };
 
   // Insert into users table
@@ -239,9 +243,9 @@ export function registerBot(config: {
 
   // Insert into bots table
   db.prepare(`
-    INSERT INTO bots (bot_id, owner_id, username, avatar_url, gateway_url, auth_token, agent_id, ssh_host, trigger_type)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `).run(id, ownerId, config.username, config.avatarUrl || null, config.gatewayUrl || null, config.authToken, config.agentId || null, config.sshHost || null, config.trigger || 'all');
+    INSERT INTO bots (bot_id, owner_id, username, avatar_url, gateway_url, auth_token, agent_id, ssh_host, trigger_type, identity_key)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `).run(id, ownerId, config.username, config.avatarUrl || null, config.gatewayUrl || null, config.authToken, config.agentId || null, config.sshHost || null, config.trigger || 'all', config.identityKey || null);
 
   // Add to in-memory maps
   bots.set(id, botConfig);

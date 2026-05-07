@@ -351,4 +351,17 @@ function initSchema(db: Database.Database) {
     })();
     console.log('[Migration] v6: friendships table created');
   }
+
+  if (version < 7) {
+    db.transaction(() => {
+      // Add identity_key column to bots for per-bot device identity
+      const cols = db.prepare("PRAGMA table_info(bots)").all() as any[];
+      if (!cols.some((c: any) => c.name === 'identity_key')) {
+        db.exec('ALTER TABLE bots ADD COLUMN identity_key TEXT');
+        console.log('[Migration] v7: added identity_key column to bots');
+      }
+      db.exec('PRAGMA user_version = 7');
+    })();
+    console.log('[Migration] v7: bots identity_key');
+  }
 }

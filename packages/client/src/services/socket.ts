@@ -219,7 +219,7 @@ class SocketService {
     });
   }
 
-  registerBot(config: { username: string; avatarUrl?: string; gatewayUrl?: string; authToken: string; agentId?: string; sshHost?: string; trigger?: string }): Promise<{ bot?: any; error?: string }> {
+  registerBot(config: { username: string; avatarUrl?: string; gatewayUrl?: string; authToken: string; agentId?: string; sshHost?: string; trigger?: string; identityKey?: string }): Promise<{ bot?: any; error?: string }> {
     return new Promise((resolve) => {
       this.socket?.emit('bot:register', config, resolve);
     });
