@@ -396,9 +396,9 @@ export function setupSocketHandlers(io: Server) {
     });
 
     // bot:pair-connect — initiate pair with setup code
-    socket.on('bot:pair-connect', async (data: { setupCode: string }, callback: Function) => {
+    socket.on('bot:pair-connect', async (data: { setupCode: string; gatewayUrlOverride?: string }, callback: Function) => {
       if (!socket.userId) return;
-      const result = await pairConnect(data.setupCode);
+      const result = await pairConnect(data.setupCode, data.gatewayUrlOverride);
       callback(result);
     });
 

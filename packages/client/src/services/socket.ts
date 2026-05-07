@@ -207,9 +207,9 @@ class SocketService {
     });
   }
 
-  pairConnect(setupCode: string): Promise<{ ok: boolean; pairId?: string; deviceId?: string; gatewayUrl?: string; error?: string }> {
+  pairConnect(setupCode: string, gatewayUrlOverride?: string): Promise<{ ok: boolean; pairId?: string; deviceId?: string; gatewayUrl?: string; error?: string }> {
     return new Promise((resolve) => {
-      this.socket?.emit('bot:pair-connect', { setupCode }, resolve);
+      this.socket?.emit('bot:pair-connect', { setupCode, gatewayUrlOverride }, resolve);
     });
   }
 

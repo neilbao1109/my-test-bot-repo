@@ -351,7 +351,7 @@ setInterval(() => {
   }
 }, 60000);
 
-export async function pairConnect(setupCode: string): Promise<{
+export async function pairConnect(setupCode: string, gatewayUrlOverride?: string): Promise<{
   ok: boolean;
   pairId?: string;
   deviceId?: string;
@@ -380,9 +380,12 @@ export async function pairConnect(setupCode: string): Promise<{
     return { ok: false, error: 'Invalid setup code: missing url or token' };
   }
 
+  // Allow overriding the Gateway URL from the setup code
+  const effectiveUrl = gatewayUrlOverride || decoded.url;
+
   const pairId = `pair-${uuidv4()}`;
   const client = new OpenClawClient({
-    url: decoded.url,
+    url: effectiveUrl,
     authToken: '',
     bootstrapToken: decoded.bootstrapToken,
     clientId: pairId,
@@ -390,13 +393,13 @@ export async function pairConnect(setupCode: string): Promise<{
 
   try {
     await client.connect();
-    pendingPairs.set(pairId, { client, url: decoded.url, bootstrapToken: decoded.bootstrapToken, createdAt: Date.now() });
-    return { ok: true, pairId, deviceId: client.deviceId, gatewayUrl: decoded.url };
+    pendingPairs.set(pairId, { client, url: effectiveUrl, bootstrapToken: decoded.bootstrapToken, createdAt: Date.now() });
+    return { ok: true, pairId, deviceId: client.deviceId, gatewayUrl: effectiveUrl };
   } catch (err: any) {
     const msg = err.message || '';
     if (msg.includes('PAIRING_REQUIRED') || msg.includes('pairing') || msg.includes('not-paired') || msg.includes('connect failed')) {
-      pendingPairs.set(pairId, { client, url: decoded.url, bootstrapToken: decoded.bootstrapToken, createdAt: Date.now() });
-      return { ok: true, pairId, deviceId: client.deviceId, gatewayUrl: decoded.url };
+      pendingPairs.set(pairId, { client, url: effectiveUrl, bootstrapToken: decoded.bootstrapToken, createdAt: Date.now() });
+      return { ok: true, pairId, deviceId: client.deviceId, gatewayUrl: effectiveUrl };
     }
     client.disconnect();
     return { ok: false, error: msg || 'Connection failed' };

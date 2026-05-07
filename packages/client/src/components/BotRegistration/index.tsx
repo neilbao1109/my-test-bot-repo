@@ -93,7 +93,7 @@ export default function BotRegistration() {
     setConnecting(true);
     setPairError('');
     try {
-      const result = await socketService.pairConnect(setupCode.trim());
+      const result = await socketService.pairConnect(setupCode.trim(), pairGatewayUrl.trim() || undefined);
       if (result.ok) {
         setPairId(result.pairId || '');
         setDeviceId(result.deviceId || '');
@@ -226,6 +226,11 @@ export default function BotRegistration() {
                       placeholder="粘贴 Gateway 生成的 Setup Code..."
                       rows={3}
                       className="w-full bg-dark-bg border border-dark-border rounded-lg px-3 py-2 text-sm text-dark-text placeholder-dark-muted focus:outline-none focus:ring-1 focus:ring-primary-500 font-mono" />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-dark-muted mb-1">Gateway URL (可选覆盖)</label>
+                    <input type="text" value={pairGatewayUrl} onChange={e => setPairGatewayUrl(e.target.value)} placeholder="留空则使用 Setup Code 中的地址"
+                      className="w-full bg-dark-bg border border-dark-border rounded-lg px-3 py-2 text-sm text-dark-text placeholder-dark-muted focus:outline-none focus:ring-1 focus:ring-primary-500" />
                   </div>
                   {pairError && <p className="text-xs text-red-400">{pairError}</p>}
                   <button onClick={handlePairConnect} disabled={!setupCode.trim() || connecting}
