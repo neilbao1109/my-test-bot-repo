@@ -503,6 +503,17 @@ export function getRespondingBots(content: string, roomId: string, senderId: str
   // Never respond in user-to-user DMs
   if (roomType === 'dm') return [];
 
+  // In bot rooms, only the bot that is a member of this room should respond
+  if (roomType === 'bot') {
+    const responding: BotConfig[] = [];
+    for (const bot of bots.values()) {
+      if (isBotInRoom(bot.id, roomId)) {
+        responding.push(bot);
+      }
+    }
+    return responding;
+  }
+
   const mentioned = new Set(parseMentionedBots(content));
   const responding: BotConfig[] = [];
 
