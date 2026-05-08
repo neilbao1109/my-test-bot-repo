@@ -1,5 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAppStore } from '../../stores/appStore';
+import { socketService } from '../../services/socket';
+import BotShareModal from '../BotShareModal';
 import UserAvatar from '../UserAvatar';
 import type { ImageQuality } from '../../services/upload';
 
@@ -23,7 +25,12 @@ interface SettingsPanelProps {
 
 export default function SettingsPanel({ onShowAccount }: SettingsPanelProps) {
   const { theme, setTheme, imageQuality, setImageQuality, user } = useAppStore();
-  const [subPage, setSubPage] = useState<null | 'appearance' | 'imageUpload'>(null);
+  const [subPage, setSubPage] = useState<null | 'appearance' | 'imageUpload' | 'bots'>(null);
+
+  // Sub-page: Bots
+  if (subPage === 'bots') {
+    return <BotsSubPage onBack={() => setSubPage(null)} />;
+  }
 
   // Sub-page: Appearance
   if (subPage === 'appearance') {
@@ -91,6 +98,13 @@ export default function SettingsPanel({ onShowAccount }: SettingsPanelProps) {
             onClick={onShowAccount}
           />
         )}
+
+        {/* Bots row */}
+        <SettingsRow
+          icon={<span className="text-lg">🤖</span>}
+          label="Bots"
+          onClick={() => setSubPage('bots')}
+        />
 
         {/* Appearance row */}
         <SettingsRow
@@ -172,5 +186,75 @@ function ThemeButton({ active, onClick, icon, label }: {
       <span className="text-lg block">{icon}</span>
       <span className="text-xs mt-1 block">{label}</span>
     </button>
+  );
+}
+
+function BotsSubPage({ onBack }: { onBack: () => void }) {
+  const [bots, setBots] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [shareBot, setShareBot] = useState<any>(null);
+
+  useEffect(() => {
+    socketService.listAvailableBots().then((res) => {
+      setBots(res.bots || []);
+      setLoading(false);
+    }).catch(() => setLoading(false));
+  }, []);
+
+  return (
+    <div className="flex flex-col h-full">
+      <SubPageHeader title="Bots" onBack={onBack} />
+      <div className="flex-1 overflow-y-auto px-4 py-4">
+        {/* Action buttons */}
+        <div className="flex gap-2 mb-4">
+          <button
+            onClick={() => useAppStore.getState().setShowBotRegistration(true)}
+            className="flex-1 py-2.5 rounded-lg bg-primary-600/20 text-primary-400 text-sm font-medium hover:bg-primary-600/30 transition"
+          >
+            ＋ 注册 Bot
+          </button>
+          <button
+            onClick={() => useAppStore.getState().setShowBotMarketplace(true)}
+            className="flex-1 py-2.5 rounded-lg bg-dark-hover text-dark-text text-sm font-medium hover:bg-dark-border transition"
+          >
+            🏪 Bot 市场
+          </button>
+        </div>
+
+        {/* My Bots */}
+        <h4 className="text-xs text-dark-muted font-medium mb-2">My Bots</h4>
+        {loading ? (
+          <p className="text-xs text-dark-muted">加载中...</p>
+        ) : bots.length === 0 ? (
+          <p className="text-xs text-dark-muted">暂无自定义 Bot</p>
+        ) : (
+          <div className="space-y-1">
+            {bots.map((bot: any) => (
+              <div
+                key={bot.id || bot.name}
+                className="flex items-center justify-between px-3 py-2.5 rounded-lg hover:bg-dark-hover transition"
+              >
+                <div className="min-w-0 flex-1">
+                  <span className="text-sm text-dark-text font-medium truncate block">{bot.name}</span>
+                  {bot.triggerType && (
+                    <span className="text-[10px] text-dark-muted">{bot.triggerType}</span>
+                  )}
+                </div>
+                <button
+                  onClick={() => setShareBot(bot)}
+                  className="text-dark-muted hover:text-dark-text text-sm p-1 rounded transition"
+                  title="Share"
+                >
+                  🔗
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+      {shareBot && (
+        <BotShareModal botId={shareBot.id} botName={shareBot.name} onClose={() => setShareBot(null)} />
+      )}
+    </div>
   );
 }
