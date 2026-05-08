@@ -174,10 +174,21 @@ export class OpenClawClient extends EventEmitter {
         });
 
         this.ws.on('close', (code, reason) => {
-          console.log(`[OpenClaw] WebSocket closed: ${code} ${reason}`);
+          const reasonStr = reason?.toString() || '';
+          console.log(`[OpenClaw] WebSocket closed: ${code} ${reasonStr}`);
           this.connected = false;
           this.handshakeComplete = false;
-          this.scheduleReconnect();
+          // Don't reconnect on fatal auth errors — retrying won't help
+          const fatal = code === 1008 && (
+            reasonStr.includes('pairing required') ||
+            reasonStr.includes('device token mismatch') ||
+            reasonStr.includes('unauthorized')
+          );
+          if (fatal) {
+            console.log(`[OpenClaw] Fatal auth error, stopping reconnect: ${reasonStr}`);
+          } else {
+            this.scheduleReconnect();
+          }
         });
 
         this.ws.on('error', (err) => {
