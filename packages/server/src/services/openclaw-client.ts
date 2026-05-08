@@ -189,6 +189,7 @@ export class OpenClawClient extends EventEmitter {
           const inPairingFlow = !!this.config.bootstrapToken;
           if (isAuthError && !inPairingFlow) {
             console.log(`[OpenClaw] Fatal auth error, stopping reconnect: ${reasonStr}`);
+            this.emit('fatal-auth-error', { code, reason: reasonStr });
           } else {
             this.scheduleReconnect();
           }
@@ -264,9 +265,19 @@ export class OpenClawClient extends EventEmitter {
       // Format: v3|deviceId|clientId|clientMode|role|scopes|signedAtMs|token|nonce|platform|deviceFamily
       // IMPORTANT: signatureToken must match what Gateway's resolveSignatureToken picks:
       //   auth.token ?? auth.deviceToken ?? auth.bootstrapToken ?? null
-      // Since we always send auth.token, use that.
+      // We must use the SAME priority as what we actually send in auth{}
       const scopes = ['operator.read', 'operator.write'];
-      const signatureToken = this.config.authToken || this.identity.deviceToken || this.config.bootstrapToken || '';
+      let signatureToken = '';
+      if (this.config.bootstrapToken) {
+        // Setup code mode: auth will have { bootstrapToken, ?deviceToken }
+        // Gateway resolves: token ?? deviceToken ?? bootstrapToken
+        // No auth.token sent, so Gateway picks deviceToken (if present) else bootstrapToken
+        signatureToken = this.identity.deviceToken || this.config.bootstrapToken;
+      } else {
+        // Auth token mode: auth will have { token, ?deviceToken }
+        // Gateway resolves: token ?? deviceToken ?? bootstrapToken → always auth.token
+        signatureToken = this.config.authToken;
+      }
       const signPayload = [
         'v3',
         this.identity.deviceId,
@@ -302,7 +313,7 @@ export class OpenClawClient extends EventEmitter {
 
       const connectId = this.genId();
 
-      // Build auth — prefer stored device token for reconnects
+      // Build auth — Gateway resolves: auth.token ?? auth.deviceToken ?? auth.bootstrapToken
       const auth: Record<string, string> = {};
       if (this.config.bootstrapToken) {
         auth.bootstrapToken = this.config.bootstrapToken;
@@ -348,14 +359,28 @@ export class OpenClawClient extends EventEmitter {
       this.pending.set(connectId, {
         resolve: (payload: any) => {
           this.handshakeComplete = true;
+          // Save primary device token
           if (payload?.auth?.deviceToken) {
             this.identity.deviceToken = payload.auth.deviceToken;
             this.saveIdentity();
+          }
+          // Log granted scopes/role
+          if (payload?.auth?.role) {
+            console.log(`[OpenClaw] Granted role: ${payload.auth.role}, scopes: ${payload.auth.scopes?.join(',') || 'none'}`);
           }
           console.log('[OpenClaw] Handshake complete');
           connectResolve?.();
         },
         reject: (err: Error) => {
+          // Parse error details for retry hints
+          const errAny = err as any;
+          if (errAny.details?.canRetryWithDeviceToken && this.identity.deviceToken) {
+            console.log('[OpenClaw] Server suggests retry with deviceToken, but we already include it. Stopping.');
+          }
+          if (errAny.details?.recommendedNextStep === 'update_auth_credentials') {
+            console.log('[OpenClaw] Credentials expired. User needs to re-pair via setup code.');
+            this.emit('fatal-auth-error', { code: 'CREDENTIALS_EXPIRED', reason: 'update_auth_credentials' });
+          }
           connectReject?.(err);
         },
         timer: setTimeout(() => {
