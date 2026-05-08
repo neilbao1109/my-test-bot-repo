@@ -235,9 +235,9 @@ function BotsSubPage({ onBack }: { onBack: () => void }) {
                 className="flex items-center justify-between px-3 py-2.5 rounded-lg hover:bg-dark-hover transition"
               >
                 <div className="min-w-0 flex-1">
-                  <span className="text-sm text-dark-text font-medium truncate block">{bot.name}</span>
-                  {bot.triggerType && (
-                    <span className="text-[10px] text-dark-muted">{bot.triggerType}</span>
+                  <span className="text-sm text-dark-text font-medium truncate block">{bot.username || bot.name}</span>
+                  {(bot.trigger || bot.triggerType) && (
+                    <span className="text-[10px] text-dark-muted">{bot.trigger || bot.triggerType}</span>
                   )}
                 </div>
                 <button
