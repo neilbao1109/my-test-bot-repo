@@ -179,12 +179,15 @@ export class OpenClawClient extends EventEmitter {
           this.connected = false;
           this.handshakeComplete = false;
           // Don't reconnect on fatal auth errors — retrying won't help
-          const fatal = code === 1008 && (
+          // Exception: if bootstrapToken is set, we're in setup-code pairing flow
+          // and need to keep retrying until user approves
+          const isAuthError = code === 1008 && (
             reasonStr.includes('pairing required') ||
             reasonStr.includes('device token mismatch') ||
             reasonStr.includes('unauthorized')
           );
-          if (fatal) {
+          const inPairingFlow = !!this.config.bootstrapToken;
+          if (isAuthError && !inPairingFlow) {
             console.log(`[OpenClaw] Fatal auth error, stopping reconnect: ${reasonStr}`);
           } else {
             this.scheduleReconnect();
