@@ -1,9 +1,10 @@
 import { Server, Socket } from 'socket.io';
 import { createMessage, getMessages, getLastMessage, getLastMessageByUser, getMessagesSince, getMessageById, getMessagesAroundId, editMessage, deleteMessage, addReaction, searchMessages, getReplyChain } from '../services/message.js';
 import { createRoom, getRooms, getRoomMembers, addMemberToRoom, removeMemberFromRoom, addBotToRoom, removeBotFromRoom, renameRoom, deleteRoom, searchUsers, getRoom } from '../services/room.js';
+import { getDb } from '../db/schema.js';
 import { createThread, getThread, getThreadByMessage } from '../services/thread.js';
 import { parseCommand, executeCommand } from '../services/command.js';
-import { initBotRegistry, getRespondingBots, isBotUser, getAllBots, getBot, getAvailableBots, streamBotResponse as registryStreamBotResponse, registerBot, updateBot, deleteBot, testBotConnection, pairConnect, pairStatus } from '../services/bot-registry.js';
+import { initBotRegistry, getRespondingBots, isBotUser, getAllBots, getBot, getAvailableBots, streamBotResponse as registryStreamBotResponse, registerBot, updateBot, deleteBot, testBotConnection, pairConnect, pairStatus, pauseBot, resumeBot, deregisterBot, findDeregisteredBot, restoreBot, getBotDbStatus } from '../services/bot-registry.js';
 import { shareBot, acceptBotShare, revokeBotShare, getBotShares, getPublicBots, addPublicBotToUser } from '../services/bot-share.js';
 import { pinMessage, unpinMessage, getPinnedMessages } from '../services/pin.js';
 import { createInvitation, acceptInvitation, rejectInvitation, getPendingInvitations, getInvitationCount } from '../services/invitation.js';
@@ -384,8 +385,13 @@ export function setupSocketHandlers(io: Server) {
 
     socket.on('bot:list', (_data: any, callback) => {
       if (!socket.userId) return;
-      const bots = getAvailableBots(socket.userId);
-      callback({ bots });
+      const botList = getAvailableBots(socket.userId);
+      // Enrich with DB status
+      const botsWithStatus = botList.map(b => ({
+        ...b,
+        status: getBotDbStatus(b.id) || 'active',
+      }));
+      callback({ bots: botsWithStatus });
     });
 
     // bot:test - test connection before registering
@@ -409,10 +415,16 @@ export function setupSocketHandlers(io: Server) {
       callback(result);
     });
 
-    // bot:register - register a new bot
+    // bot:register - register a new bot (with deregistered bot detection)
     socket.on('bot:register', (data, callback) => {
       if (!socket.userId) return;
       try {
+        // Check for deregistered bot with same gateway
+        const oldBot = findDeregisteredBot(socket.userId, data.gatewayUrl);
+        if (oldBot) {
+          callback({ bot: null, deregisteredBot: { id: oldBot.bot_id, username: oldBot.username, gatewayUrl: oldBot.gateway_url, deregisteredAt: oldBot.updated_at } });
+          return;
+        }
         const bot = registerBot(data, socket.userId);
         callback({ bot });
       } catch (err: any) {
@@ -437,6 +449,104 @@ export function setupSocketHandlers(io: Server) {
       if (!socket.userId) return;
       const success = deleteBot(data.botId, socket.userId);
       callback({ success });
+    });
+
+    // bot:pause - pause a bot
+    socket.on('bot:pause', (data: { botId: string }, callback) => {
+      if (!socket.userId) return;
+      const success = pauseBot(data.botId, socket.userId);
+      if (success) {
+        // Broadcast status change to all relevant users
+        broadcastBotStatusChange(io, data.botId, 'paused', userSockets);
+      }
+      if (callback) callback({ success });
+    });
+
+    // bot:resume - resume a paused bot
+    socket.on('bot:resume', (data: { botId: string }, callback) => {
+      if (!socket.userId) return;
+      const success = resumeBot(data.botId, socket.userId);
+      if (success) {
+        broadcastBotStatusChange(io, data.botId, 'active', userSockets);
+      }
+      if (callback) callback({ success });
+    });
+
+    // bot:deregister - soft-delete a bot
+    socket.on('bot:deregister', (data: { botId: string }, callback) => {
+      if (!socket.userId) return;
+      const result = deregisterBot(data.botId, socket.userId);
+      if (result.success) {
+        // Get affected room IDs for notification
+        const db = getDb();
+        const botRooms = db.prepare(`
+          SELECT DISTINCT rm.room_id FROM room_members rm
+          WHERE rm.user_id = ?
+        `).all(data.botId) as any[];
+        const roomIds = botRooms.map((r: any) => r.room_id);
+
+        // Get bot name for system message
+        const botUser = db.prepare('SELECT username FROM bots WHERE bot_id = ?').get(data.botId) as any;
+        const botName = botUser?.username || data.botId;
+
+        // Insert system messages in affected rooms
+        for (const roomId of roomIds) {
+          const sysMsg = createMessage({
+            roomId,
+            userId: data.botId,
+            content: `Bot "${botName}" 已停用`,
+            type: 'system',
+          });
+          io.to(roomId).emit('message:new', sysMsg);
+        }
+
+        // Broadcast deregistered event
+        broadcastBotDeregistered(io, data.botId, roomIds, userSockets);
+      }
+      if (callback) callback(result);
+    });
+
+    // bot:check-deregistered - check if a deregistered bot exists for this owner+gateway
+    socket.on('bot:check-deregistered', (data: { gatewayUrl?: string }, callback) => {
+      if (!socket.userId) return;
+      const old = findDeregisteredBot(socket.userId, data.gatewayUrl);
+      if (old) {
+        callback({ found: true, bot: { id: old.bot_id, username: old.username, gatewayUrl: old.gateway_url, deregisteredAt: old.updated_at } });
+      } else {
+        callback({ found: false });
+      }
+    });
+
+    // bot:restore - restore a deregistered bot
+    socket.on('bot:restore', (data: { botId: string; authToken?: string }, callback) => {
+      if (!socket.userId) return;
+      const bot = restoreBot(data.botId, socket.userId, { authToken: data.authToken });
+      if (!bot) {
+        if (callback) callback({ error: 'Bot not found or not deregistered' });
+        return;
+      }
+
+      // Insert system messages in restored rooms
+      const db = getDb();
+      const restoredRooms = db.prepare(`
+        SELECT r.id FROM rooms r
+        JOIN room_members rm ON r.id = rm.room_id
+        WHERE rm.user_id = ? AND r.type = 'bot' AND r.archived_at IS NULL
+        AND r.id IN (SELECT rm2.room_id FROM room_members rm2 WHERE rm2.user_id = ?)
+      `).all(socket.userId, data.botId) as any[];
+
+      for (const r of restoredRooms) {
+        const sysMsg = createMessage({
+          roomId: r.id,
+          userId: data.botId,
+          content: `Bot "${bot.username}" 已恢复服务`,
+          type: 'system',
+        });
+        io.to(r.id).emit('message:new', sysMsg);
+      }
+
+      broadcastBotStatusChange(io, data.botId, 'active', userSockets);
+      if (callback) callback({ bot });
     });
 
     // bot:share - share a bot with another user
@@ -1019,4 +1129,42 @@ export function setupSocketHandlers(io: Server) {
       console.log(`[Socket] Disconnected: ${socket.id}`);
     });
   });
+}
+
+// --- Helper: broadcast bot status change ---
+function broadcastBotStatusChange(io: Server, botId: string, status: string, userSockets: Map<string, Set<string>>) {
+  const db = getDb();
+  // Find all users who have rooms with this bot
+  const users = db.prepare(`
+    SELECT DISTINCT rm.user_id FROM room_members rm
+    WHERE rm.room_id IN (SELECT rm2.room_id FROM room_members rm2 WHERE rm2.user_id = ?)
+    AND rm.user_id != ?
+  `).all(botId, botId) as any[];
+
+  for (const u of users) {
+    const sockets = userSockets.get(u.user_id);
+    if (sockets) {
+      for (const sid of sockets) {
+        io.sockets.sockets.get(sid)?.emit('bot:status-changed', { botId, status });
+      }
+    }
+  }
+}
+
+function broadcastBotDeregistered(io: Server, botId: string, roomIds: string[], userSockets: Map<string, Set<string>>) {
+  const db = getDb();
+  const users = db.prepare(`
+    SELECT DISTINCT rm.user_id FROM room_members rm
+    WHERE rm.room_id IN (SELECT rm2.room_id FROM room_members rm2 WHERE rm2.user_id = ?)
+    AND rm.user_id != ?
+  `).all(botId, botId) as any[];
+
+  for (const u of users) {
+    const sockets = userSockets.get(u.user_id);
+    if (sockets) {
+      for (const sid of sockets) {
+        io.sockets.sockets.get(sid)?.emit('bot:deregistered', { botId, roomIds });
+      }
+    }
+  }
 }

@@ -15,7 +15,7 @@ export function findExistingDm(userA: string, userB: string): Room | null {
     WHERE dp.user_a = ? AND dp.user_b = ?
   `).get(a, b) as any;
   if (!row) return null;
-  return { id: row.id, name: row.name, type: row.type, createdBy: row.created_by || undefined, createdAt: row.created_at };
+  return { id: row.id, name: row.name, type: row.type, createdBy: row.created_by || undefined, createdAt: row.created_at, archivedAt: row.archived_at || null };
 }
 
 export function createRoom(name: string | null, type: 'dm' | 'group' | 'bot', memberIds: string[], createdBy?: string): Room {
@@ -61,6 +61,7 @@ export function getRooms(userId: string): Room[] {
     type: r.type,
     createdBy: r.created_by || undefined,
     createdAt: r.created_at,
+    archivedAt: r.archived_at || null,
   }));
 }
 
@@ -86,7 +87,7 @@ export function getRoom(roomId: string): Room | null {
   const db = getDb();
   const row = db.prepare('SELECT * FROM rooms WHERE id = ?').get(roomId) as any;
   if (!row) return null;
-  return { id: row.id, name: row.name, type: row.type, createdBy: row.created_by || undefined, createdAt: row.created_at };
+  return { id: row.id, name: row.name, type: row.type, createdBy: row.created_by || undefined, createdAt: row.created_at, archivedAt: row.archived_at || null };
 }
 
 export function addMemberToRoom(roomId: string, userId: string): boolean {

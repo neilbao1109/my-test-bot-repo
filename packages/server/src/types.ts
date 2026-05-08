@@ -14,6 +14,7 @@ export interface Room {
   type: 'dm' | 'group' | 'bot';
   createdBy?: string;
   createdAt: string;
+  archivedAt?: string | null;
 }
 
 export interface RoomMember {

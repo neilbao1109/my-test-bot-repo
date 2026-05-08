@@ -219,7 +219,7 @@ class SocketService {
     });
   }
 
-  registerBot(config: { username: string; avatarUrl?: string; gatewayUrl?: string; authToken: string; agentId?: string; sshHost?: string; trigger?: string; identityKey?: string }): Promise<{ bot?: any; error?: string }> {
+  registerBot(config: { username: string; avatarUrl?: string; gatewayUrl?: string; authToken: string; agentId?: string; sshHost?: string; trigger?: string; identityKey?: string }): Promise<{ bot?: any; error?: string; deregisteredBot?: any }> {
     return new Promise((resolve) => {
       this.socket?.emit('bot:register', config, resolve);
     });
@@ -234,6 +234,36 @@ class SocketService {
   deleteBot(botId: string): Promise<{ success: boolean }> {
     return new Promise((resolve) => {
       this.socket?.emit('bot:delete', { botId }, resolve);
+    });
+  }
+
+  pauseBot(botId: string): Promise<{ success: boolean }> {
+    return new Promise((resolve) => {
+      this.socket?.emit('bot:pause', { botId }, resolve);
+    });
+  }
+
+  resumeBot(botId: string): Promise<{ success: boolean }> {
+    return new Promise((resolve) => {
+      this.socket?.emit('bot:resume', { botId }, resolve);
+    });
+  }
+
+  deregisterBot(botId: string): Promise<{ success: boolean; affected?: { shares: number; rooms: number } }> {
+    return new Promise((resolve) => {
+      this.socket?.emit('bot:deregister', { botId }, resolve);
+    });
+  }
+
+  restoreBot(botId: string, authToken?: string): Promise<{ bot?: any; error?: string }> {
+    return new Promise((resolve) => {
+      this.socket?.emit('bot:restore', { botId, authToken }, resolve);
+    });
+  }
+
+  checkDeregisteredBot(gatewayUrl?: string): Promise<{ found: boolean; bot?: any }> {
+    return new Promise((resolve) => {
+      this.socket?.emit('bot:check-deregistered', { gatewayUrl }, resolve);
     });
   }
 

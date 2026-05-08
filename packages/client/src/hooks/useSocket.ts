@@ -199,6 +199,21 @@ export function useSocket() {
       store.removeFriendFromList(data.userId);
     });
 
+    // Bot lifecycle events
+    socket.on('bot:status-changed', (data: { botId: string; status: string }) => {
+      // Refresh rooms to get updated archived_at states
+      socketService.refreshRooms().then((result) => {
+        if (result?.rooms) store.setRooms(result.rooms);
+      });
+    });
+
+    socket.on('bot:deregistered', (data: { botId: string; roomIds: string[] }) => {
+      // Refresh rooms to get archived states
+      socketService.refreshRooms().then((result) => {
+        if (result?.rooms) store.setRooms(result.rooms);
+      });
+    });
+
     // Re-auth and rejoin room on reconnect
     const handleReconnect = () => {
       const token = getToken();
@@ -241,6 +256,8 @@ export function useSocket() {
       socket.off('friend:new');
       socket.off('friend:accepted');
       socket.off('friend:removed');
+      socket.off('bot:status-changed');
+      socket.off('bot:deregistered');
       socket.io.off('reconnect', handleReconnect);
     };
   }, [user]);

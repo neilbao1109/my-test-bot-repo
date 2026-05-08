@@ -39,6 +39,10 @@ export default function BotRegistration() {
   const [myBots, setMyBots] = useState<any[]>([]);
   const [shareBot, setShareBot] = useState<{ id: string; name: string } | null>(null);
 
+  // Restore flow
+  const [deregisteredBot, setDeregisteredBot] = useState<any>(null);
+  const [restoring, setRestoring] = useState(false);
+
   // Polling ref
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -149,6 +153,12 @@ export default function BotRegistration() {
         trigger,
         identityKey: connectMode === 'pair' ? pairId : undefined,
       });
+      if (result.deregisteredBot) {
+        // Found a deregistered bot with same gateway
+        setDeregisteredBot({ ...result.deregisteredBot, authToken: finalAuthToken });
+        setRegistering(false);
+        return;
+      }
       if (result.error) {
         setError(result.error);
       } else {
@@ -159,6 +169,31 @@ export default function BotRegistration() {
     } finally {
       setRegistering(false);
     }
+  };
+
+  const handleRestore = async () => {
+    if (!deregisteredBot) return;
+    setRestoring(true);
+    try {
+      const result = await socketService.restoreBot(deregisteredBot.id, deregisteredBot.authToken);
+      if (result.error) {
+        setError(result.error);
+      } else {
+        handleClose();
+      }
+    } catch {
+      setError('Restore failed');
+    } finally {
+      setRestoring(false);
+    }
+  };
+
+  const handleSkipRestore = () => {
+    setDeregisteredBot(null);
+    // Force register by re-emitting without deregistered check
+    // The server only returns deregisteredBot on first call; next call would register new
+    // Actually we need a way to force-create. For now, just close the modal and let user try again.
+    // TODO: Add force-create flag to server
   };
 
   const handleCancelPair = () => {
@@ -336,6 +371,28 @@ export default function BotRegistration() {
         </>)}
       </div>
       {shareBot && <BotShareModal botId={shareBot.id} botName={shareBot.name} onClose={() => setShareBot(null)} />}
+      {/* Restore deregistered bot dialog */}
+      {deregisteredBot && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60">
+          <div className="bg-dark-surface border border-dark-border rounded-xl shadow-2xl w-full max-w-sm mx-4 p-5">
+            <h3 className="text-sm font-semibold text-dark-text mb-2">检测到已注销的 Bot</h3>
+            <p className="text-xs text-dark-muted mb-1">
+              你之前注册过 Bot "{deregisteredBot.username}"（已注销），是否恢复？
+            </p>
+            <p className="text-xs text-dark-muted mb-4">
+              恢复将复用旧记录并恢复你的对话历史。
+            </p>
+            {error && <p className="text-xs text-red-400 mb-2">{error}</p>}
+            <div className="flex justify-end gap-2">
+              <button onClick={handleSkipRestore} className="px-3 py-1.5 text-sm text-dark-muted hover:text-dark-text rounded-lg hover:bg-dark-hover transition">新建</button>
+              <button onClick={handleRestore} disabled={restoring}
+                className="px-3 py-1.5 text-sm font-medium text-white bg-primary-600 rounded-lg hover:bg-primary-500 disabled:opacity-50 transition">
+                {restoring ? '恢复中...' : '恢复'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

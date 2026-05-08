@@ -40,8 +40,10 @@ export default function CommandBar({ roomId, threadId, onExport }: CommandBarPro
   const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
   const speechSupported = !!SpeechRecognition;
 
-  const { roomMembers, activeRoomId, replyContext, clearReplyContext, removeReplyContext, setContextSelectionMode, mobileView } = useAppStore();
+  const { rooms, roomMembers, activeRoomId, replyContext, clearReplyContext, removeReplyContext, setContextSelectionMode, mobileView } = useAppStore();
   const members = activeRoomId ? roomMembers[activeRoomId] || [] : [];
+  const currentRoom = rooms.find(r => r.id === roomId);
+  const isArchived = !!currentRoom?.archivedAt;
   const botMembers = members.filter(m => m.isBot);
   const filteredBots = mentionQuery
     ? botMembers.filter(b => b.username.toLowerCase().includes(mentionQuery.toLowerCase()))
@@ -422,11 +424,12 @@ export default function CommandBar({ roomId, threadId, onExport }: CommandBarPro
               }, 400);
             }}
             onPaste={handlePaste}
-            placeholder=""
+            placeholder={isArchived ? 'Bot 已停用，无法发送消息' : ''}
             rows={1}
+            disabled={isArchived}
             className={`command-bar-input w-full bg-dark-bg border border-dark-border rounded-xl px-4 py-2.5 text-base md:text-sm leading-5 text-dark-text placeholder-dark-muted resize-none focus:outline-none focus:ring-1 focus:ring-primary-500 focus:border-primary-500 transition ${
               speechSupported ? 'pr-10' : ''
-            }`}
+            } ${isArchived ? 'opacity-50 cursor-not-allowed' : ''}`}
           />
           {/* Voice input button inside textarea */}
           {speechSupported && (

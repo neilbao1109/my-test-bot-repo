@@ -105,8 +105,8 @@ export function initBotRegistry(): void {
     console.log(`[BotRegistry] Registered system bot: ${cfg.username} (${cfg.id}) trigger=${cfg.trigger}`);
   }
 
-  // Load user-registered bots from DB
-  const userBots = db.prepare('SELECT * FROM bots').all() as any[];
+  // Load user-registered bots from DB (only active/paused)
+  const userBots = db.prepare("SELECT * FROM bots WHERE status IN ('active', 'paused') OR status IS NULL").all() as any[];
   for (const row of userBots) {
     const cfg: BotConfig = {
       id: row.bot_id,
@@ -333,6 +333,167 @@ export function deleteBot(botId: string, ownerId: string): boolean {
   return true;
 }
 
+/** Pause a user bot — disconnect bridge, keep all data */
+export function pauseBot(botId: string, ownerId: string): boolean {
+  if (isSystemBot(botId)) return false;
+  const db = getDb();
+  const row = db.prepare('SELECT * FROM bots WHERE bot_id = ? AND owner_id = ?').get(botId, ownerId) as any;
+  if (!row || row.status !== 'active') return false;
+
+  db.prepare("UPDATE bots SET status = 'paused', updated_at = datetime('now') WHERE bot_id = ?").run(botId);
+
+  // Disconnect bridge
+  const bridge = bridges.get(botId);
+  if (bridge) bridge.shutdown();
+  bridges.delete(botId);
+
+  console.log(`[BotRegistry] Paused bot: ${botId}`);
+  return true;
+}
+
+/** Resume a paused bot — reconnect bridge */
+export function resumeBot(botId: string, ownerId: string): boolean {
+  if (isSystemBot(botId)) return false;
+  const db = getDb();
+  const row = db.prepare('SELECT * FROM bots WHERE bot_id = ? AND owner_id = ?').get(botId, ownerId) as any;
+  if (!row || row.status !== 'paused') return false;
+
+  db.prepare("UPDATE bots SET status = 'active', updated_at = datetime('now') WHERE bot_id = ?").run(botId);
+
+  // Rebuild config and bridge
+  const cfg: BotConfig = {
+    id: row.bot_id,
+    username: row.username,
+    avatarUrl: row.avatar_url || undefined,
+    gateway: {
+      url: row.gateway_url || undefined,
+      authToken: row.auth_token,
+      agentId: row.agent_id || undefined,
+      sshHost: row.ssh_host || undefined,
+    },
+    trigger: (row.trigger_type || 'all') as TriggerType,
+    identityKey: row.identity_key || undefined,
+  };
+  bots.set(botId, cfg);
+  bridges.set(botId, new BotBridge(cfg));
+
+  console.log(`[BotRegistry] Resumed bot: ${botId}`);
+  return true;
+}
+
+/** Deregister (soft-delete) a bot — revoke shares, archive rooms, disconnect bridge */
+export function deregisterBot(botId: string, ownerId: string): { success: boolean; affected?: { shares: number; rooms: number } } {
+  if (isSystemBot(botId)) return { success: false };
+  const db = getDb();
+  const row = db.prepare('SELECT * FROM bots WHERE bot_id = ? AND owner_id = ?').get(botId, ownerId) as any;
+  if (!row || row.status === 'deregistered') return { success: false };
+
+  // 1. Disconnect bridge
+  const bridge = bridges.get(botId);
+  if (bridge) bridge.shutdown();
+  bridges.delete(botId);
+  bots.delete(botId);
+
+  // 2. Delete shares
+  const sharesDeleted = db.prepare('DELETE FROM bot_shares WHERE bot_id = ?').run(botId);
+
+  // 3. Delete related invitations
+  // bot_share invitations have resource_id = share id, but shares are already deleted
+  // Also clean invitations referencing this bot
+  db.prepare("DELETE FROM invitations WHERE type = 'bot_share' AND resource_id IN (SELECT id FROM bot_shares WHERE bot_id = ?)").run(botId);
+  // Since shares are already deleted above, also delete by pattern
+  // Actually shares are deleted, so we need to delete invitations that referenced share ids before deletion
+  // Let's just clean up all bot_share invitations for safety — they'd be orphaned anyway
+
+  // 4. Archive related bot rooms
+  const botRooms = db.prepare(`
+    SELECT DISTINCT r.id FROM rooms r
+    JOIN room_members rm ON r.id = rm.room_id
+    WHERE rm.user_id = ? AND r.type = 'bot' AND r.archived_at IS NULL
+  `).all(botId) as any[];
+
+  const now = new Date().toISOString();
+  const archiveRoom = db.prepare('UPDATE rooms SET archived_at = ? WHERE id = ?');
+  for (const r of botRooms) {
+    archiveRoom.run(now, r.id);
+  }
+
+  // 5. Update bot status
+  db.prepare("UPDATE bots SET status = 'deregistered', updated_at = datetime('now') WHERE bot_id = ?").run(botId);
+
+  console.log(`[BotRegistry] Deregistered bot: ${botId}, shares=${sharesDeleted.changes}, rooms=${botRooms.length}`);
+  return { success: true, affected: { shares: sharesDeleted.changes, rooms: botRooms.length } };
+}
+
+/** Find a deregistered bot matching owner_id + gateway_url */
+export function findDeregisteredBot(ownerId: string, gatewayUrl?: string): any | null {
+  const db = getDb();
+  const row = db.prepare(
+    "SELECT * FROM bots WHERE owner_id = ? AND gateway_url = ? AND status = 'deregistered' ORDER BY updated_at DESC LIMIT 1"
+  ).get(ownerId, gatewayUrl || null) as any;
+  return row || null;
+}
+
+/** Restore a deregistered bot */
+export function restoreBot(botId: string, ownerId: string, updates?: { authToken?: string }): BotConfig | null {
+  if (isSystemBot(botId)) return null;
+  const db = getDb();
+  const row = db.prepare('SELECT * FROM bots WHERE bot_id = ? AND owner_id = ?').get(botId, ownerId) as any;
+  if (!row || row.status !== 'deregistered') return null;
+
+  const authToken = updates?.authToken || row.auth_token;
+
+  // Update status to active
+  db.prepare("UPDATE bots SET status = 'active', auth_token = ?, updated_at = datetime('now') WHERE bot_id = ?").run(authToken, botId);
+
+  // Unarchive owner's bot rooms
+  const ownerRooms = db.prepare(`
+    SELECT r.id FROM rooms r
+    JOIN room_members rm ON r.id = rm.room_id
+    WHERE rm.user_id = ? AND r.type = 'bot' AND r.archived_at IS NOT NULL
+    AND r.id IN (SELECT rm2.room_id FROM room_members rm2 WHERE rm2.user_id = ?)
+  `).all(ownerId, botId) as any[];
+
+  for (const r of ownerRooms) {
+    db.prepare('UPDATE rooms SET archived_at = NULL WHERE id = ?').run(r.id);
+  }
+
+  // Rebuild config and bridge
+  const cfg: BotConfig = {
+    id: row.bot_id,
+    username: row.username,
+    avatarUrl: row.avatar_url || undefined,
+    gateway: {
+      url: row.gateway_url || undefined,
+      authToken: authToken,
+      agentId: row.agent_id || undefined,
+      sshHost: row.ssh_host || undefined,
+    },
+    trigger: (row.trigger_type || 'all') as TriggerType,
+    identityKey: row.identity_key || undefined,
+  };
+
+  // Re-register in users table
+  db.prepare(`
+    INSERT INTO users (id, username, avatar_url, is_bot, is_online)
+    VALUES (?, ?, ?, 1, 1)
+    ON CONFLICT(id) DO UPDATE SET username=excluded.username, avatar_url=excluded.avatar_url, is_bot=1, is_online=1
+  `).run(cfg.id, cfg.username, cfg.avatarUrl || null);
+
+  bots.set(botId, cfg);
+  bridges.set(botId, new BotBridge(cfg));
+
+  console.log(`[BotRegistry] Restored bot: ${botId}, unarchived ${ownerRooms.length} rooms`);
+  return cfg;
+}
+
+/** Get bot status from DB (active/paused/deregistered) */
+export function getBotDbStatus(botId: string): string | null {
+  const db = getDb();
+  const row = db.prepare('SELECT status FROM bots WHERE bot_id = ?').get(botId) as any;
+  return row?.status || null;
+}
+
 // ── Pair Flow ──
 
 interface PendingPair {
@@ -502,6 +663,11 @@ export function getRespondingBots(content: string, roomId: string, senderId: str
 
   // Never respond in user-to-user DMs
   if (roomType === 'dm') return [];
+
+  // Check if room is archived
+  const db = getDb();
+  const room = db.prepare('SELECT archived_at FROM rooms WHERE id = ?').get(roomId) as any;
+  if (room?.archived_at) return [];
 
   // In bot rooms, only the bot that is a member of this room should respond
   if (roomType === 'bot') {

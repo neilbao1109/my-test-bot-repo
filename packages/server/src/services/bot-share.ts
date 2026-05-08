@@ -32,7 +32,7 @@ export function shareBot(botId: string, sharedBy: string, sharedTo: string): { s
   return { share };
 }
 
-export function acceptBotShare(shareId: string, userId: string): { success: boolean; error?: string } {
+export function acceptBotShare(shareId: string, userId: string): { success: boolean; error?: string; unarchivedRoomId?: string } {
   const db = getDb();
   const row = db.prepare('SELECT * FROM bot_shares WHERE id = ?').get(shareId) as any;
   if (!row) return { success: false, error: 'Share not found' };
@@ -40,6 +40,21 @@ export function acceptBotShare(shareId: string, userId: string): { success: bool
   if (row.status !== 'pending') return { success: false, error: 'Share already ' + row.status };
 
   db.prepare('UPDATE bot_shares SET status = ? WHERE id = ?').run('accepted', shareId);
+
+  // Check for archived bot room between this user and the bot — unarchive if found
+  const archivedRoom = db.prepare(`
+    SELECT r.id FROM rooms r
+    JOIN room_members rm1 ON r.id = rm1.room_id AND rm1.user_id = ?
+    JOIN room_members rm2 ON r.id = rm2.room_id AND rm2.user_id = ?
+    WHERE r.type = 'bot' AND r.archived_at IS NOT NULL
+    LIMIT 1
+  `).get(userId, row.bot_id) as any;
+
+  if (archivedRoom) {
+    db.prepare('UPDATE rooms SET archived_at = NULL WHERE id = ?').run(archivedRoom.id);
+    return { success: true, unarchivedRoomId: archivedRoom.id };
+  }
+
   return { success: true };
 }
 

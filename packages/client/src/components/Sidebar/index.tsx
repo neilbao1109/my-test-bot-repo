@@ -136,9 +136,12 @@ export default function Sidebar() {
     return true;
   });
 
-  // Sort rooms by last message time (most recent first)
+  // Sort rooms by last message time (most recent first), archived at bottom
   const sortedRooms = useMemo(() => {
     return [...filteredRooms].sort((a, b) => {
+      // Archived rooms go to bottom
+      if (a.archivedAt && !b.archivedAt) return 1;
+      if (!a.archivedAt && b.archivedAt) return -1;
       const timeA = a.lastMessage?.createdAt || a.createdAt;
       const timeB = b.lastMessage?.createdAt || b.createdAt;
       return new Date(timeB).getTime() - new Date(timeA).getTime();
@@ -233,12 +236,14 @@ export default function Sidebar() {
           const memberCount = (roomMembers[room.id] || []).length;
           const online = isRoomOnline(room.id);
           const lm = room.lastMessage;
+          const isArchived = !!room.archivedAt;
           return (
             <button
               key={room.id}
               onClick={() => handleRoomSelect(room.id)}
               className={clsx(
                 'w-full text-left px-3 py-2.5 mx-1 rounded-lg flex items-start gap-2.5 transition',
+                isArchived && 'opacity-50',
                 activeRoomId === room.id
                   ? 'bg-primary-600/20 text-primary-400'
                   : 'text-dark-text hover:bg-dark-hover'

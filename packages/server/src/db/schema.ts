@@ -364,4 +364,21 @@ function initSchema(db: Database.Database) {
     })();
     console.log('[Migration] v7: bots identity_key');
   }
+
+  if (version < 8) {
+    // Add status column to bots and archived_at column to rooms
+    // Must disable FK outside transaction for table rebuild
+    const botsCols = db.prepare("PRAGMA table_info(bots)").all() as any[];
+    if (!botsCols.some((c: any) => c.name === 'status')) {
+      db.exec("ALTER TABLE bots ADD COLUMN status TEXT NOT NULL DEFAULT 'active'");
+      console.log('[Migration] v8: added status column to bots');
+    }
+    const roomsCols = db.prepare("PRAGMA table_info(rooms)").all() as any[];
+    if (!roomsCols.some((c: any) => c.name === 'archived_at')) {
+      db.exec('ALTER TABLE rooms ADD COLUMN archived_at TEXT DEFAULT NULL');
+      console.log('[Migration] v8: added archived_at column to rooms');
+    }
+    db.exec('PRAGMA user_version = 8');
+    console.log('[Migration] v8: bot status + room archived_at');
+  }
 }

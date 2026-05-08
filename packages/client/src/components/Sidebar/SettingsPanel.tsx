@@ -193,13 +193,37 @@ function BotsSubPage({ onBack }: { onBack: () => void }) {
   const [bots, setBots] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [shareBot, setShareBot] = useState<any>(null);
+  const [deregisterTarget, setDeregisterTarget] = useState<any>(null);
+  const [deregistering, setDeregistering] = useState(false);
 
-  useEffect(() => {
+  const loadBots = () => {
     socketService.listAvailableBots().then((res) => {
       setBots(res.bots || []);
       setLoading(false);
     }).catch(() => setLoading(false));
+  };
+
+  useEffect(() => {
+    loadBots();
   }, []);
+
+  const handleTogglePause = async (bot: any) => {
+    if (bot.status === 'paused') {
+      await socketService.resumeBot(bot.id);
+    } else {
+      await socketService.pauseBot(bot.id);
+    }
+    loadBots();
+  };
+
+  const handleDeregister = async () => {
+    if (!deregisterTarget) return;
+    setDeregistering(true);
+    await socketService.deregisterBot(deregisterTarget.id);
+    setDeregisterTarget(null);
+    setDeregistering(false);
+    loadBots();
+  };
 
   return (
     <div className="flex flex-col h-full">
@@ -232,21 +256,46 @@ function BotsSubPage({ onBack }: { onBack: () => void }) {
             {bots.map((bot: any) => (
               <div
                 key={bot.id || bot.name}
-                className="flex items-center justify-between px-3 py-2.5 rounded-lg hover:bg-dark-hover transition"
+                className={`flex items-center justify-between px-3 py-2.5 rounded-lg hover:bg-dark-hover transition ${
+                  bot.status === 'paused' ? 'opacity-60' : ''
+                }`}
               >
                 <div className="min-w-0 flex-1">
                   <span className="text-sm text-dark-text font-medium truncate block">{bot.username || bot.name}</span>
-                  {(bot.trigger || bot.triggerType) && (
-                    <span className="text-[10px] text-dark-muted">{bot.trigger || bot.triggerType}</span>
-                  )}
+                  <span className="text-[10px] text-dark-muted">
+                    {bot.status === 'paused' ? '❘❘ 已暂停' : (bot.trigger || bot.triggerType || '')}
+                  </span>
                 </div>
-                <button
-                  onClick={() => setShareBot(bot)}
-                  className="text-dark-muted hover:text-dark-text text-sm p-1 rounded transition"
-                  title="Share"
-                >
-                  🔗
-                </button>
+                <div className="flex items-center gap-1">
+                  {/* Pause/Resume toggle */}
+                  <button
+                    onClick={() => handleTogglePause(bot)}
+                    className={`text-xs px-2 py-1 rounded transition ${
+                      bot.status === 'paused'
+                        ? 'text-green-400 hover:bg-green-400/10'
+                        : 'text-yellow-400 hover:bg-yellow-400/10'
+                    }`}
+                    title={bot.status === 'paused' ? '恢复' : '暂停'}
+                  >
+                    {bot.status === 'paused' ? '▶' : '❘❘'}
+                  </button>
+                  {/* Share */}
+                  <button
+                    onClick={() => setShareBot(bot)}
+                    className="text-dark-muted hover:text-dark-text text-sm p-1 rounded transition"
+                    title="Share"
+                  >
+                    🔗
+                  </button>
+                  {/* Deregister */}
+                  <button
+                    onClick={() => setDeregisterTarget(bot)}
+                    className="text-red-400/60 hover:text-red-400 text-xs p-1 rounded transition"
+                    title="注销"
+                  >
+                    ✕
+                  </button>
+                </div>
               </div>
             ))}
           </div>
@@ -254,6 +303,24 @@ function BotsSubPage({ onBack }: { onBack: () => void }) {
       </div>
       {shareBot && (
         <BotShareModal botId={shareBot.id} botName={shareBot.username || shareBot.name} onClose={() => setShareBot(null)} />
+      )}
+      {/* Deregister confirmation modal */}
+      {deregisterTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
+          <div className="bg-dark-surface border border-dark-border rounded-xl shadow-2xl w-full max-w-sm mx-4 p-5">
+            <h3 className="text-sm font-semibold text-dark-text mb-2">确认注销 Bot "{deregisterTarget.username || deregisterTarget.name}"？</h3>
+            <p className="text-xs text-dark-muted mb-4">
+              注销后所有分享将被撤销，相关对话将被归档。此操作不可撤销（但可通过重新注册恢复）。
+            </p>
+            <div className="flex justify-end gap-2">
+              <button onClick={() => setDeregisterTarget(null)} className="px-3 py-1.5 text-sm text-dark-muted hover:text-dark-text rounded-lg hover:bg-dark-hover transition">取消</button>
+              <button onClick={handleDeregister} disabled={deregistering}
+                className="px-3 py-1.5 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-500 disabled:opacity-50 transition">
+                {deregistering ? '注销中...' : '确认注销'}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
