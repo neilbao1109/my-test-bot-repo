@@ -253,7 +253,7 @@ function BotsSubPage({ onBack }: { onBack: () => void }) {
         )}
       </div>
       {shareBot && (
-        <BotShareModal botId={shareBot.id} botName={shareBot.name} onClose={() => setShareBot(null)} />
+        <BotShareModal botId={shareBot.id} botName={shareBot.username || shareBot.name} onClose={() => setShareBot(null)} />
       )}
     </div>
   );
