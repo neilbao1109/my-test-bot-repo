@@ -416,14 +416,16 @@ export function setupSocketHandlers(io: Server) {
     });
 
     // bot:register - register a new bot (with deregistered bot detection)
-    socket.on('bot:register', (data: { botId: string; username: string; avatarUrl?: string; gatewayUrl?: string; authToken: string; agentId?: string; sshHost?: string; trigger?: TriggerType; identityKey?: string }, callback) => {
+    socket.on('bot:register', (data: { botId: string; username: string; avatarUrl?: string; gatewayUrl?: string; authToken: string; agentId?: string; sshHost?: string; trigger?: TriggerType; identityKey?: string; skipDeregisteredCheck?: boolean }, callback) => {
       if (!socket.userId) return;
       try {
-        // Check for deregistered bot with same gateway
-        const oldBot = findDeregisteredBot(socket.userId, data.gatewayUrl);
-        if (oldBot) {
-          callback({ bot: null, deregisteredBot: { id: oldBot.bot_id, username: oldBot.username, gatewayUrl: oldBot.gateway_url, deregisteredAt: oldBot.updated_at } });
-          return;
+        // Check for deregistered bot with same gateway (skip if explicitly requested)
+        if (!data.skipDeregisteredCheck) {
+          const oldBot = findDeregisteredBot(socket.userId, data.gatewayUrl);
+          if (oldBot) {
+            callback({ bot: null, deregisteredBot: { id: oldBot.bot_id, username: oldBot.username, gatewayUrl: oldBot.gateway_url, deregisteredAt: oldBot.updated_at } });
+            return;
+          }
         }
         const bot = registerBot(data, socket.userId);
         callback({ bot });

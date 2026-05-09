@@ -79,6 +79,7 @@ export default function BotRegistration() {
         authToken: finalAuthToken,
         sshHost: connectMode === 'token' ? (sshHost.trim() || undefined) : undefined,
         trigger,
+        skipDeregisteredCheck: true,
       });
       if (result.deregisteredBot) {
         setDeregisteredBot({ ...result.deregisteredBot, authToken: finalAuthToken });
