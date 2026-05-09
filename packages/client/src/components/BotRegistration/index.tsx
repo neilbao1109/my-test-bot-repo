@@ -79,7 +79,7 @@ export default function BotRegistration() {
         authToken: finalAuthToken,
         sshHost: connectMode === 'token' ? (sshHost.trim() || undefined) : undefined,
         trigger,
-        skipDeregisteredCheck: true,
+
       });
       if (result.deregisteredBot) {
         setDeregisteredBot({ ...result.deregisteredBot, authToken: finalAuthToken });
@@ -212,10 +212,30 @@ export default function BotRegistration() {
 
   const handleSkipRestore = () => {
     setDeregisteredBot(null);
-    // Force register by re-emitting without deregistered check
-    // The server only returns deregisteredBot on first call; next call would register new
-    // Actually we need a way to force-create. For now, just close the modal and let user try again.
-    // TODO: Add force-create flag to server
+    // Re-register with skip flag to force create new bot
+    const finalAuthToken = connectMode === 'pair' ? pairDeviceToken : authToken.trim();
+    const finalGatewayUrl = connectMode === 'pair' ? pairGatewayUrl : gatewayUrl.trim();
+    setRegistering(true);
+    socketService.registerBot({
+      botId: botId.trim(),
+      username: username.trim(),
+      avatarUrl: avatarUrl.trim() || undefined,
+      gatewayUrl: finalGatewayUrl || undefined,
+      authToken: finalAuthToken,
+      sshHost: connectMode === 'token' ? (sshHost.trim() || undefined) : undefined,
+      trigger,
+      skipDeregisteredCheck: true,
+    }).then(result => {
+      if (result.error) {
+        setError(result.error);
+        setStep('info');
+      } else {
+        handleClose();
+      }
+    }).catch(() => {
+      setError('Registration failed');
+      setStep('info');
+    }).finally(() => setRegistering(false));
   };
 
   const handleCancelPair = () => {
