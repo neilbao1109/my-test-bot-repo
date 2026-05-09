@@ -605,7 +605,7 @@ export async function pairStatus(pairId: string): Promise<{
       pendingPairs.delete(pairId);
       return result;
     }
-    return { ok: true, status: 'approved', gatewayUrl: pair.url };
+    return { ok: true, status: 'pending' };
   } catch {
     return { ok: true, status: 'pending' };
   }
