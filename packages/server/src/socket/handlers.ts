@@ -4,7 +4,7 @@ import { createRoom, getRooms, getRoomMembers, addMemberToRoom, removeMemberFrom
 import { getDb } from '../db/schema.js';
 import { createThread, getThread, getThreadByMessage } from '../services/thread.js';
 import { parseCommand, executeCommand } from '../services/command.js';
-import { initBotRegistry, getRespondingBots, isBotUser, getAllBots, getBot, getAvailableBots, streamBotResponse as registryStreamBotResponse, registerBot, updateBot, deleteBot, testBotConnection, pairConnect, pairStatus, pauseBot, resumeBot, deregisterBot, findDeregisteredBot, restoreBot, getBotDbStatus } from '../services/bot-registry.js';
+import { initBotRegistry, getRespondingBots, isBotUser, getAllBots, getBot, getAvailableBots, streamBotResponse as registryStreamBotResponse, registerBot, updateBot, deleteBot, testBotConnection, pairConnect, pairStatus, pauseBot, resumeBot, deregisterBot, findDeregisteredBot, restoreBot, getBotDbStatus, type TriggerType } from '../services/bot-registry.js';
 import { shareBot, acceptBotShare, revokeBotShare, getBotShares, getPublicBots, addPublicBotToUser } from '../services/bot-share.js';
 import { pinMessage, unpinMessage, getPinnedMessages } from '../services/pin.js';
 import { createInvitation, acceptInvitation, rejectInvitation, getPendingInvitations, getInvitationCount } from '../services/invitation.js';
@@ -402,9 +402,9 @@ export function setupSocketHandlers(io: Server) {
     });
 
     // bot:pair-connect — initiate pair with setup code
-    socket.on('bot:pair-connect', async (data: { setupCode: string; gatewayUrlOverride?: string }, callback: Function) => {
+    socket.on('bot:pair-connect', async (data: { setupCode: string; gatewayUrlOverride?: string; clientId?: string }, callback: Function) => {
       if (!socket.userId) return;
-      const result = await pairConnect(data.setupCode, data.gatewayUrlOverride);
+      const result = await pairConnect(data.setupCode, data.gatewayUrlOverride, data.clientId);
       callback(result);
     });
 
@@ -416,7 +416,7 @@ export function setupSocketHandlers(io: Server) {
     });
 
     // bot:register - register a new bot (with deregistered bot detection)
-    socket.on('bot:register', (data, callback) => {
+    socket.on('bot:register', (data: { botId: string; username: string; avatarUrl?: string; gatewayUrl?: string; authToken: string; agentId?: string; sshHost?: string; trigger?: TriggerType; identityKey?: string }, callback) => {
       if (!socket.userId) return;
       try {
         // Check for deregistered bot with same gateway

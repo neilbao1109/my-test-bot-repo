@@ -208,6 +208,7 @@ export function getUserBots(userId: string): BotConfig[] {
 
 /** Register a new user-created bot */
 export function registerBot(config: {
+  botId: string;
   username: string;
   avatarUrl?: string;
   gatewayUrl?: string;
@@ -218,7 +219,15 @@ export function registerBot(config: {
   identityKey?: string;
 }, ownerId: string): BotConfig {
   const db = getDb();
-  const id = `bot-${uuidv4()}`;
+  const id = `bot-${config.botId}`;
+
+  // Check uniqueness (including deregistered bots)
+  const existing = db.prepare('SELECT 1 FROM bots WHERE bot_id = ?').get(id) as any;
+  if (existing) {
+    throw new Error('Bot ID already taken');
+  }
+
+  const identityKey = `clawchat-bot-${config.botId}`;
 
   const botConfig: BotConfig = {
     id,
@@ -231,7 +240,7 @@ export function registerBot(config: {
       sshHost: config.sshHost || undefined,
     },
     trigger: config.trigger || 'all',
-    identityKey: config.identityKey || undefined,
+    identityKey,
   };
 
   // Insert into users table
@@ -245,7 +254,7 @@ export function registerBot(config: {
   db.prepare(`
     INSERT INTO bots (bot_id, owner_id, username, avatar_url, gateway_url, auth_token, agent_id, ssh_host, trigger_type, identity_key)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `).run(id, ownerId, config.username, config.avatarUrl || null, config.gatewayUrl || null, config.authToken, config.agentId || null, config.sshHost || null, config.trigger || 'all', config.identityKey || null);
+  `).run(id, ownerId, config.username, config.avatarUrl || null, config.gatewayUrl || null, config.authToken, config.agentId || null, config.sshHost || null, config.trigger || 'all', identityKey);
 
   // Add to in-memory maps
   bots.set(id, botConfig);
@@ -516,7 +525,7 @@ setInterval(() => {
   }
 }, 60000);
 
-export async function pairConnect(setupCode: string, gatewayUrlOverride?: string): Promise<{
+export async function pairConnect(setupCode: string, gatewayUrlOverride?: string, clientId?: string): Promise<{
   ok: boolean;
   pairId?: string;
   deviceId?: string;
@@ -548,7 +557,7 @@ export async function pairConnect(setupCode: string, gatewayUrlOverride?: string
   // Allow overriding the Gateway URL from the setup code
   const effectiveUrl = gatewayUrlOverride || decoded.url;
 
-  const pairId = `pair-${uuidv4()}`;
+  const pairId = clientId || `pair-${uuidv4()}`;
   const client = new OpenClawClient({
     url: effectiveUrl,
     authToken: '',

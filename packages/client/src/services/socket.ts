@@ -207,9 +207,9 @@ class SocketService {
     });
   }
 
-  pairConnect(setupCode: string, gatewayUrlOverride?: string): Promise<{ ok: boolean; pairId?: string; deviceId?: string; gatewayUrl?: string; error?: string }> {
+  pairConnect(setupCode: string, gatewayUrlOverride?: string, clientId?: string): Promise<{ ok: boolean; pairId?: string; deviceId?: string; gatewayUrl?: string; error?: string }> {
     return new Promise((resolve) => {
-      this.socket?.emit('bot:pair-connect', { setupCode, gatewayUrlOverride }, resolve);
+      this.socket?.emit('bot:pair-connect', { setupCode, gatewayUrlOverride, clientId }, resolve);
     });
   }
 
@@ -219,7 +219,7 @@ class SocketService {
     });
   }
 
-  registerBot(config: { username: string; avatarUrl?: string; gatewayUrl?: string; authToken: string; agentId?: string; sshHost?: string; trigger?: string; identityKey?: string }): Promise<{ bot?: any; error?: string; deregisteredBot?: any }> {
+  registerBot(config: { botId: string; username: string; avatarUrl?: string; gatewayUrl?: string; authToken: string; agentId?: string; sshHost?: string; trigger?: string; identityKey?: string }): Promise<{ bot?: any; error?: string; deregisteredBot?: any }> {
     return new Promise((resolve) => {
       this.socket?.emit('bot:register', config, resolve);
     });

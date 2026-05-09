@@ -6,9 +6,13 @@ import './BotRegistration.css';
 export default function BotRegistration() {
   const { showBotRegistration, setShowBotRegistration } = useAppStore();
 
-  // Step flow
-  const [step, setStep] = useState<'connect' | 'pending' | 'info'>('connect');
+  // Step flow: info → connect → pending → (auto-register)
+  const [step, setStep] = useState<'info' | 'connect' | 'pending'>('info');
   const [connectMode, setConnectMode] = useState<'pair' | 'token'>('pair');
+
+  // Bot info state (Step 1)
+  const [botId, setBotId] = useState('');
+  const [botIdError, setBotIdError] = useState('');
 
   // Pair mode state
   const [setupCode, setSetupCode] = useState('');
@@ -44,7 +48,7 @@ export default function BotRegistration() {
   useEffect(() => {
   }, [showBotRegistration]);
 
-  // Poll pair status
+  // Poll pair status — auto-register when approved
   useEffect(() => {
     if (step === 'pending' && pairId) {
       pollRef.current = setInterval(async () => {
@@ -53,17 +57,54 @@ export default function BotRegistration() {
           if (pollRef.current) clearInterval(pollRef.current);
           setPairDeviceToken(result.deviceToken || '');
           if (result.gatewayUrl) setPairGatewayUrl(result.gatewayUrl);
-          setStep('info');
+          // Auto-register with the approved token
+          await doRegister(result.deviceToken || '', result.gatewayUrl);
         }
       }, 5000);
       return () => { if (pollRef.current) clearInterval(pollRef.current); };
     }
   }, [step, pairId]);
 
+  const doRegister = async (tokenOverride?: string, gwOverride?: string) => {
+    setRegistering(true);
+    setError('');
+    try {
+      const finalAuthToken = tokenOverride || (connectMode === 'pair' ? pairDeviceToken : authToken.trim());
+      const finalGatewayUrl = gwOverride || (connectMode === 'pair' ? pairGatewayUrl : gatewayUrl.trim());
+      const result = await socketService.registerBot({
+        botId: botId.trim(),
+        username: username.trim(),
+        avatarUrl: avatarUrl.trim() || undefined,
+        gatewayUrl: finalGatewayUrl || undefined,
+        authToken: finalAuthToken,
+        sshHost: connectMode === 'token' ? (sshHost.trim() || undefined) : undefined,
+        trigger,
+      });
+      if (result.deregisteredBot) {
+        setDeregisteredBot({ ...result.deregisteredBot, authToken: finalAuthToken });
+        setRegistering(false);
+        return;
+      }
+      if (result.error) {
+        setError(result.error);
+        // Go back to info step on error so user can fix botId
+        setStep('info');
+      } else {
+        handleClose();
+      }
+    } catch {
+      setError('Registration failed');
+      setStep('info');
+    } finally {
+      setRegistering(false);
+    }
+  };
+
   if (!showBotRegistration) return null;
 
   const resetForm = () => {
-    setStep('connect'); setConnectMode('pair');
+    setStep('info'); setConnectMode('pair');
+    setBotId(''); setBotIdError('');
     setSetupCode(''); setPairId(''); setDeviceId('');
     setPairGatewayUrl(''); setPairDeviceToken(''); setPairError('');
     setConnecting(false);
@@ -79,12 +120,27 @@ export default function BotRegistration() {
     setShowBotRegistration(false);
   };
 
+  const botIdPattern = /^[a-z0-9][a-z0-9-]*$/;
+  const validateBotId = (val: string) => {
+    if (!val) return 'Bot ID is required';
+    if (val.length < 3 || val.length > 32) return 'Must be 3-32 characters';
+    if (!botIdPattern.test(val)) return 'Only lowercase letters, numbers, and hyphens (must start with letter/number)';
+    return '';
+  };
+
+  const handleNextToConnect = () => {
+    const err = validateBotId(botId);
+    if (err) { setBotIdError(err); return; }
+    if (!username.trim()) return;
+    setStep('connect');
+  };
+
   const handlePairConnect = async () => {
     if (!setupCode.trim()) return;
     setConnecting(true);
     setPairError('');
     try {
-      const result = await socketService.pairConnect(setupCode.trim(), pairGatewayUrl.trim() || undefined);
+      const result = await socketService.pairConnect(setupCode.trim(), pairGatewayUrl.trim() || undefined, `clawchat-bot-${botId}`);
       if (result.ok) {
         setPairId(result.pairId || '');
         setDeviceId(result.deviceId || '');
@@ -111,9 +167,9 @@ export default function BotRegistration() {
         sshHost: sshHost.trim() || undefined,
       });
       if (result.ok) {
-        setTestStatus('success');
         setTestMessage(result.model ? `Connected (${result.model})` : 'Connected');
-        setStep('info');
+        // Auto-register for token mode
+        await doRegister();
       } else {
         setTestStatus('error');
         setTestMessage(result.error || 'Connection failed');
@@ -124,39 +180,6 @@ export default function BotRegistration() {
     }
   };
 
-  const handleRegister = async () => {
-    if (!username.trim()) return;
-    setRegistering(true);
-    setError('');
-    try {
-      const finalAuthToken = connectMode === 'pair' ? pairDeviceToken : authToken.trim();
-      const finalGatewayUrl = connectMode === 'pair' ? pairGatewayUrl : gatewayUrl.trim();
-      const result = await socketService.registerBot({
-        username: username.trim(),
-        avatarUrl: avatarUrl.trim() || undefined,
-        gatewayUrl: finalGatewayUrl || undefined,
-        authToken: finalAuthToken,
-        sshHost: connectMode === 'token' ? (sshHost.trim() || undefined) : undefined,
-        trigger,
-        identityKey: connectMode === 'pair' ? pairId : undefined,
-      });
-      if (result.deregisteredBot) {
-        // Found a deregistered bot with same gateway
-        setDeregisteredBot({ ...result.deregisteredBot, authToken: finalAuthToken });
-        setRegistering(false);
-        return;
-      }
-      if (result.error) {
-        setError(result.error);
-      } else {
-        handleClose();
-      }
-    } catch {
-      setError('Registration failed');
-    } finally {
-      setRegistering(false);
-    }
-  };
 
   const handleRestore = async () => {
     if (!deregisteredBot) return;
@@ -201,7 +224,49 @@ export default function BotRegistration() {
 
         <div className="p-5 space-y-3">
 
-          {/* Step: Connect */}
+          {/* Step 1: Bot Info */}
+          {step === 'info' && (
+            <>
+              <div>
+                <label className="block text-xs text-dark-muted mb-1">Bot ID *</label>
+                <input type="text" value={botId} onChange={e => { setBotId(e.target.value.toLowerCase()); setBotIdError(''); }} placeholder="my-bot (lowercase, 3-32 chars)"
+                  className="w-full bg-dark-bg border border-dark-border rounded-lg px-3 py-2 text-sm text-dark-text placeholder-dark-muted focus:outline-none focus:ring-1 focus:ring-primary-500 font-mono" />
+                {botIdError && <p className="text-xs text-red-400 mt-1">{botIdError}</p>}
+                <p className="text-xs text-dark-muted mt-1">Identity file: device-identity-clawchat-bot-{botId || '...'}.json</p>
+              </div>
+
+              <div>
+                <label className="block text-xs text-dark-muted mb-1">Bot Name *</label>
+                <input type="text" value={username} onChange={e => setUsername(e.target.value)} placeholder="My Bot"
+                  className="w-full bg-dark-bg border border-dark-border rounded-lg px-3 py-2 text-sm text-dark-text placeholder-dark-muted focus:outline-none focus:ring-1 focus:ring-primary-500" />
+              </div>
+
+              <div>
+                <label className="block text-xs text-dark-muted mb-1">Avatar URL</label>
+                <input type="text" value={avatarUrl} onChange={e => setAvatarUrl(e.target.value)} placeholder="https://..."
+                  className="w-full bg-dark-bg border border-dark-border rounded-lg px-3 py-2 text-sm text-dark-text placeholder-dark-muted focus:outline-none focus:ring-1 focus:ring-primary-500" />
+              </div>
+
+              <div>
+                <label className="block text-xs text-dark-muted mb-1">Trigger</label>
+                <select value={trigger} onChange={e => setTrigger(e.target.value as any)}
+                  className="w-full bg-dark-bg border border-dark-border rounded-lg px-3 py-2 text-sm text-dark-text focus:outline-none focus:ring-1 focus:ring-primary-500">
+                  <option value="all">All messages</option>
+                  <option value="mention">@mention only</option>
+                  <option value="room-member">Room member</option>
+                </select>
+              </div>
+
+              {error && <p className="text-xs text-red-400">{error}</p>}
+
+              <button onClick={handleNextToConnect} disabled={!botId.trim() || !username.trim()}
+                className="w-full px-4 py-2 text-sm font-medium text-white bg-primary-600 rounded-lg hover:bg-primary-500 disabled:opacity-50 transition">
+                Next →
+              </button>
+            </>
+          )}
+
+          {/* Step 2: Connect */}
           {step === 'connect' && (
             <>
               {/* Mode toggle */}
@@ -263,7 +328,7 @@ export default function BotRegistration() {
             </>
           )}
 
-          {/* Step: Pending (pair mode) */}
+          {/* Step 3: Pending (pair mode) */}
           {step === 'pending' && (
             <div className="text-center py-6 space-y-4">
               <div className="text-4xl">⏳</div>
@@ -283,51 +348,12 @@ export default function BotRegistration() {
             </div>
           )}
 
-          {/* Step: Info */}
-          {step === 'info' && (
-            <>
-              <div className="flex items-center gap-2 mb-2">
-                <span className="text-green-400">✓</span>
-                <span className="text-sm text-green-400 font-medium">Connected!</span>
-                <span className="text-xs text-dark-muted">{connectMode === 'pair' ? pairGatewayUrl : gatewayUrl}</span>
-              </div>
-
-              <div>
-                <label className="block text-xs text-dark-muted mb-1">Bot Name *</label>
-                <input type="text" value={username} onChange={e => setUsername(e.target.value)} placeholder="My Bot"
-                  className="w-full bg-dark-bg border border-dark-border rounded-lg px-3 py-2 text-sm text-dark-text placeholder-dark-muted focus:outline-none focus:ring-1 focus:ring-primary-500" />
-              </div>
-
-              <div>
-                <label className="block text-xs text-dark-muted mb-1">Avatar URL</label>
-                <input type="text" value={avatarUrl} onChange={e => setAvatarUrl(e.target.value)} placeholder="https://..."
-                  className="w-full bg-dark-bg border border-dark-border rounded-lg px-3 py-2 text-sm text-dark-text placeholder-dark-muted focus:outline-none focus:ring-1 focus:ring-primary-500" />
-              </div>
-
-              <div>
-                <label className="block text-xs text-dark-muted mb-1">Trigger</label>
-                <select value={trigger} onChange={e => setTrigger(e.target.value as any)}
-                  className="w-full bg-dark-bg border border-dark-border rounded-lg px-3 py-2 text-sm text-dark-text focus:outline-none focus:ring-1 focus:ring-primary-500">
-                  <option value="all">All messages</option>
-                  <option value="mention">@mention only</option>
-                  <option value="room-member">Room member</option>
-                </select>
-              </div>
-
-              {error && <p className="text-xs text-red-400">{error}</p>}
-            </>
-          )}
-
         </div>
 
-        {/* Footer */}
-        {step === 'info' && (
-          <div className="flex justify-end gap-2 px-5 py-4 border-t border-dark-border">
-            <button onClick={handleClose} className="px-4 py-2 text-sm text-dark-muted hover:text-dark-text rounded-lg hover:bg-dark-hover transition">Cancel</button>
-            <button onClick={handleRegister} disabled={!username.trim() || registering}
-              className="px-4 py-2 text-sm font-medium text-white bg-primary-600 rounded-lg hover:bg-primary-500 disabled:opacity-50 disabled:cursor-not-allowed transition">
-              {registering ? 'Registering...' : 'Register'}
-            </button>
+        {/* Footer — show registering state */}
+        {registering && (
+          <div className="flex justify-center px-5 py-4 border-t border-dark-border">
+            <span className="text-sm text-dark-muted">Registering...</span>
           </div>
         )}
         </div>
