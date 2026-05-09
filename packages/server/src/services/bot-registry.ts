@@ -160,7 +160,7 @@ export function getAllBotIds(): string[] {
 export function getAvailableBots(userId?: string): BotConfig[] {
   if (!userId) return Array.from(bots.values()).filter(b => systemBotIds.has(b.id));
   const db = getDb();
-  const userBotIds = (db.prepare('SELECT bot_id FROM bots WHERE owner_id = ?').all(userId) as any[]).map(r => r.bot_id);
+  const userBotIds = (db.prepare("SELECT bot_id FROM bots WHERE owner_id = ? AND status IN ('active', 'paused')").all(userId) as any[]).map(r => r.bot_id);
   const userBotSet = new Set(userBotIds);
 
   // Get shared bots (inline query to avoid circular import with bot-share)
@@ -202,7 +202,7 @@ export function isSystemBot(botId: string): boolean {
 /** Get bots owned by a user */
 export function getUserBots(userId: string): BotConfig[] {
   const db = getDb();
-  const rows = db.prepare('SELECT bot_id FROM bots WHERE owner_id = ?').all(userId) as any[];
+  const rows = db.prepare("SELECT bot_id FROM bots WHERE owner_id = ? AND status IN ('active', 'paused')").all(userId) as any[];
   return rows.map(r => bots.get(r.bot_id)).filter((b): b is BotConfig => !!b);
 }
 
@@ -439,6 +439,9 @@ export function deregisterBot(botId: string, ownerId: string): { success: boolea
 
   // 5. Update bot status
   db.prepare("UPDATE bots SET status = 'deregistered', updated_at = datetime('now') WHERE bot_id = ?").run(botId);
+
+  // 6. Mark bot user as offline and inactive
+  db.prepare('UPDATE users SET is_online = 0 WHERE id = ?').run(botId);
 
   console.log(`[BotRegistry] Deregistered bot: ${botId}, shares=${sharesDeleted.changes}, rooms=${botRooms.length}`);
   return { success: true, affected: { shares: sharesDeleted.changes, rooms: botRooms.length } };
