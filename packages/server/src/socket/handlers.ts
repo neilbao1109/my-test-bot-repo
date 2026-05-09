@@ -435,6 +435,8 @@ export function setupSocketHandlers(io: Server) {
         }
         const bot = registerBot(data, socket.userId);
         callback({ bot });
+        // Notify the registering user to refresh bot list
+        socket.emit('bot:registered', { bot });
       } catch (err: any) {
         callback({ error: err.message });
       }

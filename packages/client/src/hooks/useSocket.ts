@@ -207,6 +207,13 @@ export function useSocket() {
       });
     });
 
+    socket.on('bot:registered', () => {
+      // Refresh rooms to show new bot
+      socketService.refreshRooms().then((result) => {
+        if (result?.rooms) store.setRooms(result.rooms);
+      });
+    });
+
     socket.on('bot:deregistered', (data: { botId: string; roomIds: string[] }) => {
       // Refresh rooms to get archived states
       socketService.refreshRooms().then((result) => {
@@ -256,6 +263,7 @@ export function useSocket() {
       socket.off('friend:new');
       socket.off('friend:accepted');
       socket.off('friend:removed');
+      socket.off('bot:registered');
       socket.off('bot:status-changed');
       socket.off('bot:deregistered');
       socket.io.off('reconnect', handleReconnect);
