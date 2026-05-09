@@ -129,10 +129,21 @@ export default function BotRegistration() {
     return '';
   };
 
-  const handleNextToConnect = () => {
+  const handleNextToConnect = async () => {
     const err = validateBotId(botId);
     if (err) { setBotIdError(err); return; }
     if (!username.trim()) return;
+    // Check server-side availability
+    try {
+      const result = await socketService.checkBotId(botId.trim());
+      if (!result.available) {
+        setBotIdError('Bot ID already taken');
+        return;
+      }
+    } catch {
+      setBotIdError('Failed to check Bot ID');
+      return;
+    }
     setStep('connect');
   };
 

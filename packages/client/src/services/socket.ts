@@ -207,6 +207,12 @@ class SocketService {
     });
   }
 
+  checkBotId(botId: string): Promise<{ available: boolean }> {
+    return new Promise((resolve) => {
+      this.socket?.emit('bot:check-id', { botId }, resolve);
+    });
+  }
+
   pairConnect(setupCode: string, gatewayUrlOverride?: string, clientId?: string): Promise<{ ok: boolean; pairId?: string; deviceId?: string; gatewayUrl?: string; error?: string }> {
     return new Promise((resolve) => {
       this.socket?.emit('bot:pair-connect', { setupCode, gatewayUrlOverride, clientId }, resolve);

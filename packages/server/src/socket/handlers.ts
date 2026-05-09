@@ -4,7 +4,7 @@ import { createRoom, getRooms, getRoomMembers, addMemberToRoom, removeMemberFrom
 import { getDb } from '../db/schema.js';
 import { createThread, getThread, getThreadByMessage } from '../services/thread.js';
 import { parseCommand, executeCommand } from '../services/command.js';
-import { initBotRegistry, getRespondingBots, isBotUser, getAllBots, getBot, getAvailableBots, streamBotResponse as registryStreamBotResponse, registerBot, updateBot, deleteBot, testBotConnection, pairConnect, pairStatus, pauseBot, resumeBot, deregisterBot, findDeregisteredBot, restoreBot, getBotDbStatus, type TriggerType } from '../services/bot-registry.js';
+import { initBotRegistry, getRespondingBots, isBotUser, getAllBots, getBot, getAvailableBots, streamBotResponse as registryStreamBotResponse, registerBot, updateBot, deleteBot, testBotConnection, pairConnect, pairStatus, pauseBot, resumeBot, deregisterBot, findDeregisteredBot, restoreBot, getBotDbStatus, checkBotIdAvailable, type TriggerType } from '../services/bot-registry.js';
 import { shareBot, acceptBotShare, revokeBotShare, getBotShares, getPublicBots, addPublicBotToUser } from '../services/bot-share.js';
 import { pinMessage, unpinMessage, getPinnedMessages } from '../services/pin.js';
 import { createInvitation, acceptInvitation, rejectInvitation, getPendingInvitations, getInvitationCount } from '../services/invitation.js';
@@ -399,6 +399,12 @@ export function setupSocketHandlers(io: Server) {
       if (!socket.userId) return;
       const result = await testBotConnection(data);
       callback(result);
+    });
+
+    // bot:check-id — check if a bot ID is available
+    socket.on('bot:check-id', (data: { botId: string }, callback: Function) => {
+      if (!socket.userId) return;
+      callback(checkBotIdAvailable(data.botId));
     });
 
     // bot:pair-connect — initiate pair with setup code

@@ -207,6 +207,13 @@ export function getUserBots(userId: string): BotConfig[] {
 }
 
 /** Register a new user-created bot */
+export function checkBotIdAvailable(botId: string): { available: boolean } {
+  const db = getDb();
+  const id = `bot-${botId}`;
+  const existing = db.prepare("SELECT 1 FROM bots WHERE bot_id = ? AND status IN ('active', 'paused')").get(id) as any;
+  return { available: !existing };
+}
+
 export function registerBot(config: {
   botId: string;
   username: string;
@@ -221,11 +228,14 @@ export function registerBot(config: {
   const db = getDb();
   const id = `bot-${config.botId}`;
 
-  // Check uniqueness (including deregistered bots)
-  const existing = db.prepare('SELECT 1 FROM bots WHERE bot_id = ?').get(id) as any;
+  // Check uniqueness (only active/paused bots — deregistered ones are OK to reuse)
+  const existing = db.prepare("SELECT 1 FROM bots WHERE bot_id = ? AND status IN ('active', 'paused')").get(id) as any;
   if (existing) {
     throw new Error('Bot ID already taken');
   }
+
+  // Clean up any deregistered bot with same id (so INSERT doesn't conflict)
+  db.prepare("DELETE FROM bots WHERE bot_id = ? AND status = 'deregistered'").run(id);
 
   const identityKey = `clawchat-bot-${config.botId}`;
 
