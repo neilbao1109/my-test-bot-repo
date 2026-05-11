@@ -28,8 +28,8 @@ export default function MemberPanel() {
   const members = roomMembers[activeRoomId] || [];
   const activeRoom = rooms.find((r) => r.id === activeRoomId);
   const isGroup = activeRoom?.type === 'group';
-  const friendIds = new Set(friends.map(f => f.id));
-  const existingMemberIds = new Set(members.map(m => m.id));
+  const friendIds = useMemo(() => new Set(friends.map(f => f.id)), [friends]);
+  const existingMemberIds = useMemo(() => new Set(members.map(m => m.id)), [members]);
 
   const handleAddFriend = async (userId: string) => {
     await socketService.sendFriendRequest(userId);
