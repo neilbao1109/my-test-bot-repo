@@ -8,7 +8,7 @@ import FolderEditModal from './FolderEditModal';
 import SearchPanel from './SearchPanel';
 import { socketService } from '../../services/socket';
 import type { ChatFolder } from '../../types';
-import InvitationBadge from '../InvitationBadge';
+
 import ContactsTab from './ContactsTab';
 
 function formatTime(dateStr: string): string {
@@ -39,7 +39,7 @@ function previewText(content: string, type: string): string {
 }
 
 export default function Sidebar() {
-  const { rooms, activeRoomId, setActiveRoom, showSidebar, roomMembers, onlineUsers, setShowCreateRoom, theme, setTheme, folders, activeFolderId, user, sidebarTab, setSidebarTab, friendRequests } = useAppStore();
+  const { rooms, activeRoomId, setActiveRoom, showSidebar, roomMembers, onlineUsers, setShowCreateRoom, theme, setTheme, folders, activeFolderId, user, sidebarTab, setSidebarTab, friendRequests, pendingInvitationCount } = useAppStore();
   const [showFolderModal, setShowFolderModal] = useState(false);
   const [editingFolder, setEditingFolder] = useState<ChatFolder | null>(null);
   const [showQuickMenu, setShowQuickMenu] = useState(false);
@@ -173,7 +173,6 @@ export default function Sidebar() {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
             </svg>
           </button>
-          <InvitationBadge />
         </div>
         <div className="relative">
           <button
@@ -302,7 +301,7 @@ export default function Sidebar() {
         >
           <span className="text-base">📇</span>
           <span>通讯录</span>
-          {friendRequests.incoming.length > 0 && (
+          {(friendRequests.incoming.length + pendingInvitationCount) > 0 && (
             <span className="absolute top-1 right-1/4 w-2 h-2 bg-red-500 rounded-full" />
           )}
         </button>

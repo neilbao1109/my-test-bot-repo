@@ -5,10 +5,11 @@ import UserAvatar from '../UserAvatar';
 import type { User } from '../../types';
 
 export default function ContactsTab() {
-  const { friends, setFriends, friendRequests, setFriendRequests, setFriendProfileUser, onlineUsers } = useAppStore();
+  const { friends, setFriends, friendRequests, setFriendRequests, setFriendProfileUser, onlineUsers, pendingInvitationCount } = useAppStore();
   const [loading, setLoading] = useState(true);
   const [showRequests, setShowRequests] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
+  const [showInvitations, setShowInvitations] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -38,6 +39,10 @@ export default function ContactsTab() {
   }, [friends]);
 
   const incomingCount = friendRequests.incoming.length;
+
+  if (showInvitations) {
+    return <InvitationPanel onBack={() => setShowInvitations(false)} />;
+  }
 
   if (showRequests) {
     return <FriendRequestsPanel onBack={() => { setShowRequests(false); loadData(); }} />;
@@ -70,9 +75,19 @@ export default function ContactsTab() {
             </span>
           )}
         </button>
+        <button
+          onClick={() => setShowInvitations(true)}
+          className="w-full flex items-center gap-3 px-3 py-2.5 text-sm text-dark-text hover:bg-dark-hover rounded-lg transition"
+        >
+          <span className="text-lg">📩</span>
+          <span>房间邀请</span>
+          {pendingInvitationCount > 0 && (
+            <span className="ml-auto bg-red-500 text-white text-xs rounded-full px-1.5 py-0.5 min-w-[18px] text-center">
+              {pendingInvitationCount}
+            </span>
+          )}
+        </button>
       </div>
-
-      <div className="border-b border-dark-border" />
 
       {/* Friend list */}
       <div className="flex-1 overflow-y-auto py-2">
@@ -261,6 +276,105 @@ function FriendSearchPanel({ onBack }: { onBack: () => void }) {
         ))}
         {results.length === 0 && query && !searching && (
           <div className="text-center text-dark-muted py-8 text-sm">未找到用户</div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+interface Invitation {
+  id: string;
+  type: string;
+  fromUser: string;
+  toUser: string;
+  resourceId: string;
+  status: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+const typeLabels: Record<string, string> = {
+  room: '👥 群聊邀请',
+  dm: '💬 私聊邀请',
+  bot_share: '🤖 Bot 分享',
+};
+
+function timeAgo(dateStr: string): string {
+  const diff = Date.now() - new Date(dateStr).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return '刚刚';
+  if (mins < 60) return `${mins}分钟前`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `${hours}小时前`;
+  return `${Math.floor(hours / 24)}天前`;
+}
+
+function InvitationPanel({ onBack }: { onBack: () => void }) {
+  const [invitations, setInvitations] = useState<Invitation[]>([]);
+  const [loading, setLoading] = useState(true);
+  const decrementCount = useAppStore((s) => s.decrementInvitationCount);
+
+  useEffect(() => {
+    socketService.getInvitations().then((result) => {
+      setInvitations(result.invitations || []);
+      setLoading(false);
+    });
+  }, []);
+
+  const handleAccept = async (id: string) => {
+    const result = await socketService.acceptInvitation(id);
+    if (result.success) {
+      setInvitations((prev) => prev.filter((inv) => inv.id !== id));
+      decrementCount();
+    }
+  };
+
+  const handleReject = async (id: string) => {
+    const result = await socketService.rejectInvitation(id);
+    if (result.success) {
+      setInvitations((prev) => prev.filter((inv) => inv.id !== id));
+      decrementCount();
+    }
+  };
+
+  return (
+    <div className="flex-1 flex flex-col overflow-hidden">
+      <div className="flex items-center gap-2 px-4 py-3 border-b border-dark-border">
+        <button onClick={onBack} className="text-dark-muted hover:text-dark-text p-1 rounded transition">
+          ←
+        </button>
+        <h3 className="font-semibold text-dark-text text-sm">房间邀请</h3>
+      </div>
+      <div className="flex-1 overflow-y-auto py-2">
+        {loading ? (
+          <div className="text-center text-dark-muted py-8 text-sm">加载中...</div>
+        ) : invitations.length === 0 ? (
+          <div className="text-center text-dark-muted py-8 text-sm">暂无邀请</div>
+        ) : (
+          invitations.map((inv) => (
+            <div key={inv.id} className="px-4 py-2.5 space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium text-dark-text">{typeLabels[inv.type] || inv.type}</span>
+                <span className="text-xs text-dark-muted">{timeAgo(inv.createdAt)}</span>
+              </div>
+              <p className="text-xs text-dark-muted">来自: {inv.fromUser}</p>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => handleAccept(inv.id)}
+                  className="flex-1 px-3 py-1.5 text-xs font-medium text-white bg-primary-600 hover:bg-primary-500 rounded-lg transition"
+                >
+                  接受
+                </button>
+                <button
+                  onClick={() => handleReject(inv.id)}
+                  className="flex-1 px-3 py-1.5 text-xs font-medium text-dark-muted hover:text-dark-text bg-dark-hover hover:bg-dark-border rounded-lg transition"
+                >
+                  拒绝
+                </button>
+              </div>
+              <div className="border-b border-dark-border/50 mt-1" />
+            </div>
+          ))
         )}
       </div>
     </div>
