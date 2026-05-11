@@ -125,14 +125,14 @@ export function setupSocketHandlers(io: Server) {
       callback({ user, pendingInvitationCount, rooms: rooms.map(r => {
         const lastMsg = getLastMessage(r.id);
         const members = getRoomMembers(r.id);
-        const sender = lastMsg ? members.find(m => m.id === lastMsg.userId) : null;
+        const sender = lastMsg && lastMsg.userId !== 'system' ? members.find(m => m.id === lastMsg.userId) : null;
         return {
           ...r,
           members,
           lastMessage: lastMsg ? {
             content: lastMsg.content,
             type: lastMsg.type,
-            senderName: sender?.username || 'Unknown',
+            senderName: lastMsg.userId === 'system' ? '' : (sender?.username || 'Unknown'),
             createdAt: lastMsg.createdAt,
           } : null,
         };
@@ -146,14 +146,14 @@ export function setupSocketHandlers(io: Server) {
       const result = rooms.map(r => {
         const lastMsg = getLastMessage(r.id);
         const members = getRoomMembers(r.id);
-        const sender = lastMsg ? members.find(m => m.id === lastMsg.userId) : null;
+        const sender = lastMsg && lastMsg.userId !== 'system' ? members.find(m => m.id === lastMsg.userId) : null;
         return {
           ...r,
           members,
           lastMessage: lastMsg ? {
             content: lastMsg.content,
             type: lastMsg.type,
-            senderName: sender?.username || 'Unknown',
+            senderName: lastMsg.userId === 'system' ? '' : (sender?.username || 'Unknown'),
             createdAt: lastMsg.createdAt,
           } : null,
         };

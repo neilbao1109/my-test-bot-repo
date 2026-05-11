@@ -271,7 +271,7 @@ export default function Sidebar() {
                 </div>
                 {lm && (
                   <p className="text-xs text-dark-muted truncate mt-0.5">
-                    <span className="font-medium">{lm.senderName}:</span>{' '}
+                    {lm.senderName ? <><span className="font-medium">{lm.senderName}:</span>{' '}</> : null}
                     {previewText(lm.content, lm.type)}
                   </p>
                 )}
