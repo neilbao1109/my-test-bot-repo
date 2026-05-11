@@ -1,11 +1,27 @@
 import { useAppStore } from '../../stores/appStore';
 import { socketService } from '../../services/socket';
 import UserAvatar from '../UserAvatar';
-import { useState } from 'react';
+import { useState, useEffect, useMemo } from 'react';
+import type { User } from '../../types';
+
+interface BotInfo {
+  id: string;
+  username: string;
+  avatarUrl?: string;
+  status: string;
+  isOnline?: boolean;
+}
 
 export default function MemberPanel() {
   const { showMembers, toggleMembers, activeRoomId, roomMembers, rooms, onlineUsers, user, friends } = useAppStore();
   const [sentRequests, setSentRequests] = useState<Set<string>>(new Set());
+  const [inviteView, setInviteView] = useState(false);
+  const [filterQuery, setFilterQuery] = useState('');
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [bots, setBots] = useState<BotInfo[]>([]);
+  const [users, setUsers] = useState<User[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [inviting, setInviting] = useState(false);
 
   if (!showMembers || !activeRoomId) return null;
 
@@ -13,16 +29,205 @@ export default function MemberPanel() {
   const activeRoom = rooms.find((r) => r.id === activeRoomId);
   const isGroup = activeRoom?.type === 'group';
   const friendIds = new Set(friends.map(f => f.id));
+  const existingMemberIds = new Set(members.map(m => m.id));
 
   const handleAddFriend = async (userId: string) => {
     await socketService.sendFriendRequest(userId);
     setSentRequests(prev => new Set([...prev, userId]));
   };
 
-  const handleRemove = async (userId: string) => {
-    if (!confirm('Remove this member from the room?')) return;
-    // Could add room:kick event — for now just a placeholder
+  const openInviteView = () => {
+    setInviteView(true);
+    setFilterQuery('');
+    setSelectedIds(new Set());
+    setLoading(true);
+    Promise.all([
+      socketService.listAvailableBots(),
+      socketService.listUsers(),
+    ]).then(([botRes, userRes]) => {
+      setBots((botRes.bots || []).filter((b: BotInfo) => b.status === 'active'));
+      setUsers(userRes.users || []);
+    }).finally(() => setLoading(false));
   };
+
+  const closeInviteView = () => {
+    setInviteView(false);
+    setFilterQuery('');
+    setSelectedIds(new Set());
+  };
+
+  const toggleSelected = (id: string) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  // Filter out existing members
+  const availableBots = useMemo(() => {
+    const filtered = bots.filter(b => !existingMemberIds.has(b.id));
+    if (!filterQuery.trim()) return filtered;
+    const q = filterQuery.toLowerCase();
+    return filtered.filter(b => b.username.toLowerCase().includes(q));
+  }, [bots, filterQuery, existingMemberIds]);
+
+  const availableUsers = useMemo(() => {
+    const filtered = users.filter(u => !existingMemberIds.has(u.id) && u.id !== user?.id);
+    if (!filterQuery.trim()) return filtered;
+    const q = filterQuery.toLowerCase();
+    return filtered.filter(u => u.username.toLowerCase().includes(q));
+  }, [users, filterQuery, existingMemberIds, user]);
+
+  const handleConfirmInvite = async () => {
+    if (selectedIds.size === 0 || inviting) return;
+    setInviting(true);
+
+    try {
+      if (isGroup) {
+        // Group room: add bots directly, invite humans
+        const promises: Promise<any>[] = [];
+        for (const id of selectedIds) {
+          const bot = bots.find(b => b.id === id);
+          if (bot) {
+            promises.push(socketService.addBotToRoom(activeRoomId, id));
+          } else {
+            promises.push(socketService.inviteToRoom(activeRoomId, id));
+          }
+        }
+        await Promise.all(promises);
+        // Refresh members by re-joining
+        socketService.joinRoom(activeRoomId);
+        closeInviteView();
+      } else {
+        // DM/Bot room: create a new group
+        const currentMembers = members.map(m => ({ id: m.id, username: m.username }));
+        const newSelectedMembers: { id: string; username: string }[] = [];
+        for (const id of selectedIds) {
+          const bot = bots.find(b => b.id === id);
+          const usr = users.find(u => u.id === id);
+          if (bot) newSelectedMembers.push({ id: bot.id, username: bot.username });
+          else if (usr) newSelectedMembers.push({ id: usr.id, username: usr.username });
+        }
+
+        const allMembers = [...currentMembers, ...newSelectedMembers];
+        const allMemberIds = allMembers.map(m => m.id);
+        const roomName = allMembers.map(m => m.username).join(', ').slice(0, 30);
+
+        const room = await socketService.createRoom(roomName, 'group', allMemberIds);
+        if (room && !('error' in room)) {
+          socketService.joinRoom(room.id);
+          const store = useAppStore.getState();
+          store.addRoom(room);
+          store.setActiveRoom(room.id);
+          useAppStore.setState({ mobileView: 'chat' });
+          toggleMembers();
+        }
+      }
+    } finally {
+      setInviting(false);
+    }
+  };
+
+  // Invite view
+  if (inviteView) {
+    return (
+      <div className="fixed inset-0 z-30 w-full bg-dark-surface flex flex-col h-full md:static md:inset-auto md:z-auto md:w-64 md:border-l md:border-dark-border" style={{ paddingTop: 'env(safe-area-inset-top, 0px)', paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}>
+        {/* Header */}
+        <div className="flex items-center justify-between px-4 py-3 border-b border-dark-border">
+          <div className="flex items-center gap-2">
+            <button onClick={closeInviteView} className="text-dark-muted hover:text-dark-text p-1 rounded transition text-sm">←</button>
+            <h3 className="font-semibold text-dark-text text-sm">Invite Members</h3>
+          </div>
+          <button onClick={toggleMembers} className="text-dark-muted hover:text-dark-text p-1 rounded transition">✕</button>
+        </div>
+
+        {/* Filter */}
+        <div className="px-3 py-2">
+          <input
+            type="text"
+            value={filterQuery}
+            onChange={(e) => setFilterQuery(e.target.value)}
+            placeholder="Filter..."
+            className="w-full bg-dark-bg border border-dark-border rounded-lg px-3 py-2 text-sm text-dark-text placeholder-dark-muted focus:outline-none focus:ring-1 focus:ring-primary-500"
+          />
+        </div>
+
+        {/* List */}
+        <div className="flex-1 overflow-y-auto">
+          {loading ? (
+            <p className="text-xs text-dark-muted text-center py-4">Loading...</p>
+          ) : (
+            <>
+              {/* Bots section */}
+              {availableBots.length > 0 && (
+                <>
+                  <div className="px-3 py-1.5 text-[10px] font-medium text-dark-muted uppercase tracking-wider bg-dark-bg/50 sticky top-0">🤖 Bots</div>
+                  {availableBots.map((bot) => {
+                    const isSelected = selectedIds.has(bot.id);
+                    const isOnline = onlineUsers.has(bot.id);
+                    return (
+                      <button
+                        key={bot.id}
+                        onClick={() => toggleSelected(bot.id)}
+                        className={`w-full text-left px-3 py-2 text-sm flex items-center gap-3 hover:bg-dark-hover transition ${isSelected ? 'bg-primary-600/10' : ''}`}
+                      >
+                        <span className={`w-4 h-4 rounded border flex-shrink-0 flex items-center justify-center text-xs ${isSelected ? 'bg-primary-600 border-primary-600 text-white' : 'border-dark-muted'}`}>{isSelected && '✓'}</span>
+                        <span className="relative w-6 h-6 rounded-full bg-dark-hover flex items-center justify-center text-xs font-semibold flex-shrink-0">
+                          {bot.username.charAt(0).toUpperCase()}
+                          <span className={`absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full border border-dark-surface ${isOnline ? 'bg-green-500' : 'bg-dark-muted'}`} />
+                        </span>
+                        <span className="text-dark-text truncate">{bot.username}</span>
+                      </button>
+                    );
+                  })}
+                </>
+              )}
+              {/* Members section */}
+              {availableUsers.length > 0 && (
+                <>
+                  <div className="px-3 py-1.5 text-[10px] font-medium text-dark-muted uppercase tracking-wider bg-dark-bg/50 sticky top-0">👥 Members</div>
+                  {availableUsers.map((u) => {
+                    const isSelected = selectedIds.has(u.id);
+                    const isOnline = onlineUsers.has(u.id);
+                    return (
+                      <button
+                        key={u.id}
+                        onClick={() => toggleSelected(u.id)}
+                        className={`w-full text-left px-3 py-2 text-sm flex items-center gap-3 hover:bg-dark-hover transition ${isSelected ? 'bg-primary-600/10' : ''}`}
+                      >
+                        <span className={`w-4 h-4 rounded border flex-shrink-0 flex items-center justify-center text-xs ${isSelected ? 'bg-primary-600 border-primary-600 text-white' : 'border-dark-muted'}`}>{isSelected && '✓'}</span>
+                        <span className="relative w-6 h-6 rounded-full bg-dark-hover flex items-center justify-center text-xs font-semibold flex-shrink-0">
+                          {u.username.charAt(0).toUpperCase()}
+                          <span className={`absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full border border-dark-surface ${isOnline ? 'bg-green-500' : 'bg-dark-muted'}`} />
+                        </span>
+                        <span className="text-dark-text truncate">{u.username}</span>
+                      </button>
+                    );
+                  })}
+                </>
+              )}
+              {availableBots.length === 0 && availableUsers.length === 0 && (
+                <p className="text-xs text-dark-muted text-center py-4">No available members</p>
+              )}
+            </>
+          )}
+        </div>
+
+        {/* Confirm button */}
+        <div className="px-3 py-3 border-t border-dark-border">
+          <button
+            onClick={handleConfirmInvite}
+            disabled={selectedIds.size === 0 || inviting}
+            className="w-full py-2 text-sm font-medium text-white bg-primary-600 rounded-lg hover:bg-primary-500 disabled:opacity-50 disabled:cursor-not-allowed transition"
+          >
+            {inviting ? 'Inviting...' : `Confirm Invite (${selectedIds.size})`}
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="fixed inset-0 z-30 w-full bg-dark-surface flex flex-col h-full md:static md:inset-auto md:z-auto md:w-64 md:border-l md:border-dark-border" style={{ paddingTop: 'env(safe-area-inset-top, 0px)', paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}>
@@ -43,7 +248,6 @@ export default function MemberPanel() {
 
       {/* Member list */}
       <div className="flex-1 overflow-y-auto py-2">
-        {/* Online members */}
         {(() => {
           const online = members.filter((m) => onlineUsers.has(m.id) || m.isOnline);
           const offline = members.filter((m) => !onlineUsers.has(m.id) && !m.isOnline);
@@ -119,6 +323,16 @@ export default function MemberPanel() {
             </>
           );
         })()}
+      </div>
+
+      {/* Invite button */}
+      <div className="px-3 py-3 border-t border-dark-border">
+        <button
+          onClick={openInviteView}
+          className="w-full py-2 text-sm font-medium text-primary-400 bg-primary-600/10 rounded-lg hover:bg-primary-600/20 transition flex items-center justify-center gap-1"
+        >
+          ＋ Invite Members
+        </button>
       </div>
     </div>
   );
