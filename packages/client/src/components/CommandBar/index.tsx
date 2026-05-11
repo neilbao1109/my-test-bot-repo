@@ -40,14 +40,14 @@ export default function CommandBar({ roomId, threadId, onExport }: CommandBarPro
   const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
   const speechSupported = !!SpeechRecognition;
 
-  const { rooms, roomMembers, activeRoomId, replyContext, clearReplyContext, removeReplyContext, setContextSelectionMode, mobileView } = useAppStore();
+  const { rooms, roomMembers, activeRoomId, replyContext, clearReplyContext, removeReplyContext, setContextSelectionMode, mobileView, user } = useAppStore();
   const members = activeRoomId ? roomMembers[activeRoomId] || [] : [];
   const currentRoom = rooms.find(r => r.id === roomId);
   const isArchived = !!currentRoom?.archivedAt;
-  const botMembers = members.filter(m => m.isBot);
-  const filteredBots = mentionQuery
-    ? botMembers.filter(b => b.username.toLowerCase().includes(mentionQuery.toLowerCase()))
-    : botMembers;
+  const mentionableMembers = members.filter(m => m.id !== user?.id);
+  const filteredMentions = mentionQuery
+    ? mentionableMembers.filter(m => m.username.toLowerCase().includes(mentionQuery.toLowerCase()))
+    : mentionableMembers;
 
   const suggestions = input.startsWith('/')
     ? COMMANDS.filter((c) => `/${c.name}`.startsWith(input.split(' ')[0]))
@@ -83,10 +83,10 @@ export default function CommandBar({ roomId, threadId, onExport }: CommandBarPro
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     // Mention autocomplete
-    if (showMentions && filteredBots.length > 0) {
+    if (showMentions && filteredMentions.length > 0) {
       if (e.key === 'ArrowDown') {
         e.preventDefault();
-        setMentionIdx((i) => Math.min(i + 1, filteredBots.length - 1));
+        setMentionIdx((i) => Math.min(i + 1, filteredMentions.length - 1));
         return;
       }
       if (e.key === 'ArrowUp') {
@@ -96,7 +96,7 @@ export default function CommandBar({ roomId, threadId, onExport }: CommandBarPro
       }
       if (e.key === 'Tab' || e.key === 'Enter') {
         e.preventDefault();
-        const bot = filteredBots[mentionIdx];
+        const bot = filteredMentions[mentionIdx];
         if (bot) {
           const cursorPos = inputRef.current?.selectionStart || input.length;
           const textBefore = input.slice(0, cursorPos);
@@ -148,7 +148,7 @@ export default function CommandBar({ roomId, threadId, onExport }: CommandBarPro
     const cursorPos = e.target.selectionStart || 0;
     const textBeforeCursor = val.slice(0, cursorPos);
     const mentionMatch = textBeforeCursor.match(/@(\w*)$/);
-    if (mentionMatch && botMembers.length > 0) {
+    if (mentionMatch && mentionableMembers.length > 0) {
       setMentionQuery(mentionMatch[1]);
       setShowMentions(true);
       setMentionIdx(0);
@@ -261,9 +261,9 @@ export default function CommandBar({ roomId, threadId, onExport }: CommandBarPro
   return (
     <div className="relative flex-shrink-0">
       {/* Mention autocomplete */}
-      {showMentions && filteredBots.length > 0 && (
+      {showMentions && filteredMentions.length > 0 && (
         <div className="absolute bottom-full left-0 right-0 mb-1 bg-dark-surface border border-dark-border rounded-lg shadow-xl overflow-hidden z-10">
-          {filteredBots.map((bot, i) => (
+          {filteredMentions.map((bot, i) => (
             <button
               key={bot.id}
               onClick={() => {
