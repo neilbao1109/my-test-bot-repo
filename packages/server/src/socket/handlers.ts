@@ -236,11 +236,16 @@ export function setupSocketHandlers(io: Server) {
 
         if (data.memberIds) {
           for (const memberId of data.memberIds) {
-            const invitation = createInvitation('room', socket.userId, memberId, room.id);
-            const memberSocketIds = userSockets.get(memberId);
-            if (memberSocketIds) {
-              for (const sid of memberSocketIds) {
-                io.sockets.sockets.get(sid)?.emit('invitation:new', invitation);
+            if (isBotUser(memberId)) {
+              // Bots join directly, no invitation needed
+              addMemberToRoom(room.id, memberId);
+            } else {
+              const invitation = createInvitation('room', socket.userId, memberId, room.id);
+              const memberSocketIds = userSockets.get(memberId);
+              if (memberSocketIds) {
+                for (const sid of memberSocketIds) {
+                  io.sockets.sockets.get(sid)?.emit('invitation:new', invitation);
+                }
               }
             }
           }
