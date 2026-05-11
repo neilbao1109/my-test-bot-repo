@@ -3,7 +3,7 @@ import { v4 as uuid } from 'uuid';
 import { createInvitation } from './invitation.js';
 import type { BotConfig, TriggerType } from './bot-registry.js';
 
-export function shareBot(botId: string, sharedBy: string, sharedTo: string): { share?: any; error?: string } {
+export function shareBot(botId: string, sharedBy: string, sharedTo: string): { share?: any; error?: string; restoredRoomIds?: string[] } {
   const db = getDb();
 
   // Verify sharedBy owns the bot
@@ -20,16 +20,27 @@ export function shareBot(botId: string, sharedBy: string, sharedTo: string): { s
   try {
     db.prepare(
       'INSERT INTO bot_shares (id, bot_id, shared_by, shared_to, status) VALUES (?, ?, ?, ?, ?)'
-    ).run(id, botId, sharedBy, sharedTo, 'pending');
+    ).run(id, botId, sharedBy, sharedTo, 'accepted');
   } catch (err: any) {
     return { error: err.message };
   }
 
-  // Create invitation
-  createInvitation('bot_share', sharedBy, sharedTo, id);
+  // Unarchive any archived bot rooms between sharedTo and this bot
+  const archivedRooms = db.prepare(`
+    SELECT r.id FROM rooms r
+    JOIN room_members rm1 ON r.id = rm1.room_id AND rm1.user_id = ?
+    JOIN room_members rm2 ON r.id = rm2.room_id AND rm2.user_id = ?
+    WHERE r.type = 'bot' AND r.archived_at IS NOT NULL
+  `).all(sharedTo, botId) as any[];
 
-  const share = { id, botId, sharedBy, sharedTo, status: 'pending' };
-  return { share };
+  const restoredRoomIds: string[] = [];
+  for (const r of archivedRooms) {
+    db.prepare('UPDATE rooms SET archived_at = NULL WHERE id = ?').run(r.id);
+    restoredRoomIds.push(r.id);
+  }
+
+  const share = { id, botId, sharedBy, sharedTo, status: 'accepted' };
+  return { share, restoredRoomIds };
 }
 
 export function acceptBotShare(shareId: string, userId: string): { success: boolean; error?: string; unarchivedRoomId?: string } {
