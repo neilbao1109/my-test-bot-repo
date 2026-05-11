@@ -23,11 +23,12 @@ interface SettingsPanelProps {
   onShowAccount: () => void;
 }
 
-function BotActionMenu({ bot, onTogglePause, onShare, onDeregister }: {
+function BotActionMenu({ bot, onTogglePause, onShare, onDeregister, onUnshare }: {
   bot: any;
   onTogglePause: () => void;
   onShare: () => void;
   onDeregister: () => void;
+  onUnshare: () => void;
 }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -41,6 +42,8 @@ function BotActionMenu({ bot, onTogglePause, onShare, onDeregister }: {
     return () => document.removeEventListener('mousedown', handler);
   }, [open]);
 
+  const isOwner = bot.isOwner !== false; // default true for backwards compat
+
   return (
     <div className="relative" ref={ref}>
       <button
@@ -52,27 +55,38 @@ function BotActionMenu({ bot, onTogglePause, onShare, onDeregister }: {
       </button>
       {open && (
         <div className="absolute right-0 top-full mt-1 z-50 bg-dark-surface border border-dark-border rounded-lg shadow-xl py-1 min-w-[120px]">
-          <button
-            onClick={() => { onTogglePause(); setOpen(false); }}
-            className={`w-full text-left px-3 py-2.5 text-sm hover:bg-dark-hover transition flex items-center gap-2 ${
-              bot.status === 'paused' ? 'text-green-400' : 'text-yellow-400'
-            }`}
-          >
-            {bot.status === 'paused' ? '▶ 恢复' : '❘❘ 暂停'}
-          </button>
-          <button
-            onClick={() => { onShare(); setOpen(false); }}
-            className="w-full text-left px-3 py-2.5 text-sm text-dark-text hover:bg-dark-hover transition flex items-center gap-2"
-          >
-            🔗 分享
-          </button>
-          <div className="border-t border-dark-border my-1" />
-          <button
-            onClick={() => { onDeregister(); setOpen(false); }}
-            className="w-full text-left px-3 py-2.5 text-sm text-red-400 hover:bg-red-400/10 transition flex items-center gap-2"
-          >
-            ✕ 注销
-          </button>
+          {isOwner ? (
+            <>
+              <button
+                onClick={() => { onTogglePause(); setOpen(false); }}
+                className={`w-full text-left px-3 py-2.5 text-sm hover:bg-dark-hover transition flex items-center gap-2 ${
+                  bot.status === 'paused' ? 'text-green-400' : 'text-yellow-400'
+                }`}
+              >
+                {bot.status === 'paused' ? '▶ 恢复' : '❘❘ 暂停'}
+              </button>
+              <button
+                onClick={() => { onShare(); setOpen(false); }}
+                className="w-full text-left px-3 py-2.5 text-sm text-dark-text hover:bg-dark-hover transition flex items-center gap-2"
+              >
+                🔗 分享
+              </button>
+              <div className="border-t border-dark-border my-1" />
+              <button
+                onClick={() => { onDeregister(); setOpen(false); }}
+                className="w-full text-left px-3 py-2.5 text-sm text-red-400 hover:bg-red-400/10 transition flex items-center gap-2"
+              >
+                ✕ 注销
+              </button>
+            </>
+          ) : (
+            <button
+              onClick={() => { onUnshare(); setOpen(false); }}
+              className="w-full text-left px-3 py-2.5 text-sm text-red-400 hover:bg-red-400/10 transition flex items-center gap-2"
+            >
+              🗑 移除
+            </button>
+          )}
         </div>
       )}
     </div>
@@ -251,6 +265,8 @@ function BotsSubPage({ onBack }: { onBack: () => void }) {
   const [shareBot, setShareBot] = useState<any>(null);
   const [deregisterTarget, setDeregisterTarget] = useState<any>(null);
   const [deregistering, setDeregistering] = useState(false);
+  const [unshareTarget, setUnshareTarget] = useState<any>(null);
+  const [unsharing, setUnsharing] = useState(false);
 
   const loadBots = () => {
     socketService.listAvailableBots().then((res) => {
@@ -278,6 +294,15 @@ function BotsSubPage({ onBack }: { onBack: () => void }) {
     await socketService.deregisterBot(deregisterTarget.id);
     setDeregisterTarget(null);
     setDeregistering(false);
+    loadBots();
+  };
+
+  const handleUnshare = async () => {
+    if (!unshareTarget) return;
+    setUnsharing(true);
+    await socketService.unshareBotFromMe(unshareTarget.id);
+    setUnshareTarget(null);
+    setUnsharing(false);
     loadBots();
   };
 
@@ -317,7 +342,10 @@ function BotsSubPage({ onBack }: { onBack: () => void }) {
                 }`}
               >
                 <div className="min-w-0 flex-1">
-                  <span className="text-sm text-dark-text font-medium truncate block">{bot.username || bot.name}</span>
+                  <span className="text-sm text-dark-text font-medium truncate block">
+                    {bot.username || bot.name}
+                    {bot.isOwner === false && <span className="ml-1 text-[10px] text-primary-400 bg-primary-600/15 px-1.5 py-0.5 rounded-full">共享</span>}
+                  </span>
                   <span className="text-[10px] text-dark-muted">
                     {bot.status === 'paused' ? '❘❘ 已暂停' : (bot.trigger || bot.triggerType || '')}
                   </span>
@@ -327,6 +355,7 @@ function BotsSubPage({ onBack }: { onBack: () => void }) {
                   onTogglePause={() => handleTogglePause(bot)}
                   onShare={() => setShareBot(bot)}
                   onDeregister={() => setDeregisterTarget(bot)}
+                  onUnshare={() => setUnshareTarget(bot)}
                 />
               </div>
             ))}
@@ -349,6 +378,25 @@ function BotsSubPage({ onBack }: { onBack: () => void }) {
               <button onClick={handleDeregister} disabled={deregistering}
                 className="px-3 py-1.5 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-500 disabled:opacity-50 transition">
                 {deregistering ? '注销中...' : '确认注销'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Unshare confirmation modal */}
+      {unshareTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
+          <div className="bg-dark-surface border border-dark-border rounded-xl shadow-2xl w-full max-w-sm mx-4 p-5">
+            <h3 className="text-sm font-semibold text-dark-text mb-2">确定移除 Bot "{unshareTarget.username || unshareTarget.name}"？</h3>
+            <p className="text-xs text-dark-muted mb-4">
+              移除后将无法使用该 Bot，需要 Bot 所有者重新分享。
+            </p>
+            <div className="flex justify-end gap-2">
+              <button onClick={() => setUnshareTarget(null)} className="px-3 py-1.5 text-sm text-dark-muted hover:text-dark-text rounded-lg hover:bg-dark-hover transition">取消</button>
+              <button onClick={handleUnshare} disabled={unsharing}
+                className="px-3 py-1.5 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-500 disabled:opacity-50 transition">
+                {unsharing ? '移除中...' : '确认移除'}
               </button>
             </div>
           </div>

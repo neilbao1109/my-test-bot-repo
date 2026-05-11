@@ -4,7 +4,7 @@ import { createRoom, getRooms, getRoomMembers, addMemberToRoom, removeMemberFrom
 import { getDb } from '../db/schema.js';
 import { createThread, getThread, getThreadByMessage } from '../services/thread.js';
 import { parseCommand, executeCommand } from '../services/command.js';
-import { initBotRegistry, getRespondingBots, isBotUser, getAllBots, getBot, getAvailableBots, streamBotResponse as registryStreamBotResponse, registerBot, updateBot, deleteBot, testBotConnection, pairConnect, pairStatus, pauseBot, resumeBot, deregisterBot, findDeregisteredBot, restoreBot, getBotDbStatus, checkBotIdAvailable, type TriggerType } from '../services/bot-registry.js';
+import { initBotRegistry, getRespondingBots, isBotUser, getAllBots, getBot, getAvailableBots, streamBotResponse as registryStreamBotResponse, registerBot, updateBot, deleteBot, testBotConnection, pairConnect, pairStatus, pauseBot, resumeBot, deregisterBot, findDeregisteredBot, restoreBot, getBotDbStatus, isOwnerOfBot, checkBotIdAvailable, type TriggerType } from '../services/bot-registry.js';
 import { shareBot, acceptBotShare, revokeBotShare, getBotShares, getPublicBots, addPublicBotToUser } from '../services/bot-share.js';
 import { pinMessage, unpinMessage, getPinnedMessages } from '../services/pin.js';
 import { createInvitation, acceptInvitation, rejectInvitation, getPendingInvitations, getInvitationCount } from '../services/invitation.js';
@@ -462,8 +462,17 @@ export function setupSocketHandlers(io: Server) {
       const botsWithStatus = botList.map(b => ({
         ...b,
         status: getBotDbStatus(b.id) || 'active',
+        isOwner: isOwnerOfBot(b.id, socket.userId),
       }));
       callback({ bots: botsWithStatus });
+    });
+
+    // bot:unshare - remove a shared bot from current user
+    socket.on('bot:unshare', (data: { botId: string }, callback?: Function) => {
+      if (!socket.userId) return;
+      const db = getDb();
+      const result = db.prepare('DELETE FROM bot_shares WHERE bot_id = ? AND shared_to = ?').run(data.botId, socket.userId);
+      if (callback) callback({ success: result.changes > 0 });
     });
 
     // bot:test - test connection before registering

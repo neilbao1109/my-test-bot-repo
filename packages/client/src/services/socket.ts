@@ -287,6 +287,12 @@ class SocketService {
     });
   }
 
+  unshareBotFromMe(botId: string): Promise<{ success: boolean }> {
+    return new Promise((resolve) => {
+      this.socket?.emit('bot:unshare', { botId }, resolve);
+    });
+  }
+
   getBotShares(botId: string): Promise<{ shares: any[] }> {
     return new Promise((resolve) => {
       this.socket?.emit('bot:share:list', { botId }, resolve);

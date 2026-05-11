@@ -520,6 +520,12 @@ export function getBotDbStatus(botId: string): string | null {
   return row?.status || null;
 }
 
+export function isOwnerOfBot(botId: string, userId: string): boolean {
+  const db = getDb();
+  const row = db.prepare('SELECT 1 FROM bots WHERE bot_id = ? AND owner_id = ?').get(botId, userId);
+  return !!row;
+}
+
 // ── Pair Flow ──
 
 interface PendingPair {
