@@ -130,7 +130,7 @@ export default function MemberPanel() {
         const newMemberIds = newSelectedMembers.map(m => m.id);
         const allMemberIds = [...currentNonSelfIds, ...newMemberIds];
 
-        const room = await socketService.createRoom(roomName, 'group', allMemberIds, currentNonSelfIds);
+        const room = await socketService.createRoom(roomName, 'group', allMemberIds);
         if (room && !('error' in room)) {
           socketService.joinRoom(room.id);
           const store = useAppStore.getState();
@@ -358,7 +358,7 @@ export default function MemberPanel() {
               if (!confirm('确定离开群聊？')) return;
               await socketService.leaveRoom(activeRoomId);
               toggleMembers();
-              useAppStore.getState().setActiveRoom(null);
+              useAppStore.getState().setActiveRoom('');
             }}
             className="w-full py-2 text-sm text-red-400 hover:bg-red-400/10 rounded-lg transition"
           >
