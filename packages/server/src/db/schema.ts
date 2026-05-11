@@ -381,4 +381,10 @@ function initSchema(db: Database.Database) {
     db.exec('PRAGMA user_version = 8');
     console.log('[Migration] v8: bot status + room archived_at');
   }
+
+  // Ensure system user exists (for system messages)
+  db.prepare(`
+    INSERT OR IGNORE INTO users (id, username, avatar_url, is_bot, is_online)
+    VALUES ('system', 'System', NULL, 0, 0)
+  `).run();
 }
