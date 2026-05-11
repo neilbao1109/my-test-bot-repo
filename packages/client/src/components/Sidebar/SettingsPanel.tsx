@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useAppStore } from '../../stores/appStore';
 import { socketService } from '../../services/socket';
 import BotShareModal from '../BotShareModal';
@@ -21,6 +21,62 @@ const QUALITY_LABELS: Record<ImageQuality, string> = {
 
 interface SettingsPanelProps {
   onShowAccount: () => void;
+}
+
+function BotActionMenu({ bot, onTogglePause, onShare, onDeregister }: {
+  bot: any;
+  onTogglePause: () => void;
+  onShare: () => void;
+  onDeregister: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [open]);
+
+  return (
+    <div className="relative" ref={ref}>
+      <button
+        onClick={() => setOpen(!open)}
+        className="w-8 h-8 flex items-center justify-center rounded-lg text-dark-muted hover:text-dark-text hover:bg-dark-hover transition text-sm"
+        title="操作"
+      >
+        ⋮
+      </button>
+      {open && (
+        <div className="absolute right-0 top-full mt-1 z-50 bg-dark-surface border border-dark-border rounded-lg shadow-xl py-1 min-w-[120px]">
+          <button
+            onClick={() => { onTogglePause(); setOpen(false); }}
+            className={`w-full text-left px-3 py-2.5 text-sm hover:bg-dark-hover transition flex items-center gap-2 ${
+              bot.status === 'paused' ? 'text-green-400' : 'text-yellow-400'
+            }`}
+          >
+            {bot.status === 'paused' ? '▶ 恢复' : '❘❘ 暂停'}
+          </button>
+          <button
+            onClick={() => { onShare(); setOpen(false); }}
+            className="w-full text-left px-3 py-2.5 text-sm text-dark-text hover:bg-dark-hover transition flex items-center gap-2"
+          >
+            🔗 分享
+          </button>
+          <div className="border-t border-dark-border my-1" />
+          <button
+            onClick={() => { onDeregister(); setOpen(false); }}
+            className="w-full text-left px-3 py-2.5 text-sm text-red-400 hover:bg-red-400/10 transition flex items-center gap-2"
+          >
+            ✕ 注销
+          </button>
+        </div>
+      )}
+    </div>
+  );
 }
 
 export default function SettingsPanel({ onShowAccount }: SettingsPanelProps) {
@@ -266,36 +322,12 @@ function BotsSubPage({ onBack }: { onBack: () => void }) {
                     {bot.status === 'paused' ? '❘❘ 已暂停' : (bot.trigger || bot.triggerType || '')}
                   </span>
                 </div>
-                <div className="flex items-center gap-1">
-                  {/* Pause/Resume toggle */}
-                  <button
-                    onClick={() => handleTogglePause(bot)}
-                    className={`text-xs px-2 py-1 rounded transition ${
-                      bot.status === 'paused'
-                        ? 'text-green-400 hover:bg-green-400/10'
-                        : 'text-yellow-400 hover:bg-yellow-400/10'
-                    }`}
-                    title={bot.status === 'paused' ? '恢复' : '暂停'}
-                  >
-                    {bot.status === 'paused' ? '▶' : '❘❘'}
-                  </button>
-                  {/* Share */}
-                  <button
-                    onClick={() => setShareBot(bot)}
-                    className="text-dark-muted hover:text-dark-text text-sm p-1 rounded transition"
-                    title="Share"
-                  >
-                    🔗
-                  </button>
-                  {/* Deregister */}
-                  <button
-                    onClick={() => setDeregisterTarget(bot)}
-                    className="text-red-400/60 hover:text-red-400 text-xs p-1 rounded transition"
-                    title="注销"
-                  >
-                    ✕
-                  </button>
-                </div>
+                <BotActionMenu
+                  bot={bot}
+                  onTogglePause={() => handleTogglePause(bot)}
+                  onShare={() => setShareBot(bot)}
+                  onDeregister={() => setDeregisterTarget(bot)}
+                />
               </div>
             ))}
           </div>
