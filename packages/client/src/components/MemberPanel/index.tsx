@@ -4,6 +4,8 @@ import UserAvatar from '../UserAvatar';
 import { useState, useEffect, useMemo } from 'react';
 import type { User } from '../../types';
 
+const EMPTY_MEMBERS: User[] = [];
+
 interface BotInfo {
   id: string;
   username: string;
@@ -23,7 +25,8 @@ export default function MemberPanel() {
   const [loading, setLoading] = useState(false);
   const [inviting, setInviting] = useState(false);
 
-  const members = (activeRoomId && roomMembers[activeRoomId]) || [];
+  const EMPTY_MEMBERS: User[] = [];
+  const members = (activeRoomId && roomMembers[activeRoomId]) || EMPTY_MEMBERS;
   const friendIds = useMemo(() => new Set(friends.map(f => f.id)), [friends]);
   const existingMemberIds = useMemo(() => new Set(members.map(m => m.id)), [members]);
 
