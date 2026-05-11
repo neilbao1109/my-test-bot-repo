@@ -15,7 +15,14 @@ interface BotInfo {
 }
 
 export default function MemberPanel() {
-  const { showMembers, toggleMembers, activeRoomId, roomMembers, rooms, onlineUsers, user, friends } = useAppStore();
+  const showMembers = useAppStore(s => s.showMembers);
+  const toggleMembers = useAppStore(s => s.toggleMembers);
+  const activeRoomId = useAppStore(s => s.activeRoomId);
+  const rooms = useAppStore(s => s.rooms);
+  const onlineUsers = useAppStore(s => s.onlineUsers);
+  const user = useAppStore(s => s.user);
+  const friends = useAppStore(s => s.friends);
+  const members = useAppStore(s => (s.activeRoomId && s.roomMembers[s.activeRoomId]) || EMPTY_MEMBERS);
   const [sentRequests, setSentRequests] = useState<Set<string>>(new Set());
   const [inviteView, setInviteView] = useState(false);
   const [filterQuery, setFilterQuery] = useState('');
@@ -25,9 +32,9 @@ export default function MemberPanel() {
   const [loading, setLoading] = useState(false);
   const [inviting, setInviting] = useState(false);
 
-  const members = (activeRoomId && roomMembers[activeRoomId]) || EMPTY_MEMBERS;
+  const memberIds = members.map(m => m.id).join(',');
   const friendIds = useMemo(() => new Set(friends.map(f => f.id)), [friends]);
-  const existingMemberIds = useMemo(() => new Set(members.map(m => m.id)), [members]);
+  const existingMemberIds = useMemo(() => new Set(memberIds.split(',').filter(Boolean)), [memberIds]);
 
   const availableBots = useMemo(() => {
     const filtered = bots.filter(b => !existingMemberIds.has(b.id));
