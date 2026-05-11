@@ -8,8 +8,11 @@ export interface Invitation {
   id: string;
   type: InvitationType;
   fromUser: string;
+  fromUsername?: string;
+  fromAvatarUrl?: string;
   toUser: string;
   resourceId: string;
+  resourceName?: string;
   status: InvitationStatus;
   createdAt: string;
   updatedAt: string;
@@ -78,11 +81,25 @@ export function rejectInvitation(invitationId: string, userId: string): { succes
 
 export function getPendingInvitations(userId: string): Invitation[] {
   const db = getDb();
-  const rows = db.prepare(
-    'SELECT * FROM invitations WHERE to_user = ? AND status = ? ORDER BY created_at DESC'
-  ).all(userId, 'pending') as any[];
+  const rows = db.prepare(`
+    SELECT i.*, u.username as from_username, u.avatar_url as from_avatar_url,
+      CASE
+        WHEN i.type = 'room' OR i.type = 'dm' THEN (SELECT name FROM rooms WHERE id = i.resource_id)
+        WHEN i.type = 'bot_share' THEN (SELECT username FROM bots WHERE bot_id = i.resource_id)
+        ELSE NULL
+      END as resource_name
+    FROM invitations i
+    LEFT JOIN users u ON i.from_user = u.id
+    WHERE i.to_user = ? AND i.status = ?
+    ORDER BY i.created_at DESC
+  `).all(userId, 'pending') as any[];
 
-  return rows.map(rowToInvitation);
+  return rows.map(row => ({
+    ...rowToInvitation(row),
+    fromUsername: row.from_username || undefined,
+    fromAvatarUrl: row.from_avatar_url || undefined,
+    resourceName: row.resource_name || undefined,
+  }));
 }
 
 export function getInvitationCount(userId: string): number {

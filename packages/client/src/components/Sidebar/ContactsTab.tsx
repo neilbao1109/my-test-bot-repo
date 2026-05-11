@@ -286,8 +286,11 @@ interface Invitation {
   id: string;
   type: string;
   fromUser: string;
+  fromUsername?: string;
+  fromAvatarUrl?: string;
   toUser: string;
   resourceId: string;
+  resourceName?: string;
   status: string;
   createdAt: string;
   updatedAt: string;
@@ -357,7 +360,10 @@ function InvitationPanel({ onBack }: { onBack: () => void }) {
                 <span className="text-sm font-medium text-dark-text">{typeLabels[inv.type] || inv.type}</span>
                 <span className="text-xs text-dark-muted">{timeAgo(inv.createdAt)}</span>
               </div>
-              <p className="text-xs text-dark-muted">来自: {inv.fromUser}</p>
+              {inv.resourceName && (
+                <p className="text-sm text-dark-text">「{inv.resourceName}」</p>
+              )}
+              <p className="text-xs text-dark-muted">来自 {inv.fromUsername || inv.fromUser}</p>
               <div className="flex gap-2">
                 <button
                   onClick={() => handleAccept(inv.id)}
