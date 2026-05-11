@@ -25,7 +25,6 @@ export default function MemberPanel() {
   const [loading, setLoading] = useState(false);
   const [inviting, setInviting] = useState(false);
 
-  const EMPTY_MEMBERS: User[] = [];
   const members = (activeRoomId && roomMembers[activeRoomId]) || EMPTY_MEMBERS;
   const friendIds = useMemo(() => new Set(friends.map(f => f.id)), [friends]);
   const existingMemberIds = useMemo(() => new Set(members.map(m => m.id)), [members]);
