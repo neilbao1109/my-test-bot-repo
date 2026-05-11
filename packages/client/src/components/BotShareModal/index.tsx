@@ -1,5 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { socketService } from '../../services/socket';
+import { useAppStore } from '../../stores/appStore';
+import type { User } from '../../types';
 
 interface BotShareModalProps {
   botId: string;
@@ -8,14 +10,19 @@ interface BotShareModalProps {
 }
 
 export default function BotShareModal({ botId, botName, onClose }: BotShareModalProps) {
-  const [searchQuery, setSearchQuery] = useState('');
-  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const friends = useAppStore(s => s.friends);
   const [shares, setShares] = useState<any[]>([]);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [filterQuery, setFilterQuery] = useState('');
   const [sharing, setSharing] = useState(false);
   const [message, setMessage] = useState('');
 
   useEffect(() => {
     loadShares();
+    // Load friends if not already loaded
+    socketService.getFriends().then(res => {
+      useAppStore.getState().setFriends(res.friends);
+    });
   }, [botId]);
 
   const loadShares = async () => {
@@ -23,25 +30,36 @@ export default function BotShareModal({ botId, botName, onClose }: BotShareModal
     setShares(result.shares || []);
   };
 
-  const handleSearch = async (query: string) => {
-    setSearchQuery(query);
-    if (query.trim().length < 2) { setSearchResults([]); return; }
-    const users = await socketService.searchUsers(query.trim());
-    setSearchResults(users);
+  const sharedUserIds = useMemo(() => new Set(shares.map(s => s.sharedTo)), [shares]);
+
+  const availableFriends = useMemo(() => {
+    const filtered = friends.filter(f => !sharedUserIds.has(f.id));
+    if (!filterQuery.trim()) return filtered;
+    const q = filterQuery.toLowerCase();
+    return filtered.filter(f => f.username.toLowerCase().includes(q));
+  }, [friends, sharedUserIds, filterQuery]);
+
+  const toggleSelected = (id: string) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
   };
 
-  const handleShare = async (userId: string) => {
+  const handleShare = async () => {
+    if (selectedIds.size === 0 || sharing) return;
     setSharing(true);
     setMessage('');
-    const result = await socketService.shareBot(botId, userId);
-    if (result.error) {
-      setMessage(result.error);
-    } else {
-      setMessage('Shared successfully!');
-      setSearchQuery('');
-      setSearchResults([]);
-      loadShares();
+    let successCount = 0;
+    for (const userId of selectedIds) {
+      const result = await socketService.shareBot(botId, userId);
+      if (!result.error) successCount++;
     }
+    setMessage(`已分享给 ${successCount} 位好友`);
+    setSelectedIds(new Set());
+    loadShares();
     setSharing(false);
   };
 
@@ -56,51 +74,77 @@ export default function BotShareModal({ botId, botName, onClose }: BotShareModal
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
       <div className="bg-dark-surface border border-dark-border rounded-xl shadow-2xl w-full max-w-md mx-4 max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between px-5 py-4 border-b border-dark-border">
-          <h2 className="text-lg font-semibold text-dark-text">🔗 Share "{botName}"</h2>
+          <h2 className="text-lg font-semibold text-dark-text">🔗 分享 "{botName}"</h2>
           <button onClick={onClose} className="text-dark-muted hover:text-dark-text p-1 rounded transition">✕</button>
         </div>
 
         <div className="p-5 space-y-4">
-          {/* Search users */}
-          <div>
-            <label className="block text-xs text-dark-muted mb-1">Search user to share with</label>
-            <input
-              type="text" value={searchQuery} onChange={e => handleSearch(e.target.value)}
-              placeholder="Type username..."
-              className="w-full bg-dark-bg border border-dark-border rounded-lg px-3 py-2 text-sm text-dark-text placeholder-dark-muted focus:outline-none focus:ring-1 focus:ring-primary-500"
-            />
+          {/* Filter */}
+          <input
+            type="text"
+            value={filterQuery}
+            onChange={e => setFilterQuery(e.target.value)}
+            placeholder="搜索好友..."
+            className="w-full bg-dark-bg border border-dark-border rounded-lg px-3 py-2 text-sm text-dark-text placeholder-dark-muted focus:outline-none focus:ring-1 focus:ring-primary-500"
+          />
+
+          {/* Friend list */}
+          <div className="max-h-44 overflow-y-auto border border-dark-border rounded-lg">
+            {availableFriends.length === 0 ? (
+              <p className="text-xs text-dark-muted text-center py-4">
+                {friends.length === 0 ? '暂无好友' : '所有好友已分享'}
+              </p>
+            ) : (
+              availableFriends.map(f => {
+                const isSelected = selectedIds.has(f.id);
+                return (
+                  <button
+                    key={f.id}
+                    onClick={() => toggleSelected(f.id)}
+                    className={`w-full text-left px-3 py-2 text-sm flex items-center gap-3 hover:bg-dark-hover transition ${
+                      isSelected ? 'bg-primary-600/10' : ''
+                    }`}
+                  >
+                    <span className={`w-4 h-4 rounded border flex-shrink-0 flex items-center justify-center text-xs ${
+                      isSelected ? 'bg-primary-600 border-primary-600 text-white' : 'border-dark-muted'
+                    }`}>{isSelected && '✓'}</span>
+                    <span className="w-6 h-6 rounded-full bg-dark-hover flex items-center justify-center text-xs font-semibold flex-shrink-0">
+                      {f.username.charAt(0).toUpperCase()}
+                    </span>
+                    <span className="text-dark-text">{f.username}</span>
+                  </button>
+                );
+              })
+            )}
           </div>
 
-          {searchResults.length > 0 && (
-            <div className="space-y-1 max-h-40 overflow-y-auto">
-              {searchResults.map(user => (
-                <div key={user.id} className="flex items-center justify-between px-3 py-2 rounded-lg hover:bg-dark-hover">
-                  <span className="text-sm text-dark-text">{user.username}</span>
-                  <button onClick={() => handleShare(user.id)} disabled={sharing}
-                    className="text-xs px-3 py-1 bg-primary-600 text-white rounded hover:bg-primary-500 disabled:opacity-50 transition">
-                    Share
-                  </button>
-                </div>
-              ))}
-            </div>
+          {/* Share button */}
+          {availableFriends.length > 0 && (
+            <button
+              onClick={handleShare}
+              disabled={selectedIds.size === 0 || sharing}
+              className="w-full py-2 text-sm font-medium text-white bg-primary-600 rounded-lg hover:bg-primary-500 disabled:opacity-50 disabled:cursor-not-allowed transition"
+            >
+              {sharing ? '分享中...' : `分享 (${selectedIds.size})`}
+            </button>
           )}
 
-          {message && <p className="text-xs text-dark-muted">{message}</p>}
+          {message && <p className="text-xs text-primary-400 text-center">{message}</p>}
 
           {/* Current shares */}
           {shares.length > 0 && (
             <div>
-              <h3 className="text-xs text-dark-muted mb-2 uppercase tracking-wide">Current Shares</h3>
+              <h3 className="text-xs text-dark-muted mb-2 uppercase tracking-wide">已分享</h3>
               <div className="space-y-1">
                 {shares.map(share => (
                   <div key={share.id} className="flex items-center justify-between px-3 py-2 bg-dark-bg rounded-lg">
                     <div>
                       <span className="text-sm text-dark-text">{share.sharedToName}</span>
-                      <span className="text-xs text-dark-muted ml-2">({share.status})</span>
+                      <span className="text-xs text-dark-muted ml-2">({share.status === 'accepted' ? '已接受' : share.status === 'pending' ? '待接受' : share.status})</span>
                     </div>
                     <button onClick={() => handleRevoke(share.id)}
                       className="text-xs px-2 py-1 text-red-400 hover:bg-red-400/10 rounded transition">
-                      Revoke
+                      撤销
                     </button>
                   </div>
                 ))}
