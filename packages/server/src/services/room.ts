@@ -138,7 +138,14 @@ export function deleteRoom(roomId: string, userId?: string): { success: boolean;
 
 export function searchUsers(query: string): User[] {
   const db = getDb();
-  const rows = db.prepare('SELECT * FROM users WHERE username LIKE ? LIMIT 20').all(`%${query}%`) as any[];
+  const rows = db.prepare(`
+    SELECT u.* FROM users u
+    WHERE u.username LIKE ?
+    AND NOT EXISTS (
+      SELECT 1 FROM bots b WHERE b.bot_id = u.id AND b.status = 'deregistered'
+    )
+    LIMIT 20
+  `).all(`%${query}%`) as any[];
   return rows.map(r => ({
     id: r.id,
     username: r.username,
