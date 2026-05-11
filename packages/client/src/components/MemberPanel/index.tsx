@@ -123,10 +123,14 @@ export default function MemberPanel() {
         }
 
         const allMembers = [...currentMembers, ...newSelectedMembers];
-        const allMemberIds = allMembers.map(m => m.id);
         const roomName = allMembers.map(m => m.username).join(', ').slice(0, 30);
 
-        const room = await socketService.createRoom(roomName, 'group', allMemberIds);
+        // Current members (excluding self) join directly; new members get invited
+        const currentNonSelfIds = currentMembers.filter(m => m.id !== user?.id).map(m => m.id);
+        const newMemberIds = newSelectedMembers.map(m => m.id);
+        const allMemberIds = [...currentNonSelfIds, ...newMemberIds];
+
+        const room = await socketService.createRoom(roomName, 'group', allMemberIds, currentNonSelfIds);
         if (room && !('error' in room)) {
           socketService.joinRoom(room.id);
           const store = useAppStore.getState();

@@ -174,7 +174,7 @@ export function setupSocketHandlers(io: Server) {
       socket.leave(data.roomId);
     });
 
-    socket.on('room:create', (data: { name?: string | null; type: 'dm' | 'group' | 'bot'; memberIds?: string[] }, callback) => {
+    socket.on('room:create', (data: { name?: string | null; type: 'dm' | 'group' | 'bot'; memberIds?: string[]; directMemberIds?: string[] }, callback) => {
       if (!socket.userId) return;
 
       if (data.type === 'dm') {
@@ -239,6 +239,18 @@ export function setupSocketHandlers(io: Server) {
             if (isBotUser(memberId)) {
               // Bots join directly, no invitation needed
               addMemberToRoom(room.id, memberId);
+            } else if (data.directMemberIds?.includes(memberId)) {
+              // Direct members join without invitation
+              addMemberToRoom(room.id, memberId);
+              const memberSocketIds = userSockets.get(memberId);
+              if (memberSocketIds) {
+                const addedRoom = getRoom(room.id);
+                if (addedRoom) {
+                  for (const sid of memberSocketIds) {
+                    io.sockets.sockets.get(sid)?.emit('room:added', addedRoom);
+                  }
+                }
+              }
             } else {
               const invitation = createInvitation('room', socket.userId, memberId, room.id);
               const memberSocketIds = userSockets.get(memberId);
