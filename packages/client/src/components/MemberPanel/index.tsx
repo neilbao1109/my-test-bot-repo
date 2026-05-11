@@ -23,13 +23,28 @@ export default function MemberPanel() {
   const [loading, setLoading] = useState(false);
   const [inviting, setInviting] = useState(false);
 
-  if (!showMembers || !activeRoomId) return null;
-
-  const members = roomMembers[activeRoomId] || [];
-  const activeRoom = rooms.find((r) => r.id === activeRoomId);
-  const isGroup = activeRoom?.type === 'group';
+  const members = (activeRoomId && roomMembers[activeRoomId]) || [];
   const friendIds = useMemo(() => new Set(friends.map(f => f.id)), [friends]);
   const existingMemberIds = useMemo(() => new Set(members.map(m => m.id)), [members]);
+
+  const availableBots = useMemo(() => {
+    const filtered = bots.filter(b => !existingMemberIds.has(b.id));
+    if (!filterQuery.trim()) return filtered;
+    const q = filterQuery.toLowerCase();
+    return filtered.filter(b => b.username.toLowerCase().includes(q));
+  }, [bots, filterQuery, existingMemberIds]);
+
+  const availableUsers = useMemo(() => {
+    const filtered = users.filter(u => !existingMemberIds.has(u.id) && u.id !== user?.id);
+    if (!filterQuery.trim()) return filtered;
+    const q = filterQuery.toLowerCase();
+    return filtered.filter(u => u.username.toLowerCase().includes(q));
+  }, [users, filterQuery, existingMemberIds, user]);
+
+  if (!showMembers || !activeRoomId) return null;
+
+  const activeRoom = rooms.find((r) => r.id === activeRoomId);
+  const isGroup = activeRoom?.type === 'group';
 
   const handleAddFriend = async (userId: string) => {
     await socketService.sendFriendRequest(userId);
@@ -65,20 +80,7 @@ export default function MemberPanel() {
     });
   };
 
-  // Filter out existing members
-  const availableBots = useMemo(() => {
-    const filtered = bots.filter(b => !existingMemberIds.has(b.id));
-    if (!filterQuery.trim()) return filtered;
-    const q = filterQuery.toLowerCase();
-    return filtered.filter(b => b.username.toLowerCase().includes(q));
-  }, [bots, filterQuery, existingMemberIds]);
-
-  const availableUsers = useMemo(() => {
-    const filtered = users.filter(u => !existingMemberIds.has(u.id) && u.id !== user?.id);
-    if (!filterQuery.trim()) return filtered;
-    const q = filterQuery.toLowerCase();
-    return filtered.filter(u => u.username.toLowerCase().includes(q));
-  }, [users, filterQuery, existingMemberIds, user]);
+  // Filter out existing members — computed above (before early return)
 
   const handleConfirmInvite = async () => {
     if (selectedIds.size === 0 || inviting) return;
