@@ -60,6 +60,23 @@ export default function CreateRoomModal() {
     return users.filter(u => u.username.toLowerCase().includes(q));
   }, [users, filterQuery]);
 
+  // Filtered bots for group tab
+  const filteredBots = useMemo(() => {
+    if (!filterQuery.trim()) return bots;
+    const q = filterQuery.toLowerCase();
+    return bots.filter(b => b.username.toLowerCase().includes(q));
+  }, [bots, filterQuery]);
+
+  // Toggle bot in group selected users
+  const toggleBotInGroup = (bot: BotInfo) => {
+    const asUser: User = { id: bot.id, username: bot.username, avatarUrl: bot.avatarUrl, isBot: true, isOnline: onlineUsers.has(bot.id), createdAt: '' };
+    if (selectedUsers.some(s => s.id === bot.id)) {
+      setSelectedUsers(selectedUsers.filter(s => s.id !== bot.id));
+    } else {
+      setSelectedUsers([...selectedUsers, asUser]);
+    }
+  };
+
   if (!showCreateRoom) return null;
 
   const finishCreateRoom = async (room: any) => {
@@ -222,35 +239,68 @@ export default function CreateRoomModal() {
                 </div>
               )}
 
-              <div className="max-h-44 overflow-y-auto border border-dark-border rounded-lg">
-                {filteredUsers.length === 0 ? (
-                  <p className="text-xs text-dark-muted text-center py-4">No users found</p>
-                ) : filteredUsers.map((u) => {
-                  const isSelected = selectedUsers.some((s) => s.id === u.id);
-                  return (
-                    <button
-                      key={u.id}
-                      onClick={() => toggleUser(u)}
-                      className={`w-full text-left px-3 py-2 text-sm flex items-center gap-3 hover:bg-dark-hover transition ${
-                        isSelected ? 'bg-primary-600/10' : ''
-                      }`}
-                    >
-                      {/* Checkbox */}
-                      <span className={`w-4 h-4 rounded border flex-shrink-0 flex items-center justify-center text-xs ${
-                        isSelected
-                          ? 'bg-primary-600 border-primary-600 text-white'
-                          : 'border-dark-muted'
-                      }`}>
-                        {isSelected && '✓'}
-                      </span>
-                      <span className="w-6 h-6 rounded-full bg-dark-hover flex items-center justify-center text-xs font-semibold flex-shrink-0">
-                        {u.username.charAt(0).toUpperCase()}
-                      </span>
-                      <span className="text-dark-text">{u.username}</span>
-                    </button>
-                  );
-                })}
+              <div className="max-h-52 overflow-y-auto border border-dark-border rounded-lg">
+                {/* Bots section */}
+                {filteredBots.length > 0 && (
+                  <>
+                    <div className="px-3 py-1.5 text-[10px] font-medium text-dark-muted uppercase tracking-wider bg-dark-bg/50 sticky top-0">🤖 Bots</div>
+                    {filteredBots.map((bot) => {
+                      const isSelected = selectedUsers.some(s => s.id === bot.id);
+                      const isOnline = onlineUsers.has(bot.id);
+                      return (
+                        <button
+                          key={bot.id}
+                          onClick={() => toggleBotInGroup(bot)}
+                          className={`w-full text-left px-3 py-2 text-sm flex items-center gap-3 hover:bg-dark-hover transition ${
+                            isSelected ? 'bg-primary-600/10' : ''
+                          }`}
+                        >
+                          <span className={`w-4 h-4 rounded border flex-shrink-0 flex items-center justify-center text-xs ${
+                            isSelected ? 'bg-primary-600 border-primary-600 text-white' : 'border-dark-muted'
+                          }`}>{isSelected && '✓'}</span>
+                          <span className="relative w-6 h-6 rounded-full bg-dark-hover flex items-center justify-center text-xs font-semibold flex-shrink-0">
+                            {bot.username.charAt(0).toUpperCase()}
+                            <span className={`absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full border border-dark-surface ${
+                              isOnline ? 'bg-green-500' : 'bg-dark-muted'
+                            }`} />
+                          </span>
+                          <span className="text-dark-text">{bot.username}</span>
+                        </button>
+                      );
+                    })}
+                  </>
+                )}
+                {/* Members section */}
+                {filteredUsers.length > 0 && (
+                  <>
+                    <div className="px-3 py-1.5 text-[10px] font-medium text-dark-muted uppercase tracking-wider bg-dark-bg/50 sticky top-0">👥 Members</div>
+                    {filteredUsers.map((u) => {
+                      const isSelected = selectedUsers.some((s) => s.id === u.id);
+                      return (
+                        <button
+                          key={u.id}
+                          onClick={() => toggleUser(u)}
+                          className={`w-full text-left px-3 py-2 text-sm flex items-center gap-3 hover:bg-dark-hover transition ${
+                            isSelected ? 'bg-primary-600/10' : ''
+                          }`}
+                        >
+                          <span className={`w-4 h-4 rounded border flex-shrink-0 flex items-center justify-center text-xs ${
+                            isSelected ? 'bg-primary-600 border-primary-600 text-white' : 'border-dark-muted'
+                          }`}>{isSelected && '✓'}</span>
+                          <span className="w-6 h-6 rounded-full bg-dark-hover flex items-center justify-center text-xs font-semibold flex-shrink-0">
+                            {u.username.charAt(0).toUpperCase()}
+                          </span>
+                          <span className="text-dark-text">{u.username}</span>
+                        </button>
+                      );
+                    })}
+                  </>
+                )}
+                {filteredBots.length === 0 && filteredUsers.length === 0 && (
+                  <p className="text-xs text-dark-muted text-center py-4">No results</p>
+                )}
               </div>
+              <p className="text-[10px] text-dark-muted">💡 Bot 在群聊中仅响应 @mention</p>
             </>
           )}
         </div>
