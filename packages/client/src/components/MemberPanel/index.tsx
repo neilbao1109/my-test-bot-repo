@@ -31,6 +31,7 @@ export default function MemberPanel() {
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(false);
   const [inviting, setInviting] = useState(false);
+  const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
 
   const memberIds = members.map(m => m.id).join(',');
   const friendIds = useMemo(() => new Set(friends.map(f => f.id)), [friends]);
@@ -354,17 +355,41 @@ export default function MemberPanel() {
       {isGroup && (
         <div className="p-3 border-t border-dark-border">
           <button
-            onClick={async () => {
-              if (!confirm('确定离开群聊？')) return;
-              await socketService.leaveRoom(activeRoomId);
-              toggleMembers();
-              useAppStore.getState().removeRoom(activeRoomId);
-              useAppStore.getState().setActiveRoom('');
-            }}
+            onClick={() => setShowLeaveConfirm(true)}
             className="w-full py-2 text-sm text-red-400 hover:bg-red-400/10 rounded-lg transition"
           >
             🚪 离开群聊
           </button>
+        </div>
+      )}
+
+      {/* Leave confirm modal */}
+      {showLeaveConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
+          <div className="bg-dark-surface border border-dark-border rounded-xl shadow-2xl w-full max-w-sm mx-4 p-5">
+            <h3 className="text-sm font-semibold text-dark-text mb-2">确定离开群聊？</h3>
+            <p className="text-xs text-dark-muted mb-4">离开后将不再接收该群的消息，但可以被重新邀请加入。</p>
+            <div className="flex justify-end gap-2">
+              <button
+                onClick={() => setShowLeaveConfirm(false)}
+                className="px-3 py-1.5 text-sm text-dark-muted hover:text-dark-text rounded-lg hover:bg-dark-hover transition"
+              >
+                取消
+              </button>
+              <button
+                onClick={async () => {
+                  await socketService.leaveRoom(activeRoomId);
+                  setShowLeaveConfirm(false);
+                  toggleMembers();
+                  useAppStore.getState().removeRoom(activeRoomId);
+                  useAppStore.getState().setActiveRoom('');
+                }}
+                className="px-3 py-1.5 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-500 transition"
+              >
+                确定离开
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>
