@@ -9,6 +9,9 @@ import SearchBar from '../SearchBar';
 import PinnedBar from '../PinnedBar';
 import ForwardToolbar from '../ForwardToolbar';
 import UserAvatar from '../UserAvatar';
+import type { User } from '../../types';
+
+const EMPTY_MEMBERS: User[] = [];
 
 function exportMessages(roomMessages: any[], roomName: string, members: any[]) {
   const getMemberName = (userId: string) => members.find(m => m.id === userId)?.username || userId;
@@ -72,7 +75,7 @@ export default function ChatView() {
   const activeRoom = rooms.find((r) => r.id === activeRoomId);
   const roomMessages = activeRoomId ? messages[activeRoomId] || [] : [];
   const roomTyping = activeRoomId ? typingUsers[activeRoomId] || [] : [];
-  const members = activeRoomId ? roomMembers[activeRoomId] || [] : [];
+  const members = activeRoomId ? roomMembers[activeRoomId] || EMPTY_MEMBERS : EMPTY_MEMBERS;
   const onlineCount = members.filter((m) => onlineUsers.has(m.id) || m.isOnline).length;
   const inContextMode = activeRoomId ? isContextMode[activeRoomId] || false : false;
 
@@ -400,7 +403,7 @@ function RoomNameHeader({ room, userId }: { room: Room; userId?: string }) {
   const [draft, setDraft] = useState(room.name || '');
   const inputRef = useRef<HTMLInputElement>(null);
   const canRename = room.type !== 'dm' && (room.type === 'bot' || !room.createdBy || room.createdBy === userId);
-  const members = useAppStore((s) => s.roomMembers[room.id] || []);
+  const members = useAppStore((s) => s.roomMembers[room.id] || EMPTY_MEMBERS);
 
   // For DM rooms, display the other participant's name
   const displayName = room.type === 'dm'
