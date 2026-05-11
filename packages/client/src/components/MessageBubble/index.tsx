@@ -170,12 +170,23 @@ export default function MessageBubble({ message, isStreaming, streamContent, hig
     );
   }
 
+  // System messages: centered, no avatar/name
+  if (message.type === 'system') {
+    return (
+      <div className="flex justify-center py-1.5 px-4">
+        <span className="text-xs text-dark-muted bg-dark-hover/60 px-3 py-1 rounded-full">
+          {message.content}
+        </span>
+      </div>
+    );
+  }
+
   return (
     <div
       data-msg-id={message.id}
       className={clsx(
         'msg-bubble group flex gap-3 px-4 py-1.5 hover:bg-dark-hover/50 transition relative',
-        message.type === 'system' && 'opacity-80',
+        message.type === 'system' as string && 'opacity-80',
         isSearchActive && 'bg-primary-600/20 ring-1 ring-primary-500/40',
         highlight && !isSearchActive && 'bg-yellow-500/5',
         selectionMode && isSelected && 'bg-primary-600/15',
