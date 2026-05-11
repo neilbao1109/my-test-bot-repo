@@ -280,7 +280,7 @@ export default function CommandBar({ roomId, threadId, onExport }: CommandBarPro
               }`}
             >
               <span className="text-sm font-semibold">@{bot.username}</span>
-              <span className="text-[10px] px-1.5 py-0.5 bg-primary-600/20 text-primary-400 rounded font-medium">BOT</span>
+              {bot.isBot && <span className="text-[10px] px-1.5 py-0.5 bg-primary-600/20 text-primary-400 rounded font-medium">BOT</span>}
             </button>
           ))}
         </div>
