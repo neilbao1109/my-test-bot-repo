@@ -201,6 +201,12 @@ class SocketService {
     });
   }
 
+  listUsers(): Promise<{ users: User[] }> {
+    return new Promise((resolve) => {
+      this.socket?.emit('user:list', {}, resolve);
+    });
+  }
+
   testBotConnection(config: { gatewayUrl?: string; authToken: string; agentId?: string; sshHost?: string }): Promise<{ ok: boolean; error?: string; model?: string }> {
     return new Promise((resolve) => {
       this.socket?.emit('bot:test', config, resolve);

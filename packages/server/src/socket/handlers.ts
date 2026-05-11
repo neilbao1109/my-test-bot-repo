@@ -10,7 +10,7 @@ import { pinMessage, unpinMessage, getPinnedMessages } from '../services/pin.js'
 import { createInvitation, acceptInvitation, rejectInvitation, getPendingInvitations, getInvitationCount } from '../services/invitation.js';
 import { sendFriendRequest, acceptFriendRequest, rejectFriendRequest, removeFriend, getFriends, getFriendRequests, searchUsersByEmail, areFriends } from '../services/friendship.js';
 import { copyFileToUploads } from '../routes/upload.js';
-import { getUser, setOnline, getOnlineUsers } from '../services/user.js';
+import { getUser, setOnline, getOnlineUsers, getAllUsers } from '../services/user.js';
 import { verifyToken } from '../services/auth.js';
 import { v4 as uuid } from 'uuid';
 
@@ -616,6 +616,13 @@ export function setupSocketHandlers(io: Server) {
     socket.on('user:search', (data: { query: string }, callback) => {
       const users = searchUsers(data.query);
       callback(users);
+    });
+
+    socket.on('user:list', (_data: any, callback) => {
+      if (!socket.userId) return;
+      const allUsers = getAllUsers();
+      const nonBotUsers = allUsers.filter(u => !u.isBot && u.id !== socket.userId);
+      callback({ users: nonBotUsers });
     });
 
     socket.on('message:history', (data: { roomId: string; before: string; limit?: number }, callback) => {
