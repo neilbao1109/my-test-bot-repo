@@ -58,8 +58,12 @@ export function loadBotConfigs(): BotConfig[] {
     try {
       const fileContent = fs.readFileSync(configPath, 'utf-8');
       const parsed = JSON.parse(fileContent) as BotConfig[];
-      if (Array.isArray(parsed) && parsed.length > 0) {
-        console.log(`[BotRegistry] Loaded ${parsed.length} bot(s) from ${configPath}`);
+      if (Array.isArray(parsed)) {
+        if (parsed.length > 0) {
+          console.log(`[BotRegistry] Loaded ${parsed.length} bot(s) from ${configPath}`);
+        } else {
+          console.log(`[BotRegistry] bots.json is empty array, no system bots`);
+        }
         return parsed;
       }
     } catch (e) {
