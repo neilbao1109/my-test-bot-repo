@@ -300,7 +300,14 @@ function BotsSubPage({ onBack }: { onBack: () => void }) {
   const handleUnshare = async () => {
     if (!unshareTarget) return;
     setUnsharing(true);
-    await socketService.unshareBotFromMe(unshareTarget.id);
+    const result = await socketService.unshareBotFromMe(unshareTarget.id);
+    // Remove archived rooms from sidebar
+    if (result.archivedRoomIds?.length) {
+      const store = useAppStore.getState();
+      for (const roomId of result.archivedRoomIds) {
+        store.removeRoom(roomId);
+      }
+    }
     setUnshareTarget(null);
     setUnsharing(false);
     loadBots();

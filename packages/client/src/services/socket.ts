@@ -287,7 +287,7 @@ class SocketService {
     });
   }
 
-  unshareBotFromMe(botId: string): Promise<{ success: boolean }> {
+  unshareBotFromMe(botId: string): Promise<{ success: boolean; archivedRoomIds?: string[] }> {
     return new Promise((resolve) => {
       this.socket?.emit('bot:unshare', { botId }, resolve);
     });

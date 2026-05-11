@@ -462,7 +462,7 @@ export function setupSocketHandlers(io: Server) {
       const botsWithStatus = botList.map(b => ({
         ...b,
         status: getBotDbStatus(b.id) || 'active',
-        isOwner: isOwnerOfBot(b.id, socket.userId),
+        isOwner: isOwnerOfBot(b.id, socket.userId!),
       }));
       callback({ bots: botsWithStatus });
     });
@@ -472,7 +472,23 @@ export function setupSocketHandlers(io: Server) {
       if (!socket.userId) return;
       const db = getDb();
       const result = db.prepare('DELETE FROM bot_shares WHERE bot_id = ? AND shared_to = ?').run(data.botId, socket.userId);
-      if (callback) callback({ success: result.changes > 0 });
+
+      // Archive bot rooms between this user and the bot
+      const botRooms = db.prepare(`
+        SELECT r.id FROM rooms r
+        JOIN room_members rm1 ON r.id = rm1.room_id AND rm1.user_id = ?
+        JOIN room_members rm2 ON r.id = rm2.room_id AND rm2.user_id = ?
+        WHERE r.type = 'bot' AND r.archived_at IS NULL
+      `).all(socket.userId, data.botId) as any[];
+
+      const now = new Date().toISOString();
+      const archivedRoomIds: string[] = [];
+      for (const r of botRooms) {
+        db.prepare('UPDATE rooms SET archived_at = ? WHERE id = ?').run(now, r.id);
+        archivedRoomIds.push(r.id);
+      }
+
+      if (callback) callback({ success: result.changes > 0, archivedRoomIds });
     });
 
     // bot:test - test connection before registering
