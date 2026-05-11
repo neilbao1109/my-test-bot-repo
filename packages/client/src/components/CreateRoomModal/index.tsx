@@ -165,7 +165,7 @@ export default function CreateRoomModal() {
               {bots.length === 0 ? (
                 <p className="text-xs text-dark-muted text-center py-4">No bots available</p>
               ) : bots.map((bot) => {
-                const isOnline = onlineUsers.includes(bot.id);
+                const isOnline = onlineUsers.has(bot.id);
                 const isSelected = selectedBot?.id === bot.id;
                 return (
                   <button
