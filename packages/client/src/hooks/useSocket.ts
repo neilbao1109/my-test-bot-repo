@@ -51,14 +51,14 @@ export function useSocket() {
         const room = state.rooms.find(r => r.id === message.roomId);
         if (room) {
           const members = state.roomMembers[message.roomId] || [];
-          const sender = members.find(m => m.id === message.userId);
+          const sender = message.userId === 'system' ? null : members.find(m => m.id === message.userId);
           useAppStore.setState({
             rooms: state.rooms.map(r => r.id === message.roomId ? {
               ...r,
               lastMessage: {
                 content: message.content,
                 type: message.type,
-                senderName: sender?.username || 'Unknown',
+                senderName: message.userId === 'system' ? '' : (sender?.username || 'Unknown'),
                 createdAt: message.createdAt,
               },
             } : r),

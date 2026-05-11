@@ -358,6 +358,7 @@ export default function MemberPanel() {
               if (!confirm('确定离开群聊？')) return;
               await socketService.leaveRoom(activeRoomId);
               toggleMembers();
+              useAppStore.getState().removeRoom(activeRoomId);
               useAppStore.getState().setActiveRoom('');
             }}
             className="w-full py-2 text-sm text-red-400 hover:bg-red-400/10 rounded-lg transition"
