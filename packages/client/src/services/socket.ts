@@ -49,13 +49,15 @@ class SocketService {
     });
   }
 
-  leaveRoom(roomId: string) {
-    this.socket?.emit('room:leave', { roomId });
+  leaveRoom(roomId: string): Promise<{ success: boolean }> {
+    return new Promise((resolve) => {
+      this.socket?.emit('room:leave', { roomId }, resolve);
+    });
   }
 
-  createRoom(name: string | null, type: 'dm' | 'group' | 'bot', memberIds?: string[], directMemberIds?: string[]): Promise<Room> {
+  createRoom(name: string | null, type: 'dm' | 'group' | 'bot', memberIds?: string[]): Promise<Room> {
     return new Promise((resolve) => {
-      this.socket?.emit('room:create', { name, type, memberIds, directMemberIds }, resolve);
+      this.socket?.emit('room:create', { name, type, memberIds }, resolve);
     });
   }
 

@@ -170,11 +170,29 @@ export function setupSocketHandlers(io: Server) {
       socket.emit('room:history', { roomId: data.roomId, messages, members, hasMore });
     });
 
-    socket.on('room:leave', (data: { roomId: string }) => {
+    socket.on('room:leave', (data: { roomId: string }, callback?) => {
+      if (!socket.userId) return;
+      const room = getRoom(data.roomId);
+      if (!room || room.type !== 'group') {
+        if (callback) callback({ success: false, error: 'Can only leave group rooms' });
+        return;
+      }
+      removeMemberFromRoom(data.roomId, socket.userId);
       socket.leave(data.roomId);
+
+      // Broadcast to remaining members
+      const updatedMembers = getRoomMembers(data.roomId);
+      io.to(data.roomId).emit('room:member-left', { roomId: data.roomId, userId: socket.userId, members: updatedMembers });
+
+      // System message
+      const userName = getUser(socket.userId)?.username || 'Unknown';
+      const sysMsg = createMessage({ roomId: data.roomId, userId: 'system', content: `${userName} 离开了群聊`, type: 'system' });
+      io.to(data.roomId).emit('message:new', sysMsg);
+
+      if (callback) callback({ success: true });
     });
 
-    socket.on('room:create', (data: { name?: string | null; type: 'dm' | 'group' | 'bot'; memberIds?: string[]; directMemberIds?: string[] }, callback) => {
+    socket.on('room:create', (data: { name?: string | null; type: 'dm' | 'group' | 'bot'; memberIds?: string[] }, callback) => {
       if (!socket.userId) return;
 
       if (data.type === 'dm') {
@@ -229,36 +247,36 @@ export function setupSocketHandlers(io: Server) {
           }
         }
       } else {
-        // Group: creator is added directly, others get invitations
+        // Group: creator is added directly, others are added directly if friends
         const room = createRoom(data.name || 'Unnamed Room', 'group', [socket.userId], socket.userId);
         callback(room);
         socket.join(room.id);
 
         if (data.memberIds) {
+          const inviterName = getUser(socket.userId)?.username || 'Unknown';
           for (const memberId of data.memberIds) {
             if (isBotUser(memberId)) {
-              // Bots join directly, no invitation needed
+              // Bots join directly
               addMemberToRoom(room.id, memberId);
-            } else if (data.directMemberIds?.includes(memberId)) {
-              // Direct members join without invitation
+            } else {
+              // Check friendship
+              if (!areFriends(socket.userId, memberId)) continue;
               addMemberToRoom(room.id, memberId);
+              const inviteeName = getUser(memberId)?.username || 'Unknown';
               const memberSocketIds = userSockets.get(memberId);
               if (memberSocketIds) {
                 const addedRoom = getRoom(room.id);
                 if (addedRoom) {
                   for (const sid of memberSocketIds) {
-                    io.sockets.sockets.get(sid)?.emit('room:added', addedRoom);
+                    const ms = io.sockets.sockets.get(sid);
+                    ms?.join(room.id);
+                    ms?.emit('room:added', addedRoom);
                   }
                 }
               }
-            } else {
-              const invitation = createInvitation('room', socket.userId, memberId, room.id);
-              const memberSocketIds = userSockets.get(memberId);
-              if (memberSocketIds) {
-                for (const sid of memberSocketIds) {
-                  io.sockets.sockets.get(sid)?.emit('invitation:new', invitation);
-                }
-              }
+              // System message
+              const sysMsg = createMessage({ roomId: room.id, userId: 'system', content: `${inviterName} 邀请 ${inviteeName} 加入了群聊`, type: 'system' });
+              io.to(room.id).emit('message:new', sysMsg);
             }
           }
         }
@@ -267,17 +285,54 @@ export function setupSocketHandlers(io: Server) {
 
     socket.on('room:invite', (data: { roomId: string; userId: string }, callback?) => {
       if (!socket.userId) return;
-      const invitation = createInvitation('room', socket.userId, data.userId, data.roomId);
 
-      // Push notification to invited user
-      const memberSocketIds = userSockets.get(data.userId);
-      if (memberSocketIds) {
-        for (const sid of memberSocketIds) {
-          io.sockets.sockets.get(sid)?.emit('invitation:new', invitation);
-        }
+      const room = getRoom(data.roomId);
+      if (!room) {
+        if (callback) callback({ success: false, error: 'Room not found' });
+        return;
       }
 
-      if (callback) callback({ success: true, invitation });
+      // For group rooms: check friendship and add directly
+      if (room.type === 'group') {
+        if (!isBotUser(data.userId) && !areFriends(socket.userId, data.userId)) {
+          if (callback) callback({ success: false, error: 'Not friends' });
+          return;
+        }
+        addMemberToRoom(data.roomId, data.userId);
+        // Notify invited user
+        const memberSocketIds = userSockets.get(data.userId);
+        if (memberSocketIds) {
+          const updatedRoom = getRoom(data.roomId);
+          if (updatedRoom) {
+            for (const sid of memberSocketIds) {
+              const ms = io.sockets.sockets.get(sid);
+              ms?.join(data.roomId);
+              ms?.emit('room:added', updatedRoom);
+            }
+          }
+        }
+        // System message
+        if (!isBotUser(data.userId)) {
+          const inviterName = getUser(socket.userId)?.username || 'Unknown';
+          const inviteeName = getUser(data.userId)?.username || 'Unknown';
+          const sysMsg = createMessage({ roomId: data.roomId, userId: 'system', content: `${inviterName} 邀请 ${inviteeName} 加入了群聊`, type: 'system' });
+          io.to(data.roomId).emit('message:new', sysMsg);
+        }
+        // Broadcast updated members
+        const updatedMembers = getRoomMembers(data.roomId);
+        io.to(data.roomId).emit('room:members', { roomId: data.roomId, members: updatedMembers });
+        if (callback) callback({ success: true });
+      } else {
+        // For non-group rooms, use invitation flow
+        const invitation = createInvitation('room', socket.userId, data.userId, data.roomId);
+        const memberSocketIds = userSockets.get(data.userId);
+        if (memberSocketIds) {
+          for (const sid of memberSocketIds) {
+            io.sockets.sockets.get(sid)?.emit('invitation:new', invitation);
+          }
+        }
+        if (callback) callback({ success: true, invitation });
+      }
     });
 
     // --- Invitations ---

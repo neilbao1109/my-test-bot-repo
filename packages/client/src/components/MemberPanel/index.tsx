@@ -67,10 +67,10 @@ export default function MemberPanel() {
     setLoading(true);
     Promise.all([
       socketService.listAvailableBots(),
-      socketService.listUsers(),
-    ]).then(([botRes, userRes]) => {
+      socketService.getFriends(),
+    ]).then(([botRes, friendRes]) => {
       setBots((botRes.bots || []).filter((b: BotInfo) => b.status === 'active'));
-      setUsers(userRes.users || []);
+      setUsers(friendRes.friends || []);
     }).finally(() => setLoading(false));
   };
 
@@ -349,6 +349,23 @@ export default function MemberPanel() {
           ＋ Invite Members
         </button>
       </div>
+
+      {/* Leave group button */}
+      {isGroup && (
+        <div className="p-3 border-t border-dark-border">
+          <button
+            onClick={async () => {
+              if (!confirm('确定离开群聊？')) return;
+              await socketService.leaveRoom(activeRoomId);
+              toggleMembers();
+              useAppStore.getState().setActiveRoom(null);
+            }}
+            className="w-full py-2 text-sm text-red-400 hover:bg-red-400/10 rounded-lg transition"
+          >
+            🚪 离开群聊
+          </button>
+        </div>
+      )}
     </div>
   );
 }

@@ -39,10 +39,10 @@ export default function CreateRoomModal() {
     setLoading(true);
     Promise.all([
       socketService.listAvailableBots(),
-      socketService.listUsers(),
-    ]).then(([botRes, userRes]) => {
+      socketService.getFriends(),
+    ]).then(([botRes, friendRes]) => {
       setBots((botRes.bots || []).filter((b: BotInfo) => b.status === 'active'));
-      setUsers(userRes.users || []);
+      setUsers(friendRes.friends || []);
     }).finally(() => setLoading(false));
   }, [showCreateRoom]);
 
