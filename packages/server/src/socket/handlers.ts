@@ -661,21 +661,24 @@ export function setupSocketHandlers(io: Server) {
       if (!socket.userId) return;
       const result = shareBot(data.botId, socket.userId, data.userId);
       if (result.share) {
-        // Notify target user
+        // Notify target user: send restored rooms + refresh signal
         const targetSockets = userSockets.get(data.userId);
         if (targetSockets) {
           for (const sid of targetSockets) {
             const targetSocket = io.sockets.sockets.get(sid);
             if (targetSocket) {
-              // The invitation was created inside shareBot, fetch pending invitations
-              targetSocket.emit('invitation:new', {
-                id: result.share.id,
-                type: 'bot_share',
-                fromUser: socket.userId,
-                toUser: data.userId,
-                resourceId: result.share.id,
-                status: 'pending',
-              });
+              // Send restored rooms if any
+              if (result.restoredRoomIds?.length) {
+                for (const roomId of result.restoredRoomIds) {
+                  const room = getRoom(roomId);
+                  if (room) {
+                    targetSocket.emit('room:added', room);
+                    targetSocket.join(roomId);
+                  }
+                }
+              }
+              // Notify to refresh bot list
+              targetSocket.emit('bot:shared', { botId: data.botId });
             }
           }
         }
