@@ -19,8 +19,8 @@ function getDefaultBotRoom(): string | null {
   if (!bot) return null;
 
   const botRooms = getRooms(bot.id);
-  // Find the first bot-type room that isn't a legacy Notifications room
-  const room = botRooms.find(r => r.type === 'bot' && r.name !== 'Notifications' && !r.archivedAt);
+  // Find the first bot or group room that isn't a legacy Notifications room
+  const room = botRooms.find(r => (r.type === 'bot' || r.type === 'group') && r.name !== 'Notifications' && !r.archivedAt);
   return room?.id || null;
 }
 
