@@ -11,10 +11,24 @@ You are connected to ClawChat, a multi-bot chat platform. The following conventi
 
 When creating or managing cron jobs that interact with ClawChat:
 
-- Cron output intended for a specific room must be pushed via the ClawChat push API: `POST http://localhost:3003/api/push` with `{ "message": "...", "to": "<room_id>" }`
-- Include the room_id from the `[clawchat:room_id=...]` prefix if targeting the current conversation
-- Cron jobs run in isolated sessions — they don't share chat history with the room
-- Set appropriate timezone (default: UTC+8 for Shanghai)
+- Cron output intended for a specific room must be pushed via the ClawChat Push API:
+  ```
+  POST http://localhost:3003/api/push
+  Content-Type: application/json
+
+  {
+    "message": "your message here",
+    "to": "<room_id or room_name>",
+    "botId": "<optional, defaults to first bot>",
+    "source": "<optional label, shown as bold prefix>",
+    "secret": "<required if CLAWCHAT_PUSH_SECRET is set>"
+  }
+  ```
+- `to` accepts a room UUID **or** a room name. If omitted, pushes to the bot's default room.
+- `botId` specifies which bot sends the message. Omit to use the first registered bot.
+- Include the room_id from the `[clawchat:room_id=...]` prefix if targeting the current conversation.
+- Cron jobs run in isolated sessions — they don't share chat history with the room.
+- Set appropriate timezone (default: UTC+8 for Shanghai).
 
 ## Multi-Bot Etiquette
 
