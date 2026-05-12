@@ -1,340 +1,181 @@
 # RFC: Bot Skill Sharing
 
-> Status: Draft
+> Status: Draft → **Revised**
 > Author: Agent007
 > Date: 2026-05-12
-> Decision: 权限模型 MVP 采用简单公开模式（is_shared flag），后续再做精细授权
+> Revised: 2026-05-12 — 重新定义需求优先级，从 delegation 模式调整为分层实现
 
 ## 1. 背景与动机
 
-ClawChat 已支持多 bot 模式：用户可以注册多个 bot，每个 bot 连接独立的 OpenClaw Gateway agent。每个 agent 有自己的 skills（能力），但目前各 bot 之间能力完全隔离。
+ClawChat 已支持多 bot 模式：用户可以注册多个 bot，每个 bot 连接独立的 OpenClaw Gateway agent。当前存在两个实际痛点：
 
-**需求**：让不同 bot 之间可以 share 各自的 skill，实现能力互补。
+1. **平台级知识缺失** — 与执行环境无关的通用规范（如 ClawChat cron job 注意事项）无法让所有 bot 自动知晓，每个 bot 需要单独配置
+2. **Skill 部署不便** — 用户在外部编写或获取的 skill，没有通道推送到 bot 的 OpenClaw agent 上
 
-## 2. 核心设计决策
+## 2. 分层设计
 
-### 2.1 Delegation 而非 Replication
+| 层级 | 需求 | 本质 | 优先级 |
+|------|------|------|--------|
+| **L1** | 所有 bot 共享平台规范/知识 | System prompt 注入 | **P0 — 本轮实现** |
+| **L2** | 外部 skill 上传推送到 bot | BotBridge 管理通道 + 文件写入 | **P1** |
+| **L3** | Bot 之间委托执行能力 | Delegation 模式 | **P2（暂缓）** |
 
-**选择 Delegation（委托执行）模式**，而非复制 skill 文件到其他 bot：
+---
 
-| 方案 | 优点 | 缺点 |
-|------|------|------|
-| **Replication（复制 skill）** | bot 本地执行，延迟低 | 需要复制执行环境（MCP server、API token、工具权限），安全风险大，同步复杂 |
-| **Delegation（委托执行）** ✅ | 不需要复制环境，权限边界清晰，天然审计 | 多一跳延迟，依赖目标 bot 在线 |
+## 3. L1：平台共享知识注入（P0）
 
-### 2.2 权限模型
+### 3.1 概念
 
-**MVP：简单公开模式**
-- Bot owner 将某个 skill 标记为 `is_shared = true`，即对所有 bot 公开可用
-- 任何 bot 都可以 delegate 调用该 skill
-- 不需要逐 bot 授权
+ClawChat 维护一份 **平台级共享上下文（Platform Context）**，每个 bot 通过 BotBridge 与 agent 通信时，自动注入这段上下文。
 
-**后续演进（P2+）：精细授权**
-- 引入 `bot_skill_grants` 表，支持逐 bot 授权/撤销
-- 支持 skill 分组和批量授权
+内容示例：
+- ClawChat 平台使用规范
+- Cron job 创建注意事项
+- 消息格式约定
+- 通用工具使用技巧
 
-## 3. 数据模型
+### 3.2 实现方案
 
-### 3.1 新增表
+#### 存储
+
+```
+packages/server/data/platform-skills/
+├── _platform-context.md    ← 聚合文件，BotBridge 注入用
+├── clawchat-cron.md        ← 各个知识片段
+├── clawchat-conventions.md
+└── ...
+```
+
+或使用单文件 `data/platform-context.md`（MVP 更简单）。
+
+#### BotBridge 注入点
+
+在 `BotBridge.streamResponse()` 发送消息给 agent 时，将 platform context 作为前缀注入：
+
+```typescript
+// bot-bridge.ts
+async *streamResponse(content: string, context: BotContext) {
+  const platformContext = getPlatformContext(); // 读取 platform-context.md
+  const enrichedContent = platformContext
+    ? `[PLATFORM_CONTEXT]\n${platformContext}\n[/PLATFORM_CONTEXT]\n\n${content}`
+    : content;
+  // ... 发送 enrichedContent 给 agent
+}
+```
+
+**优化：不是每条消息都注入**，而是：
+- 在 WebSocket 连接建立时（agent session 初始化）注入一次
+- 或在每个 "对话开始" 时注入一次（首条消息）
+- 避免 token 浪费
+
+#### 管理 API
+
+```
+GET    /api/platform/context          → 获取当前 platform context
+PUT    /api/platform/context          → 更新 platform context（管理员）
+```
+
+#### 管理 UI
+
+Bot 管理页面（或设置页面）增加 "Platform Context" 编辑器：
+- Markdown 编辑框
+- 保存后所有 bot 新对话自动生效
+- 无需重启
+
+### 3.3 注入策略
+
+| 策略 | Token 开销 | 时效性 | 推荐 |
+|------|-----------|--------|------|
+| 每条消息都注入 | 高 | 最强 | ❌ |
+| 首条消息注入 | 低 | 好（session 内有效）| ✅ MVP |
+| 连接建立时注入 | 最低 | 依赖 agent 记忆 | 后续优化 |
+
+**MVP 采用「首条消息注入」策略**：每个房间的第一条 bot 消息带 platform context，后续消息不带。
+
+### 3.4 实现清单
+
+- [ ] 创建 `data/platform-context.md`，写入初始内容
+- [ ] `services/platform-context.ts` — 读取/更新 platform context
+- [ ] `bot-bridge.ts` — 首条消息注入逻辑
+- [ ] `routes/api.ts` — GET/PUT platform context API
+- [ ] 可选：管理 UI 编辑器
+
+---
+
+## 4. L2：外部 Skill 上传推送（P1）
+
+### 4.1 概念
+
+用户通过 ClawChat 上传 SKILL.md 文件，ClawChat 通过 BotBridge 将文件写入目标 bot 的 OpenClaw agent workspace。
+
+### 4.2 流程
+
+```
+用户 → ClawChat UI 上传 SKILL.md
+         ↓
+ClawChat Server 接收文件
+         ↓
+BotBridge 发送管理指令给 Agent:
+  "[SKILL_INSTALL] name=weather\n<file content>"
+         ↓
+Agent 写入 ~/.openclaw/workspace/skills/weather/SKILL.md
+         ↓
+下次对话 Agent 自动发现新 skill
+```
+
+### 4.3 前置条件
+
+- BotBridge 需要支持 **管理指令协议**（区分普通聊天 vs 管理操作）
+- Agent 侧需要能解析并执行文件写入指令
+- 安全：限制写入路径只能是 skills 目录
+
+### 4.4 数据模型
 
 ```sql
--- 技能注册表
-CREATE TABLE IF NOT EXISTS bot_skills (
+-- 记录通过 ClawChat 推送的 skill
+CREATE TABLE IF NOT EXISTS skill_deployments (
   id TEXT PRIMARY KEY,
   bot_id TEXT NOT NULL REFERENCES bots(bot_id) ON DELETE CASCADE,
-  name TEXT NOT NULL,              -- 技能标识符，如 "schedule-query"
-  display_name TEXT,               -- 显示名称，如 "日程查询"
-  description TEXT,                -- 给 LLM 看的技能描述（用于 delegation prompt）
-  parameters_schema TEXT,          -- JSON Schema，描述输入参数格式（可选）
-  is_shared INTEGER DEFAULT 0,    -- MVP: 1=公开可用, 0=仅自己
+  skill_name TEXT NOT NULL,
+  content TEXT NOT NULL,           -- SKILL.md 内容
+  deployed_by TEXT NOT NULL REFERENCES users(id),
+  status TEXT DEFAULT 'pending'    -- pending/deployed/failed
+    CHECK(status IN ('pending', 'deployed', 'failed')),
   created_at TEXT DEFAULT (datetime('now')),
-  updated_at TEXT DEFAULT (datetime('now')),
-  UNIQUE(bot_id, name)
-);
-CREATE INDEX IF NOT EXISTS idx_bot_skills_bot ON bot_skills(bot_id);
-CREATE INDEX IF NOT EXISTS idx_bot_skills_shared ON bot_skills(is_shared) WHERE is_shared = 1;
-
--- Delegation 执行记录（兼审计日志）
-CREATE TABLE IF NOT EXISTS skill_delegations (
-  id TEXT PRIMARY KEY,
-  from_bot_id TEXT NOT NULL,       -- 发起方 bot
-  to_bot_id TEXT NOT NULL,         -- 目标 bot（skill 所有者）
-  skill_id TEXT NOT NULL REFERENCES bot_skills(id) ON DELETE CASCADE,
-  room_id TEXT,                    -- 发起 delegation 的房间上下文
-  input TEXT,                      -- JSON: 传给 skill 的参数
-  output TEXT,                     -- JSON: skill 返回的结果
-  status TEXT NOT NULL DEFAULT 'pending'
-    CHECK(status IN ('pending', 'running', 'completed', 'failed', 'timeout')),
-  error TEXT,                      -- 失败原因
-  created_at TEXT DEFAULT (datetime('now')),
-  completed_at TEXT,
-  duration_ms INTEGER              -- 执行耗时
-);
-CREATE INDEX IF NOT EXISTS idx_delegations_from ON skill_delegations(from_bot_id);
-CREATE INDEX IF NOT EXISTS idx_delegations_to ON skill_delegations(to_bot_id);
-CREATE INDEX IF NOT EXISTS idx_delegations_status ON skill_delegations(status) WHERE status = 'pending';
-```
-
-### 3.2 预留表（P2 精细授权）
-
-```sql
--- 技能授权（后续启用）
-CREATE TABLE IF NOT EXISTS bot_skill_grants (
-  id TEXT PRIMARY KEY,
-  skill_id TEXT NOT NULL REFERENCES bot_skills(id) ON DELETE CASCADE,
-  granted_to TEXT NOT NULL REFERENCES bots(bot_id) ON DELETE CASCADE,
-  granted_by TEXT NOT NULL REFERENCES users(id),
-  created_at TEXT DEFAULT (datetime('now')),
-  UNIQUE(skill_id, granted_to)
+  deployed_at TEXT
 );
 ```
 
-## 4. Server 端设计
+### 4.5 实现清单（P1 阶段）
 
-### 4.1 新增 Service
+- [ ] BotBridge 管理指令协议设计
+- [ ] `services/skill-deploy.ts` — skill 上传 + 部署逻辑
+- [ ] `routes/api.ts` — POST /api/bots/:botId/skills/deploy
+- [ ] 前端：bot 详情页 "Deploy Skill" 按钮 + 文件上传
+- [ ] Agent 侧：识别 `[SKILL_INSTALL]` 指令并写入文件
 
-#### `services/skill-registry.ts` — 技能注册与查询
+---
 
-```typescript
-// 核心接口
-interface SkillDescriptor {
-  id: string;
-  botId: string;
-  name: string;
-  displayName?: string;
-  description?: string;
-  parametersSchema?: object;
-  isShared: boolean;
-  createdAt: string;
-}
+## 5. L3：Bot 间 Delegation（P2 暂缓）
 
-// 注册技能
-registerSkill(botId: string, skill: Partial<SkillDescriptor>, ownerId: string): SkillDescriptor
+> 详见本文件 git 历史中的初版设计（commit a3cdcef）。
+> 核心思路：Bot B 委托 Bot A 执行绑定执行环境的 skill，通过 ClawChat server 中转。
+> 待 L1/L2 落地后，根据实际使用场景决定是否启动。
 
-// 更新技能
-updateSkill(skillId: string, updates: Partial<SkillDescriptor>, ownerId: string): SkillDescriptor | null
+---
 
-// 删除技能
-deleteSkill(skillId: string, ownerId: string): boolean
+## 6. 实现计划
 
-// 列出 bot 自己的技能
-listBotSkills(botId: string): SkillDescriptor[]
+| Phase | 内容 | 预估 | 状态 |
+|-------|------|------|------|
+| **P0** | Platform context 文件 + 注入逻辑 + API | 1d | 🔴 待开始 |
+| **P0** | 管理 UI（可选，先用 API 管理） | 0.5d | 🟡 |
+| **P1** | BotBridge 管理指令协议 | 1d | ⚪ |
+| **P1** | Skill 上传部署流程 | 1.5d | ⚪ |
+| **P2** | Delegation 模式 | 3-4d | ⚪ 暂缓 |
 
-// 列出所有公开共享的技能（排除自己的）
-listSharedSkills(excludeBotId?: string): SkillDescriptor[]
+## 7. 开放问题
 
-// 查询某 bot 可用的所有技能（自己的 + 公开的）
-getAvailableSkills(botId: string): SkillDescriptor[]
-
-// 切换 skill 共享状态
-toggleSkillSharing(skillId: string, isShared: boolean, ownerId: string): boolean
-```
-
-#### `services/skill-delegation.ts` — 委托执行引擎
-
-```typescript
-interface DelegationRequest {
-  fromBotId: string;     // 发起方
-  skillId: string;       // 目标 skill
-  input: string;         // 自然语言或 JSON 格式的输入
-  roomId?: string;       // 房间上下文（仅用于记录，不传给目标 bot）
-}
-
-interface DelegationResult {
-  id: string;
-  status: 'completed' | 'failed' | 'timeout';
-  output?: string;
-  error?: string;
-  durationMs: number;
-}
-
-// 发起 delegation
-async delegateSkill(req: DelegationRequest): Promise<DelegationResult>
-
-// 查询 delegation 历史
-listDelegations(botId: string, limit?: number): DelegationLog[]
-```
-
-**Delegation 执行流程：**
-
-```
-delegateSkill(req)
-  │
-  ├─ 1. 验证 skill 存在且 is_shared=1（或属于 fromBot 自己）
-  ├─ 2. 检查递归深度（max 2 层，防止 A→B→A 死循环）
-  ├─ 3. 获取目标 bot 的 BotBridge
-  ├─ 4. 构造 delegation prompt（见 §4.3）
-  ├─ 5. 写入 skill_delegations 表 status='running'
-  ├─ 6. 通过 BotBridge 发送消息，收集完整响应
-  ├─ 7. 更新记录 status='completed'/'failed'
-  └─ 8. 返回结果
-```
-
-**超时与错误处理：**
-- 单次 delegation 最大超时：60 秒
-- 超时后 status='timeout'，返回错误信息
-- 目标 bot 离线 → 立即 fail，不排队等待
-
-### 4.2 API Routes
-
-```
-# 技能管理（bot owner 操作）
-GET    /api/bots/:botId/skills          → listBotSkills
-POST   /api/bots/:botId/skills          → registerSkill
-PUT    /api/bots/:botId/skills/:skillId → updateSkill
-DELETE /api/bots/:botId/skills/:skillId → deleteSkill
-PATCH  /api/bots/:botId/skills/:skillId/share → toggleSkillSharing
-
-# 技能发现
-GET    /api/skills/shared               → listSharedSkills (所有公开技能)
-GET    /api/skills/available/:botId     → getAvailableSkills (该 bot 可用的所有技能)
-
-# Delegation
-POST   /api/skills/delegate             → delegateSkill
-GET    /api/skills/delegations/:botId   → listDelegations (执行历史)
-```
-
-### 4.3 Delegation Prompt 协议
-
-发给目标 bot 的消息格式：
-
-```
-[SKILL_DELEGATION]
-Skill: {skill.name}
-Description: {skill.description}
-Input: {request.input}
-
-Execute this skill and return the result. Respond with the result only, no additional commentary.
-If the skill requires tool calls, execute them and return the final output.
-```
-
-**安全约束：**
-- 不传 room context / 聊天历史给目标 bot
-- 只传 skill 描述 + input 参数
-- 结果原样返回给发起方 bot，由发起方决定如何整合
-
-### 4.4 BotBridge 扩展
-
-在 `BotBridge` 类新增方法：
-
-```typescript
-/**
- * Execute a delegation request: send a special prompt and collect full response.
- * Unlike streamResponse which yields chunks, this collects the complete output.
- */
-async executeDelegation(skillName: string, input: string): Promise<string>
-```
-
-实现：复用现有 `streamResponse`，但收集所有 chunk 拼成完整文本返回。
-
-### 4.5 Socket 事件
-
-```typescript
-// Server → Client（通知 UI）
-'skill:delegation:start'   { delegationId, fromBotId, toBotId, skillName }
-'skill:delegation:complete' { delegationId, status, output?, error? }
-```
-
-## 5. Client 端设计
-
-### 5.1 Bot 详情 — Skills Tab（P0 MVP）
-
-在现有 bot 详情/编辑页面新增 "Skills" tab：
-
-```
-┌──────────────────────────────────────────┐
-│ 🤖 BotName              [Info] [Skills] │
-├──────────────────────────────────────────┤
-│ My Skills                    [+ Add]     │
-│                                          │
-│ ┌─ schedule-query ──────── 🔗 Shared ─┐ │
-│ │ 日程查询                             │ │
-│ │ 查询指定时间范围内的日程             │ │
-│ └────────────────── [Edit] [Delete] ──┘ │
-│                                          │
-│ ┌─ weather ─────────────── 🔒 Private ┐ │
-│ │ 天气查询                             │ │
-│ │ 获取指定城市的天气预报               │ │
-│ └────────────────── [Edit] [Delete] ──┘ │
-├──────────────────────────────────────────┤
-│ Available Shared Skills                  │
-│                                          │
-│ ┌─ code-review ── by @CodeBot ────────┐ │
-│ │ 代码审查                             │ │
-│ │ 审查代码并提供改进建议               │ │
-│ └─────────────────────────────────────┘ │
-└──────────────────────────────────────────┘
-```
-
-### 5.2 聊天界面 Delegation 提示（P1）
-
-当 bot 执行 delegation 时，在消息流中显示：
-
-```
-🔗 正在调用 @ScheduleBot 的「日程查询」技能...
-```
-
-结果返回后消息更新为正常 bot 回复。
-
-### 5.3 Zustand Store
-
-```typescript
-// stores/skillStore.ts
-interface SkillStore {
-  botSkills: Record<string, SkillDescriptor[]>;  // botId → skills
-  sharedSkills: SkillDescriptor[];
-  activeDelegations: Record<string, DelegationStatus>;
-
-  fetchBotSkills: (botId: string) => Promise<void>;
-  fetchSharedSkills: () => Promise<void>;
-  registerSkill: (botId: string, skill: ...) => Promise<void>;
-  deleteSkill: (botId: string, skillId: string) => Promise<void>;
-  toggleSharing: (botId: string, skillId: string, shared: boolean) => Promise<void>;
-}
-```
-
-⚠️ **Zustand 规范提醒**（参考 MEMORY.md）：
-- selector 中 fallback 必须用模块级常量：`const EMPTY: Skill[] = []; useSkillStore(s => s.botSkills[id] ?? EMPTY)`
-- 不要 `useSkillStore()` 全量订阅
-
-## 6. 递归防护
-
-防止 delegation 死循环（A→B→A）：
-
-```typescript
-// 每个 delegation 请求携带 depth 计数
-const MAX_DELEGATION_DEPTH = 2;
-
-function delegateSkill(req: DelegationRequest, depth = 0) {
-  if (depth >= MAX_DELEGATION_DEPTH) {
-    return { status: 'failed', error: 'Max delegation depth exceeded' };
-  }
-  // ... execute with depth+1 passed to any nested delegation
-}
-```
-
-## 7. 实现计划
-
-| Phase | 内容 | 预估 | 优先级 |
-|-------|------|------|--------|
-| **P0** | DB migration (bot_skills + skill_delegations) | 0.5d | 🔴 |
-| **P0** | skill-registry service + REST API | 1d | 🔴 |
-| **P0** | Bot 详情 Skills tab UI（注册/删除/共享切换） | 1.5d | 🔴 |
-| **P1** | skill-delegation service + BotBridge.executeDelegation | 1.5d | 🟡 |
-| **P1** | Delegation socket 事件 + 聊天界面提示 | 1d | 🟡 |
-| **P2** | 自动 skill 发现（通过 agent `/skills list` query） | 1d | 🟢 |
-| **P2** | 精细授权模型（bot_skill_grants） | 1d | 🟢 |
-| **P3** | Skill Marketplace UI | 2d | 🔵 |
-
-**MVP（P0）总计：~3 天**
-
-## 8. 开放问题
-
-1. **Skill 的 input/output 格式** — MVP 先用自然语言，还是上来就定义 JSON Schema？
-   - 建议：MVP 自然语言，P2 加 schema 验证
-2. **Delegation 的计费/限流** — 是否需要？
-   - 建议：MVP 只记录不限制，后续按需加
-3. **目标 bot 离线时的行为** — 直接失败还是排队？
-   - 建议：直接失败，返回 "Bot offline" 错误
-4. **Delegation 结果缓存** — 相同输入是否缓存？
-   - 建议：MVP 不缓存，每次实时执行
+1. **Platform context 大小限制** — 建议不超过 2000 tokens，避免挤占 bot 的上下文窗口
+2. **注入格式** — 用 XML 标签包裹（`[PLATFORM_CONTEXT]...[/PLATFORM_CONTEXT]`）还是作为 system message？取决于 BotBridge 协议支持
+3. **多租户** — 如果 ClawChat 以后支持多 workspace/团队，platform context 是否按团队隔离？MVP 先单一全局
