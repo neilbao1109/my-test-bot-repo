@@ -382,6 +382,28 @@ function initSchema(db: Database.Database) {
     console.log('[Migration] v8: bot status + room archived_at');
   }
 
+  if (version < 9) {
+    db.transaction(() => {
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS skill_deployments (
+          id TEXT PRIMARY KEY,
+          bot_id TEXT NOT NULL REFERENCES bots(bot_id) ON DELETE CASCADE,
+          skill_name TEXT NOT NULL,
+          content TEXT NOT NULL,
+          deployed_by TEXT NOT NULL REFERENCES users(id),
+          status TEXT DEFAULT 'pending'
+            CHECK(status IN ('pending', 'deployed', 'failed')),
+          error_message TEXT,
+          created_at TEXT DEFAULT (datetime('now')),
+          deployed_at TEXT,
+          UNIQUE(bot_id, skill_name)
+        );
+      `);
+      db.exec('PRAGMA user_version = 9');
+    })();
+    console.log('[Migration] v9: skill_deployments table created');
+  }
+
   // Ensure system user exists (for system messages)
   db.prepare(`
     INSERT OR IGNORE INTO users (id, username, avatar_url, is_bot, is_online)

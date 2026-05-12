@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useAppStore } from '../../stores/appStore';
 import { socketService } from '../../services/socket';
+import { deploySkill, listSkills, removeSkill, type SkillDeployment } from '../../services/skill-api';
 import BotShareModal from '../BotShareModal';
 import UserAvatar from '../UserAvatar';
 import type { ImageQuality } from '../../services/upload';
@@ -23,12 +24,13 @@ interface SettingsPanelProps {
   onShowAccount: () => void;
 }
 
-function BotActionMenu({ bot, onTogglePause, onShare, onDeregister, onUnshare }: {
+function BotActionMenu({ bot, onTogglePause, onShare, onDeregister, onUnshare, onSkills }: {
   bot: any;
   onTogglePause: () => void;
   onShare: () => void;
   onDeregister: () => void;
   onUnshare: () => void;
+  onSkills: () => void;
 }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -57,6 +59,12 @@ function BotActionMenu({ bot, onTogglePause, onShare, onDeregister, onUnshare }:
         <div className="absolute right-0 top-full mt-1 z-50 bg-dark-surface border border-dark-border rounded-lg shadow-xl py-1 min-w-[120px]">
           {isOwner ? (
             <>
+              <button
+                onClick={() => { onSkills(); setOpen(false); }}
+                className="w-full text-left px-3 py-2.5 text-sm text-dark-text hover:bg-dark-hover transition flex items-center gap-2"
+              >
+                📦 Skills
+              </button>
               <button
                 onClick={() => { onTogglePause(); setOpen(false); }}
                 className={`w-full text-left px-3 py-2.5 text-sm hover:bg-dark-hover transition flex items-center gap-2 ${
@@ -267,6 +275,7 @@ function BotsSubPage({ onBack }: { onBack: () => void }) {
   const [deregistering, setDeregistering] = useState(false);
   const [unshareTarget, setUnshareTarget] = useState<any>(null);
   const [unsharing, setUnsharing] = useState(false);
+  const [skillsBot, setSkillsBot] = useState<any>(null);
 
   const loadBots = () => {
     socketService.listAvailableBots().then((res) => {
@@ -312,6 +321,10 @@ function BotsSubPage({ onBack }: { onBack: () => void }) {
     setUnsharing(false);
     loadBots();
   };
+
+  if (skillsBot) {
+    return <BotSkillsPage bot={skillsBot} onBack={() => setSkillsBot(null)} />;
+  }
 
   return (
     <div className="flex flex-col h-full">
@@ -363,6 +376,7 @@ function BotsSubPage({ onBack }: { onBack: () => void }) {
                   onShare={() => setShareBot(bot)}
                   onDeregister={() => setDeregisterTarget(bot)}
                   onUnshare={() => setUnshareTarget(bot)}
+                  onSkills={() => setSkillsBot(bot)}
                 />
               </div>
             ))}
@@ -404,6 +418,180 @@ function BotsSubPage({ onBack }: { onBack: () => void }) {
               <button onClick={handleUnshare} disabled={unsharing}
                 className="px-3 py-1.5 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-500 disabled:opacity-50 transition">
                 {unsharing ? '移除中...' : '确认移除'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function BotSkillsPage({ bot, onBack }: { bot: any; onBack: () => void }) {
+  const [skills, setSkills] = useState<SkillDeployment[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [showDeploy, setShowDeploy] = useState(false);
+  const [skillName, setSkillName] = useState('');
+  const [skillContent, setSkillContent] = useState('');
+  const [deploying, setDeploying] = useState(false);
+  const [error, setError] = useState('');
+  const [removeTarget, setRemoveTarget] = useState<string | null>(null);
+  const [removing, setRemoving] = useState(false);
+
+  const loadSkills = async () => {
+    try {
+      const list = await listSkills(bot.id);
+      setSkills(list);
+    } catch {
+      // ignore
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadSkills();
+    // Listen for real-time updates
+    const socket = socketService.getSocket();
+    const handler = (data: any) => {
+      if (data.botId === bot.id) loadSkills();
+    };
+    socket?.on('skill:status', handler);
+    return () => { socket?.off('skill:status', handler); };
+  }, [bot.id]);
+
+  const handleDeploy = async () => {
+    if (!skillName.trim() || !skillContent.trim()) return;
+    setDeploying(true);
+    setError('');
+    try {
+      await deploySkill(bot.id, skillName.trim(), skillContent);
+      setShowDeploy(false);
+      setSkillName('');
+      setSkillContent('');
+      loadSkills();
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setDeploying(false);
+    }
+  };
+
+  const handleRemove = async () => {
+    if (!removeTarget) return;
+    setRemoving(true);
+    try {
+      await removeSkill(bot.id, removeTarget);
+      setRemoveTarget(null);
+      loadSkills();
+    } catch {
+      // ignore
+    } finally {
+      setRemoving(false);
+    }
+  };
+
+  const statusBadge = (status: string) => {
+    const colors: Record<string, string> = {
+      pending: 'bg-yellow-500/20 text-yellow-400',
+      deployed: 'bg-green-500/20 text-green-400',
+      failed: 'bg-red-500/20 text-red-400',
+    };
+    return (
+      <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${colors[status] || 'bg-dark-hover text-dark-muted'}`}>
+        {status}
+      </span>
+    );
+  };
+
+  return (
+    <div className="flex flex-col h-full">
+      <SubPageHeader title={`Skills — ${bot.username || bot.name}`} onBack={onBack} />
+      <div className="flex-1 overflow-y-auto px-4 py-4">
+        <button
+          onClick={() => setShowDeploy(true)}
+          className="w-full py-2.5 rounded-lg bg-primary-600/20 text-primary-400 text-sm font-medium hover:bg-primary-600/30 transition mb-4"
+        >
+          ➕ Deploy Skill
+        </button>
+
+        {loading ? (
+          <p className="text-xs text-dark-muted">Loading...</p>
+        ) : skills.length === 0 ? (
+          <p className="text-xs text-dark-muted">No skills deployed yet</p>
+        ) : (
+          <div className="space-y-1">
+            {skills.map((skill) => (
+              <div
+                key={skill.id}
+                className="flex items-center justify-between px-3 py-2.5 rounded-lg hover:bg-dark-hover transition"
+              >
+                <div className="min-w-0 flex-1">
+                  <span className="text-sm text-dark-text font-medium truncate block">
+                    {skill.skillName} {statusBadge(skill.status)}
+                  </span>
+                  <span className="text-[10px] text-dark-muted">
+                    {skill.deployedAt ? new Date(skill.deployedAt).toLocaleString() : skill.createdAt ? new Date(skill.createdAt).toLocaleString() : ''}
+                    {skill.errorMessage && <span className="text-red-400 ml-1">{skill.errorMessage}</span>}
+                  </span>
+                </div>
+                <button
+                  onClick={() => setRemoveTarget(skill.skillName)}
+                  className="w-8 h-8 flex items-center justify-center rounded-lg text-dark-muted hover:text-red-400 hover:bg-red-400/10 transition text-sm"
+                  title="Remove"
+                >
+                  ✕
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Deploy modal */}
+      {showDeploy && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
+          <div className="bg-dark-surface border border-dark-border rounded-xl shadow-2xl w-full max-w-md mx-4 p-5">
+            <h3 className="text-sm font-semibold text-dark-text mb-3">Deploy Skill</h3>
+            <input
+              type="text"
+              placeholder="Skill name (e.g. my-skill)"
+              value={skillName}
+              onChange={(e) => setSkillName(e.target.value.replace(/[^a-zA-Z0-9-]/g, ''))}
+              className="w-full px-3 py-2 bg-dark-bg border border-dark-border rounded-lg text-sm text-dark-text mb-2 outline-none focus:border-primary-500"
+            />
+            <textarea
+              placeholder="Paste SKILL.md content here..."
+              value={skillContent}
+              onChange={(e) => setSkillContent(e.target.value)}
+              className="w-full px-3 py-2 bg-dark-bg border border-dark-border rounded-lg text-sm text-dark-text mb-2 outline-none focus:border-primary-500 h-48 resize-none font-mono text-xs"
+            />
+            {error && <p className="text-xs text-red-400 mb-2">{error}</p>}
+            <div className="flex justify-end gap-2">
+              <button onClick={() => { setShowDeploy(false); setError(''); }} className="px-3 py-1.5 text-sm text-dark-muted hover:text-dark-text rounded-lg hover:bg-dark-hover transition">Cancel</button>
+              <button
+                onClick={handleDeploy}
+                disabled={deploying || !skillName.trim() || !skillContent.trim()}
+                className="px-3 py-1.5 text-sm font-medium text-white bg-primary-600 rounded-lg hover:bg-primary-500 disabled:opacity-50 transition"
+              >
+                {deploying ? 'Deploying...' : 'Deploy'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Remove confirmation */}
+      {removeTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
+          <div className="bg-dark-surface border border-dark-border rounded-xl shadow-2xl w-full max-w-sm mx-4 p-5">
+            <h3 className="text-sm font-semibold text-dark-text mb-2">Remove skill "{removeTarget}"?</h3>
+            <p className="text-xs text-dark-muted mb-4">This will uninstall the skill from the bot agent.</p>
+            <div className="flex justify-end gap-2">
+              <button onClick={() => setRemoveTarget(null)} className="px-3 py-1.5 text-sm text-dark-muted hover:text-dark-text rounded-lg hover:bg-dark-hover transition">Cancel</button>
+              <button onClick={handleRemove} disabled={removing}
+                className="px-3 py-1.5 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-500 disabled:opacity-50 transition">
+                {removing ? 'Removing...' : 'Remove'}
               </button>
             </div>
           </div>

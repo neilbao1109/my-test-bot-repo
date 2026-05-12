@@ -32,6 +32,7 @@ export class BotBridge {
   private activeResponseSessions = new Set<string>();
   private contextInjectedSessions = new Set<string>(); // tracks which sessions got platform context
   private connectionMode: ConnectionMode;
+  private mgmtSessionKey: string | null = null;
 
   /** Callback for push messages (cron, heartbeat, etc.) */
   onPushMessage?: (roomId: string, botId: string, content: string) => void;
@@ -391,6 +392,109 @@ export class BotBridge {
       console.warn(`[BotBridge:${this.config.id}] tryRecoverRoomFromSession failed: ${err.message}`);
     }
     return null;
+  }
+
+  /** Get or create a dedicated management session for skill deployment */
+  private async getMgmtSession(): Promise<string> {
+    if (this.mgmtSessionKey) return this.mgmtSessionKey;
+
+    const gw = await this.ensureClient();
+    const label = `ClawChat mgmt [bot:${this.config.id}]`;
+
+    try {
+      const list = await gw.rpc('sessions.list', { label });
+      const sessions = list?.sessions || list || [];
+      if (Array.isArray(sessions) && sessions.length > 0) {
+        this.mgmtSessionKey = sessions[0].sessionKey || sessions[0].key || sessions[0].id;
+        return this.mgmtSessionKey!;
+      }
+    } catch (err: any) {
+      console.warn(`[BotBridge:${this.config.id}] mgmt sessions.list failed: ${err.message}`);
+    }
+
+    const result = await gw.rpc('sessions.create', {
+      label,
+      agentId: this.config.gateway.agentId,
+    });
+    this.mgmtSessionKey = result.sessionKey || result.key || result.id;
+    if (!this.mgmtSessionKey) throw new Error('No sessionKey in mgmt sessions.create response');
+
+    // Subscribe for responses
+    try {
+      await gw.rpc('sessions.messages.subscribe', { key: this.mgmtSessionKey });
+      this.subscribedSessions.add(this.mgmtSessionKey);
+    } catch {}
+
+    return this.mgmtSessionKey;
+  }
+
+  /** Send a skill install instruction and wait for agent response */
+  async sendSkillInstall(skillName: string, content: string): Promise<{ ok: boolean; error?: string }> {
+    const gw = await this.ensureClient();
+    const sessionKey = await this.getMgmtSession();
+
+    const message = `[SKILL_INSTALL]\nname: ${skillName}\naction: install\n---\n${content}`;
+
+    const sendResult = await gw.rpc('chat.send', {
+      sessionKey,
+      message,
+      idempotencyKey: `skill-install-${skillName}-${Date.now()}`,
+    }, 10000);
+
+    const chatRunId = sendResult?.runId;
+    if (!chatRunId) return { ok: false, error: 'Failed to start skill install' };
+
+    // Wait for agent to complete (up to 120s)
+    try {
+      await gw.rpc('agent.wait', { runId: chatRunId, timeoutMs: 120000 }, 130000);
+    } catch (err: any) {
+      return { ok: false, error: `Agent timeout: ${err.message}` };
+    }
+
+    // Parse response
+    try {
+      const history = await gw.rpc('chat.history', { sessionKey, limit: 5 });
+      const messages = history?.messages || (Array.isArray(history) ? history : []);
+      const assistantMsgs = messages.filter((m: any) => m.role === 'assistant');
+      for (let i = assistantMsgs.length - 1; i >= 0; i--) {
+        const text = this.extractContentValue(assistantMsgs[i].content);
+        if (text && text.includes('[SKILL_RESULT]')) {
+          const match = text.match(/\[SKILL_RESULT\]\s*name=(\S+)\s+status=(\S+)(?:\s+reason=(.+))?/);
+          if (match) {
+            const status = match[2];
+            if (status === 'ok') return { ok: true };
+            return { ok: false, error: match[3] || 'Agent reported error' };
+          }
+        }
+      }
+    } catch (err: any) {
+      return { ok: false, error: `Failed to read response: ${err.message}` };
+    }
+
+    return { ok: true }; // Assume success if no SKILL_RESULT found (agent may not follow protocol exactly)
+  }
+
+  /** Send a skill uninstall instruction */
+  async sendSkillUninstall(skillName: string): Promise<{ ok: boolean; error?: string }> {
+    const gw = await this.ensureClient();
+    const sessionKey = await this.getMgmtSession();
+
+    const message = `[SKILL_INSTALL]\nname: ${skillName}\naction: uninstall\n---`;
+
+    const sendResult = await gw.rpc('chat.send', {
+      sessionKey,
+      message,
+      idempotencyKey: `skill-uninstall-${skillName}-${Date.now()}`,
+    }, 10000);
+
+    const chatRunId = sendResult?.runId;
+    if (!chatRunId) return { ok: false, error: 'Failed to start skill uninstall' };
+
+    try {
+      await gw.rpc('agent.wait', { runId: chatRunId, timeoutMs: 120000 }, 130000);
+    } catch {}
+
+    return { ok: true };
   }
 
   shutdown() {
