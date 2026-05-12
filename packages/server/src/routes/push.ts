@@ -10,30 +10,37 @@ const router = Router();
 const PUSH_SECRET = process.env.CLAWCHAT_PUSH_SECRET || '';
 
 /**
- * Find the first DM room between the bot and any user.
+ * Find the first bot/group room for a given bot.
  * Used as fallback when no `to` is specified.
  */
-function getDefaultBotRoom(): string | null {
-  const bots = getAllBots();
-  const bot = bots[0];
-  if (!bot) return null;
-
-  const botRooms = getRooms(bot.id);
-  // Find the first bot or group room that isn't a legacy Notifications room
+function getDefaultBotRoom(botId: string): string | null {
+  const botRooms = getRooms(botId);
   const room = botRooms.find(r => (r.type === 'bot' || r.type === 'group') && r.name !== 'Notifications' && !r.archivedAt);
   return room?.id || null;
 }
 
-function resolveTargetRoom(to?: string): string | null {
-  if (!to) return getDefaultBotRoom();
+/**
+ * Resolve the bot ID from optional parameter, defaulting to first bot.
+ */
+function resolveBotId(botId?: string): string | null {
+  if (botId) {
+    // Validate bot exists
+    const bots = getAllBots();
+    const found = bots.find(b => b.id === botId);
+    return found ? found.id : null;
+  }
+  const bots = getAllBots();
+  return bots[0]?.id || null;
+}
+
+function resolveTargetRoom(to?: string, botId?: string): string | null {
+  if (!to) return getDefaultBotRoom(botId || getAllBots()[0]?.id || '');
 
   const db = getDb();
 
-  // Try as room ID first
   const byId = db.prepare('SELECT id FROM rooms WHERE id = ?').get(to) as { id: string } | undefined;
   if (byId) return byId.id;
 
-  // Try as room name
   const byName = db.prepare('SELECT id FROM rooms WHERE name = ? LIMIT 1').get(to) as { id: string } | undefined;
   if (byName) return byName.id;
 
@@ -46,21 +53,26 @@ router.post('/push', (req, res) => {
     return;
   }
 
-  const { message, source, to } = req.body as { message?: string; source?: string; to?: string };
+  const { message, source, to, botId: reqBotId } = req.body as {
+    message?: string; source?: string; to?: string; botId?: string;
+  };
   if (!message || typeof message !== 'string' || !message.trim()) {
     res.status(400).json({ error: 'message is required' });
     return;
   }
 
+  const botId = resolveBotId(reqBotId);
+  if (!botId) {
+    res.status(404).json({ error: reqBotId ? `Bot not found: ${reqBotId}` : 'No bots configured' });
+    return;
+  }
+
   try {
-    const roomId = resolveTargetRoom(to);
+    const roomId = resolveTargetRoom(to, botId);
     if (!roomId) {
-      res.status(404).json({ error: `Room not found: ${to || 'default (no bot rooms)'}` });
+      res.status(404).json({ error: `Room not found: ${to || 'default (no rooms for bot)'}` });
       return;
     }
-
-    const bots = getAllBots();
-    const botId = bots[0]?.id || 'bot-clawchat';
 
     const content = source ? `**[${source}]**\n\n${message}` : message;
 
@@ -73,8 +85,8 @@ router.post('/push', (req, res) => {
     const io = getIo();
     io.to(roomId).emit('message:new', msg);
 
-    console.log(`[Push] Message delivered to room ${roomId}: ${message.slice(0, 80)}...`);
-    res.json({ ok: true, messageId: msg.id, roomId });
+    console.log(`[Push] Bot ${botId} -> room ${roomId}: ${message.slice(0, 80)}...`);
+    res.json({ ok: true, messageId: msg.id, roomId, botId });
   } catch (err: any) {
     console.error('[Push] Error:', err.message);
     res.status(500).json({ error: err.message });
