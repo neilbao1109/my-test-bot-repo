@@ -4,6 +4,7 @@ import { getMessages } from '../services/message.js';
 import { getCommands } from '../services/command.js';
 import { getBotStatus } from '../services/bot-bridge.js';
 import { getConnectionMode } from '../services/bot-bridge.js';
+import { getPlatformContext, setPlatformContext } from '../services/platform-context.js';
 
 const router = Router();
 
@@ -29,6 +30,26 @@ router.get('/rooms/:roomId/messages', (req, res) => {
     before: before as string,
   });
   res.json(messages);
+});
+
+// ── Platform Context ──
+
+router.get('/platform/context', (_req, res) => {
+  const content = getPlatformContext();
+  res.json({ content });
+});
+
+router.put('/platform/context', (req, res) => {
+  const { content } = req.body;
+  if (typeof content !== 'string') {
+    return res.status(400).json({ error: 'content must be a string' });
+  }
+  try {
+    setPlatformContext(content);
+    res.json({ ok: true, length: content.length });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 export default router;

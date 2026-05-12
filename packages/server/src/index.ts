@@ -17,6 +17,7 @@ import pushRouter from './routes/push.js';
 import { setupSocketHandlers, signalShutdown, drainBotStreams } from './socket/handlers.js';
 import { shutdown, getConnectionMode } from './services/bot-bridge.js';
 import { initBotRegistry, getAllBots, getBridge } from './services/bot-registry.js';
+import { initPlatformContext } from './services/platform-context.js';
 import { getRooms } from './services/room.js';
 import { createMessage } from './services/message.js';
 import { setIo } from './services/io.js';
@@ -52,6 +53,9 @@ const io = new Server(httpServer, {
 
 // Make io available to route handlers
 setIo(io);
+
+// Initialize platform context (copy example if needed)
+initPlatformContext();
 
 // Initialize bot registry (upserts bot users in DB, creates bridges)
 initBotRegistry();

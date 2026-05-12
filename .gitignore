@@ -7,3 +7,4 @@ dist/
 
 # Runtime data
 packages/server/data/
+!packages/server/data/platform-context.md.example

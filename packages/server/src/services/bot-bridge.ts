@@ -2,6 +2,7 @@ import type { BotContext, BotStatus } from '../types.js';
 import type { BotConfig } from './bot-registry.js';
 import { OpenClawClient } from './openclaw-client.js';
 import { SshTunnel, tunnelConfigFromEnv } from './ssh-tunnel.js';
+import { getPlatformContext } from './platform-context.js';
 import crypto from 'crypto';
 
 /**
@@ -29,6 +30,7 @@ export class BotBridge {
   private activeStreams = new Map<string, ActiveStream>();
   private subscribedSessions = new Set<string>();
   private activeResponseSessions = new Set<string>();
+  private contextInjectedSessions = new Set<string>(); // tracks which sessions got platform context
   private connectionMode: ConnectionMode;
 
   /** Callback for push messages (cron, heartbeat, etc.) */
@@ -279,9 +281,19 @@ export class BotBridge {
     try {
       let sendResult: any;
       try {
+        // Inject platform context on first message of each session
+        let messageBody = `[clawchat:room_id=${context.roomId}]\n${content}`;
+        if (!this.contextInjectedSessions.has(sessionKey)) {
+          const platformCtx = getPlatformContext();
+          if (platformCtx) {
+            messageBody = `[PLATFORM_CONTEXT]\n${platformCtx}\n[/PLATFORM_CONTEXT]\n\n${messageBody}`;
+          }
+          this.contextInjectedSessions.add(sessionKey);
+        }
+
         sendResult = await gw.rpc('chat.send', {
           sessionKey,
-          message: `[clawchat:room_id=${context.roomId}]\n${content}`,
+          message: messageBody,
           idempotencyKey: crypto.randomBytes(16).toString('hex'),
         }, 10000);
       } catch (err: any) {
