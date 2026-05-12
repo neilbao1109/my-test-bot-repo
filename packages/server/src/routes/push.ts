@@ -7,9 +7,10 @@ import { getIo } from '../services/io.js';
 const router = Router();
 
 const PUSH_SECRET = process.env.CLAWCHAT_PUSH_SECRET || '';
+const DEFAULT_PUSH_ROOM = process.env.CLAWCHAT_DEFAULT_PUSH_ROOM || 'efac500a-222f-4173-b636-2a63ae55f3c9';
 
 function resolveTargetRoom(to?: string): string | null {
-  if (!to) return null;
+  if (!to) return resolveTargetRoom(DEFAULT_PUSH_ROOM);
 
   const db = getDb();
 
@@ -36,15 +37,10 @@ router.post('/push', (req, res) => {
     return;
   }
 
-  if (!to) {
-    res.status(400).json({ error: 'to (roomId or room name) is required' });
-    return;
-  }
-
   try {
     const roomId = resolveTargetRoom(to);
     if (!roomId) {
-      res.status(404).json({ error: `Room not found: ${to}` });
+      res.status(404).json({ error: `Room not found: ${to || 'default'}` });
       return;
     }
 
