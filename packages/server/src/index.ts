@@ -17,9 +17,8 @@ import pushRouter from './routes/push.js';
 import { setupSocketHandlers, signalShutdown, drainBotStreams } from './socket/handlers.js';
 import { shutdown, getConnectionMode } from './services/bot-bridge.js';
 import { initBotRegistry, getAllBots, getBridge } from './services/bot-registry.js';
-import { createRoom, getRooms, addMemberToRoom } from './services/room.js';
+import { getRooms } from './services/room.js';
 import { createMessage } from './services/message.js';
-import { getAllUsers } from './services/user.js';
 import { setIo } from './services/io.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -66,22 +65,6 @@ async function setupPushNotifications() {
     const bridge = getBridge(bot.id);
     if (!bridge) continue;
 
-    // Find or create a #notifications room for this bot
-    const notifRoomName = 'Notifications';
-    // Get rooms for the bot user to find existing notifications room
-    const botRooms = getRooms(bot.id);
-    let notifRoom = botRooms.find(r => r.name === notifRoomName);
-    if (!notifRoom) {
-      notifRoom = createRoom(notifRoomName, 'bot', [bot.id], bot.id);
-      console.log(`[Push] Created notifications room: ${notifRoom.id}`);
-    }
-
-    // Ensure all non-bot users are members of the notifications room
-    const allUsers = getAllUsers();
-    for (const u of allUsers) {
-      if (!u.isBot) addMemberToRoom(notifRoom.id, u.id);
-    }
-
     // Set up push message handler
     bridge.onPushMessage = (roomId: string, botId: string, content: string) => {
       console.log(`[Push] Bot ${botId} push to room ${roomId}: ${content.slice(0, 80)}...`);
@@ -93,9 +76,11 @@ async function setupPushNotifications() {
       io.to(roomId).emit('message:new', msg);
     };
 
-    // Subscribe the notifications room session
-    await bridge.subscribeRoomForPush(notifRoom.id);
-    console.log(`[Push] Bot ${bot.username} notifications room ready: ${notifRoom.id}`);
+    // Restore session mappings for all rooms this bot is a member of
+    const botRooms = getRooms(bot.id);
+    const roomIds = botRooms.map(r => r.id);
+    await bridge.restoreAllRoomSessions(roomIds);
+    console.log(`[Push] Bot ${bot.username}: ${roomIds.length} rooms restored for push`);
   }
 }
 

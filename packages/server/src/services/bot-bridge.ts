@@ -151,7 +151,21 @@ export class BotBridge {
 
     // 3. No active stream — this is a push message (cron, heartbeat, sub-agent announce, etc.)
     if (done) {
-      const roomId = this.sessionRooms.get(sessionKey);
+      let roomId = this.sessionRooms.get(sessionKey);
+
+      // Fallback: try to recover mapping from session label
+      if (!roomId) {
+        this.tryRecoverRoomFromSession(sessionKey).then(recoveredRoomId => {
+          if (recoveredRoomId && this.onPushMessage) {
+            // Re-fetch the message content since we're in async recovery
+            this.fetchLatestAssistantMessage(sessionKey).then(msg => {
+              if (msg) this.onPushMessage?.(recoveredRoomId, this.config.id, msg);
+            }).catch(() => {});
+          }
+        }).catch(() => {});
+        return;
+      }
+
       if (roomId && this.onPushMessage) {
         // Extract text from the content or delta
         let text = '';
@@ -331,17 +345,40 @@ export class BotBridge {
     return this.connectionMode;
   }
 
-  /**
-   * Subscribe a room's session for push messages.
-   * Call this on startup for the notifications room.
-   */
-  async subscribeRoomForPush(roomId: string): Promise<void> {
-    try {
-      const sessionKey = await this.getSessionForRoom(roomId);
-      console.log(`[BotBridge:${this.config.id}] Subscribed room ${roomId} for push (session: ${sessionKey})`);
-    } catch (err: any) {
-      console.error(`[BotBridge:${this.config.id}] Failed to subscribe room for push:`, err.message);
+  async restoreAllRoomSessions(roomIds: string[]): Promise<void> {
+    for (const roomId of roomIds) {
+      try {
+        await this.getSessionForRoom(roomId);
+      } catch (err: any) {
+        console.warn(`[BotBridge:${this.config.id}] restore session for room ${roomId} failed: ${err.message}`);
+      }
     }
+    console.log(`[BotBridge:${this.config.id}] Restored ${this.sessionRooms.size} room-session mappings`);
+  }
+
+  private async tryRecoverRoomFromSession(sessionKey: string): Promise<string | null> {
+    try {
+      const gw = await this.ensureClient();
+      const info = await gw.rpc('sessions.get', { key: sessionKey });
+      const label = info?.label || '';
+      const match = label.match(/ClawChat room: ([a-f0-9-]+)/);
+      if (match) {
+        const roomId = match[1];
+        this.roomSessions.set(roomId, sessionKey);
+        this.sessionRooms.set(sessionKey, roomId);
+        // Also subscribe if not already
+        if (!this.subscribedSessions.has(sessionKey)) {
+          try {
+            await gw.rpc('sessions.messages.subscribe', { key: sessionKey });
+            this.subscribedSessions.add(sessionKey);
+          } catch {}
+        }
+        return roomId;
+      }
+    } catch (err: any) {
+      console.warn(`[BotBridge:${this.config.id}] tryRecoverRoomFromSession failed: ${err.message}`);
+    }
+    return null;
   }
 
   shutdown() {
