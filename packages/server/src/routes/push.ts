@@ -19,13 +19,9 @@ function getDefaultBotRoom(): string | null {
   if (!bot) return null;
 
   const botRooms = getRooms(bot.id);
-  // Prefer DM rooms (1-on-1 with a user), then any room the bot is in
-  const dm = botRooms.find(r => r.type === 'dm');
-  if (dm) return dm.id;
-
-  // Fallback: first non-archived room
-  const any = botRooms.find(r => !r.archivedAt);
-  return any?.id || null;
+  // Find the first bot-type room that isn't a legacy Notifications room
+  const room = botRooms.find(r => r.type === 'bot' && r.name !== 'Notifications' && !r.archivedAt);
+  return room?.id || null;
 }
 
 function resolveTargetRoom(to?: string): string | null {
