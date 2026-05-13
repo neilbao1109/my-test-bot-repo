@@ -15,6 +15,7 @@ interface ActiveStream {
   done: boolean;
   listeners: Set<(chunk: string, done: boolean) => void>;
   gwRunId?: string; // Gateway runId for matching agent events
+  lastActivity: number; // timestamp of last agent event (including tool calls)
 }
 
 type ConnectionMode = 'local' | 'remote-url' | 'ssh-tunnel' | 'mock';
@@ -139,6 +140,9 @@ export class BotBridge {
     // Find matching active stream by gwRunId
     for (const [, activeStream] of this.activeStreams) {
       if (activeStream.gwRunId === gwRunId) {
+        // Update activity timestamp for ANY agent event (keeps idle timeout alive during tool calls)
+        activeStream.lastActivity = Date.now();
+
         if (stream === 'assistant' && typeof data.delta === 'string' && data.delta.length > 0) {
           activeStream.chunks.push(data.delta);
           for (const listener of activeStream.listeners) listener(data.delta, false);
@@ -309,7 +313,7 @@ export class BotBridge {
     this.activeResponseSessions.add(sessionKey);
 
     const streamKey = `${sessionKey}:${crypto.randomBytes(4).toString('hex')}`;
-    const stream: ActiveStream = { chunks: [], done: false, listeners: new Set() };
+    const stream: ActiveStream = { chunks: [], done: false, listeners: new Set(), lastActivity: Date.now() };
     this.activeStreams.set(streamKey, stream);
 
     try {
@@ -348,9 +352,8 @@ export class BotBridge {
 
       // Event-driven: yield chunks as they arrive via handleAgentEvent
       const STREAM_TIMEOUT = 180000; // 3 min max
-      const IDLE_TIMEOUT = 60000;    // 60s no data (agent may be doing tool calls)
+      const IDLE_TIMEOUT = 60000;    // 60s no activity at all (not just no text delta)
       const startTime = Date.now();
-      let lastChunkTime = Date.now();
       let yieldedIndex = 0;
 
       while (true) {
@@ -358,7 +361,6 @@ export class BotBridge {
         while (yieldedIndex < stream.chunks.length) {
           yield stream.chunks[yieldedIndex];
           yieldedIndex++;
-          lastChunkTime = Date.now();
         }
 
         if (stream.done) break;
@@ -369,7 +371,7 @@ export class BotBridge {
           console.warn(`[BotBridge:${this.config.id}] Stream total timeout (${STREAM_TIMEOUT}ms)`);
           break;
         }
-        if (now - lastChunkTime > IDLE_TIMEOUT) {
+        if (now - stream.lastActivity > IDLE_TIMEOUT) {
           console.warn(`[BotBridge:${this.config.id}] Stream idle timeout (${IDLE_TIMEOUT}ms)`);
           break;
         }
