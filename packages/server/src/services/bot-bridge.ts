@@ -309,30 +309,59 @@ export class BotBridge {
         return;
       }
 
-      try {
-        const waitStart = Date.now();
-        console.log(`[BotBridge:${this.config.id}] agent.wait starting for runId=${chatRunId}`);
-        await gw.rpc('agent.wait', { runId: chatRunId, timeoutMs: 120000 }, 130000);
-        console.log(`[BotBridge:${this.config.id}] agent.wait resolved in ${Date.now() - waitStart}ms`);
-      } catch (err: any) {
-        console.error(`[BotBridge:${this.config.id}] agent.wait failed after ${Date.now()}ms:`, err.message);
-      }
+      // Event-driven streaming: yield chunks as they arrive via handleSessionMessage
+      const STREAM_TIMEOUT = 180000; // 3 min max
+      const startTime = Date.now();
+      let yieldedIndex = 0;
 
-      try {
-        const history = await gw.rpc('chat.history', { sessionKey, limit: 10 });
-        const messages = history?.messages || (Array.isArray(history) ? history : []);
-        console.log(`[BotBridge:${this.config.id}] chat.history returned ${messages.length} messages, roles: ${messages.map((m: any) => m.role).join(',')}`);
-        // Find the last assistant message that has actual text content (skip tool-call-only messages)
-        const assistantMsgs = messages.filter((m: any) => m.role === 'assistant');
-        for (let i = assistantMsgs.length - 1; i >= 0; i--) {
-          const text = this.extractContentValue(assistantMsgs[i].content);
-          if (text) { yield text; return; }
+      while (true) {
+        // Yield any new chunks that arrived
+        while (yieldedIndex < stream.chunks.length) {
+          yield stream.chunks[yieldedIndex];
+          yieldedIndex++;
         }
-      } catch (err: any) {
-        console.error(`[BotBridge:${this.config.id}] chat.history failed:`, err.message);
+
+        if (stream.done) break;
+
+        if (Date.now() - startTime > STREAM_TIMEOUT) {
+          console.error(`[BotBridge:${this.config.id}] stream timeout after ${STREAM_TIMEOUT}ms`);
+          break;
+        }
+
+        // Wait for next chunk or done signal
+        await new Promise<void>((resolve) => {
+          const onChunk = () => {
+            stream.listeners.delete(onChunk);
+            resolve();
+          };
+          stream.listeners.add(onChunk);
+          // Poll every 2s as safety net
+          setTimeout(() => {
+            stream.listeners.delete(onChunk);
+            resolve();
+          }, 2000);
+        });
       }
 
-      yield '⚠️ AI responded but could not extract the response text';
+      // If no chunks from streaming, fall back to chat.history
+      if (yieldedIndex === 0) {
+        console.log(`[BotBridge:${this.config.id}] No streaming chunks, falling back to chat.history`);
+        try {
+          try {
+            await gw.rpc('agent.wait', { runId: chatRunId, timeoutMs: 120000 }, 130000);
+          } catch {}
+          const history = await gw.rpc('chat.history', { sessionKey, limit: 10 });
+          const messages = history?.messages || (Array.isArray(history) ? history : []);
+          const assistantMsgs = messages.filter((m: any) => m.role === 'assistant');
+          for (let i = assistantMsgs.length - 1; i >= 0; i--) {
+            const text = this.extractContentValue(assistantMsgs[i].content);
+            if (text) { yield text; return; }
+          }
+        } catch (err: any) {
+          console.error(`[BotBridge:${this.config.id}] chat.history fallback failed:`, err.message);
+        }
+        yield '⚠️ AI responded but could not extract the response text';
+      }
     } finally {
       this.activeStreams.delete(runId);
       this.activeResponseSessions.delete(sessionKey);
