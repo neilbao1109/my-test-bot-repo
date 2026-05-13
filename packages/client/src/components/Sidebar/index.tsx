@@ -150,7 +150,7 @@ export default function Sidebar() {
 
   const sidebar = (
     <div className={clsx(
-      'bg-dark-sidebar border-r border-dark-border flex flex-col h-full overflow-hidden transition-all duration-200 ease-in-out',
+      'bg-dark-surface border-r border-dark-border flex flex-col h-full overflow-hidden transition-all duration-200 ease-in-out',
       isMobile
         ? 'w-full h-full'
         : showSidebar

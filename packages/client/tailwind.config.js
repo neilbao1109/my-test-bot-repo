@@ -20,7 +20,6 @@ export default {
         dark: {
           bg: 'var(--color-bg)',
           surface: 'var(--color-surface)',
-          sidebar: 'var(--color-sidebar)',
           border: 'var(--color-border)',
           hover: 'var(--color-hover)',
           text: 'var(--color-text)',
