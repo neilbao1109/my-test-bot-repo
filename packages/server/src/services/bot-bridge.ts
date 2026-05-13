@@ -159,15 +159,6 @@ export class BotBridge {
     const { sessionKey, role, delta, done, content } = payload;
     if (role !== 'assistant') return;
 
-    // DEBUG: log raw session.message payload to understand delta format
-    console.log(`[BotBridge:DEBUG] session.message | session=${sessionKey} role=${role} done=${done} delta_type=${typeof delta} delta_len=${typeof delta === 'string' ? delta.length : 'N/A'} content_type=${typeof content} has_activeStream=${[...this.activeStreams.keys()].some(k => k.startsWith(sessionKey + ':'))}`);
-    if (typeof delta === 'string' && delta.length > 0) {
-      console.log(`[BotBridge:DEBUG] delta preview (first 200): ${JSON.stringify(delta.slice(0, 200))}`);
-    }
-    if (content !== undefined) {
-      console.log(`[BotBridge:DEBUG] content preview: ${JSON.stringify(typeof content === 'string' ? content.slice(0, 200) : content).slice(0, 300)}`);
-    }
-
     // 1. Try to match an active stream (user-initiated request)
     for (const [runId, stream] of this.activeStreams) {
       if (runId.startsWith(sessionKey + ':')) {
@@ -277,14 +268,11 @@ export class BotBridge {
 
     if (!this.subscribedSessions.has(sessionKey)) {
       try {
-        const subResult = await gw.rpc('sessions.messages.subscribe', { key: sessionKey });
+        await gw.rpc('sessions.messages.subscribe', { key: sessionKey });
         this.subscribedSessions.add(sessionKey);
-        console.log(`[BotBridge:${this.config.id}] Subscribed to session ${sessionKey}, result:`, JSON.stringify(subResult));
       } catch (err: any) {
         console.warn(`[BotBridge:${this.config.id}] Subscribe failed: ${err.message}`);
       }
-    } else {
-      console.log(`[BotBridge:${this.config.id}] Already subscribed to session ${sessionKey}`);
     }
 
     return sessionKey;
