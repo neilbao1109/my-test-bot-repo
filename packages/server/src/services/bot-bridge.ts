@@ -14,6 +14,7 @@ interface ActiveStream {
   chunks: string[];
   done: boolean;
   listeners: Set<(chunk: string, done: boolean) => void>;
+  gwRunId?: string; // Gateway runId for matching agent events
 }
 
 type ConnectionMode = 'local' | 'remote-url' | 'ssh-tunnel' | 'mock';
@@ -98,6 +99,7 @@ export class BotBridge {
 
       this.client.on('event:session.message', (payload: any) => this.handleSessionMessage(payload));
       this.client.on('event:session.tool', () => {});
+      this.client.on('event:agent', (payload: any) => this.handleAgentEvent(payload));
 
       await this.client.connect();
       console.log(`[BotBridge:${this.config.id}] Connected (mode: ${this.connectionMode})`);
@@ -116,6 +118,7 @@ export class BotBridge {
         clientId: this.config.identityKey || `clawchat-${this.config.id}`,
       });
       this.client.on('event:session.message', (payload: any) => this.handleSessionMessage(payload));
+      this.client.on('event:agent', (payload: any) => this.handleAgentEvent(payload));
       await this.client.connect();
 
       for (const sessionKey of this.subscribedSessions) {
@@ -129,9 +132,37 @@ export class BotBridge {
     }
   }
 
+  private handleAgentEvent(payload: any) {
+    const { runId: gwRunId, stream, data, sessionKey } = payload;
+    if (!gwRunId || !data) return;
+
+    // Find matching active stream by gwRunId
+    for (const [, activeStream] of this.activeStreams) {
+      if (activeStream.gwRunId === gwRunId) {
+        if (stream === 'assistant' && typeof data.delta === 'string' && data.delta.length > 0) {
+          activeStream.chunks.push(data.delta);
+          for (const listener of activeStream.listeners) listener(data.delta, false);
+        } else if (stream === 'lifecycle' && data.endedAt) {
+          activeStream.done = true;
+          for (const listener of activeStream.listeners) listener('', true);
+        }
+        return;
+      }
+    }
+  }
+
   private handleSessionMessage(payload: any) {
     const { sessionKey, role, delta, done, content } = payload;
     if (role !== 'assistant') return;
+
+    // DEBUG: log raw session.message payload to understand delta format
+    console.log(`[BotBridge:DEBUG] session.message | session=${sessionKey} role=${role} done=${done} delta_type=${typeof delta} delta_len=${typeof delta === 'string' ? delta.length : 'N/A'} content_type=${typeof content} has_activeStream=${[...this.activeStreams.keys()].some(k => k.startsWith(sessionKey + ':'))}`);
+    if (typeof delta === 'string' && delta.length > 0) {
+      console.log(`[BotBridge:DEBUG] delta preview (first 200): ${JSON.stringify(delta.slice(0, 200))}`);
+    }
+    if (content !== undefined) {
+      console.log(`[BotBridge:DEBUG] content preview: ${JSON.stringify(typeof content === 'string' ? content.slice(0, 200) : content).slice(0, 300)}`);
+    }
 
     // 1. Try to match an active stream (user-initiated request)
     for (const [runId, stream] of this.activeStreams) {
@@ -242,11 +273,14 @@ export class BotBridge {
 
     if (!this.subscribedSessions.has(sessionKey)) {
       try {
-        await gw.rpc('sessions.messages.subscribe', { key: sessionKey });
+        const subResult = await gw.rpc('sessions.messages.subscribe', { key: sessionKey });
         this.subscribedSessions.add(sessionKey);
+        console.log(`[BotBridge:${this.config.id}] Subscribed to session ${sessionKey}, result:`, JSON.stringify(subResult));
       } catch (err: any) {
         console.warn(`[BotBridge:${this.config.id}] Subscribe failed: ${err.message}`);
       }
+    } else {
+      console.log(`[BotBridge:${this.config.id}] Already subscribed to session ${sessionKey}`);
     }
 
     return sessionKey;
@@ -274,10 +308,9 @@ export class BotBridge {
     // Mark session as having active response to prevent handleSessionMessage duplicate
     this.activeResponseSessions.add(sessionKey);
 
-    const runId = `${sessionKey}:${crypto.randomBytes(4).toString('hex')}`;
-
+    const streamKey = `${sessionKey}:${crypto.randomBytes(4).toString('hex')}`;
     const stream: ActiveStream = { chunks: [], done: false, listeners: new Set() };
-    this.activeStreams.set(runId, stream);
+    this.activeStreams.set(streamKey, stream);
 
     try {
       let sendResult: any;
@@ -309,29 +342,79 @@ export class BotBridge {
         return;
       }
 
-      try {
-        await gw.rpc('agent.wait', { runId: chatRunId, timeoutMs: 120000 }, 130000);
-      } catch (err: any) {
-        console.error(`[BotBridge:${this.config.id}] agent.wait failed:`, err.message);
-      }
+      // Link the Gateway runId so handleAgentEvent can match
+      stream.gwRunId = chatRunId;
+      console.log(`[BotBridge:${this.config.id}] Streaming started, gwRunId=${chatRunId}`);
 
-      try {
-        const history = await gw.rpc('chat.history', { sessionKey, limit: 10 });
-        const messages = history?.messages || (Array.isArray(history) ? history : []);
-        console.log(`[BotBridge:${this.config.id}] chat.history returned ${messages.length} messages, roles: ${messages.map((m: any) => m.role).join(',')}`);
-        // Find the last assistant message that has actual text content (skip tool-call-only messages)
-        const assistantMsgs = messages.filter((m: any) => m.role === 'assistant');
-        for (let i = assistantMsgs.length - 1; i >= 0; i--) {
-          const text = this.extractContentValue(assistantMsgs[i].content);
-          if (text) { yield text; return; }
+      // Event-driven: yield chunks as they arrive via handleAgentEvent
+      const STREAM_TIMEOUT = 180000; // 3 min max
+      const IDLE_TIMEOUT = 60000;    // 60s no data (agent may be doing tool calls)
+      const startTime = Date.now();
+      let lastChunkTime = Date.now();
+      let yieldedIndex = 0;
+
+      while (true) {
+        // Yield any new chunks
+        while (yieldedIndex < stream.chunks.length) {
+          yield stream.chunks[yieldedIndex];
+          yieldedIndex++;
+          lastChunkTime = Date.now();
         }
-      } catch (err: any) {
-        console.error(`[BotBridge:${this.config.id}] chat.history failed:`, err.message);
+
+        if (stream.done) break;
+
+        // Check timeouts
+        const now = Date.now();
+        if (now - startTime > STREAM_TIMEOUT) {
+          console.warn(`[BotBridge:${this.config.id}] Stream total timeout (${STREAM_TIMEOUT}ms)`);
+          break;
+        }
+        if (now - lastChunkTime > IDLE_TIMEOUT) {
+          console.warn(`[BotBridge:${this.config.id}] Stream idle timeout (${IDLE_TIMEOUT}ms)`);
+          break;
+        }
+
+        // Wait for next event
+        await new Promise<void>((resolve) => {
+          // Check if data arrived while we were yielding
+          if (stream.done || stream.chunks.length > yieldedIndex) {
+            resolve();
+            return;
+          }
+          const onChunk = () => {
+            stream.listeners.delete(onChunk);
+            resolve();
+          };
+          stream.listeners.add(onChunk);
+          // Safety: wake up every 5s to re-check timeouts
+          setTimeout(() => {
+            stream.listeners.delete(onChunk);
+            resolve();
+          }, 5000);
+        });
       }
 
-      yield '⚠️ AI responded but could not extract the response text';
+      // If no streaming chunks received, fallback to chat.history
+      if (yieldedIndex === 0) {
+        console.log(`[BotBridge:${this.config.id}] No streaming chunks, falling back to agent.wait + chat.history`);
+        try {
+          await gw.rpc('agent.wait', { runId: chatRunId, timeoutMs: 120000 }, 130000);
+        } catch {}
+        try {
+          const history = await gw.rpc('chat.history', { sessionKey, limit: 10 });
+          const messages = history?.messages || (Array.isArray(history) ? history : []);
+          const assistantMsgs = messages.filter((m: any) => m.role === 'assistant');
+          for (let i = assistantMsgs.length - 1; i >= 0; i--) {
+            const text = this.extractContentValue(assistantMsgs[i].content);
+            if (text) { yield text; return; }
+          }
+        } catch (err: any) {
+          console.error(`[BotBridge:${this.config.id}] chat.history fallback failed:`, err.message);
+        }
+        yield '⚠️ AI responded but could not extract the response text';
+      }
     } finally {
-      this.activeStreams.delete(runId);
+      this.activeStreams.delete(streamKey);
       this.activeResponseSessions.delete(sessionKey);
     }
   }

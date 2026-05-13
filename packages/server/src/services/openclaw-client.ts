@@ -245,6 +245,22 @@ export class OpenClawClient extends EventEmitter {
     }
 
     if (frame.type === 'event') {
+      // Log all events except tick/health (too noisy)
+      if (frame.event !== 'tick' && frame.event !== 'health') {
+        console.log(`[OpenClaw:EVENT] ${frame.event} | listeners=${this.listenerCount(`event:${frame.event}`)} | payload_keys=${Object.keys(frame.payload || {}).join(',')}`);
+      }
+      // DEBUG: log agent event payload to understand streaming format
+      if (frame.event === 'agent') {
+        const p = frame.payload || {};
+        console.log(`[OpenClaw:EVENT:agent] stream=${p.stream} sessionKey=${p.sessionKey} runId=${p.runId} data_type=${typeof p.data} data_keys=${p.data ? Object.keys(p.data).join(',') : 'null'}`);
+        if (p.data) {
+          const d = p.data;
+          console.log(`[OpenClaw:EVENT:agent:data] role=${d.role} type=${d.type} done=${d.done} delta_len=${typeof d.delta === 'string' ? d.delta.length : 'N/A'} content_len=${typeof d.content === 'string' ? d.content.length : 'N/A'}`);
+          if (typeof d.delta === 'string' && d.delta.length > 0) {
+            console.log(`[OpenClaw:EVENT:agent:delta] ${JSON.stringify(d.delta.slice(0, 150))}`);
+          }
+        }
+      }
       this.emit('gateway-event', frame);
       this.emit(`event:${frame.event}`, frame.payload);
     }
