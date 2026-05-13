@@ -179,7 +179,7 @@ export default function ChatView() {
 
   if (!activeRoomId || !activeRoom) {
     return (
-      <div className="flex-1 flex items-center justify-center bg-dark-bg">
+      <div className="flex-1 flex items-center justify-center bg-dark-surface">
         <div className="text-center">
           <div className="text-6xl mb-4">💬</div>
           <h2 className="text-xl font-semibold text-dark-text mb-2">Welcome to ClawChat</h2>
@@ -191,7 +191,7 @@ export default function ChatView() {
 
   return (
     <div
-      className="flex-1 flex flex-col h-full min-h-0 min-w-0 bg-dark-bg relative overflow-hidden"
+      className="flex-1 flex flex-col h-full min-h-0 min-w-0 bg-dark-surface relative overflow-hidden"
       onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
       onDragLeave={() => setDragOver(false)}
       onDrop={handleDrop}
