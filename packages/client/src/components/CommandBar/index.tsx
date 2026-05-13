@@ -42,7 +42,8 @@ export default function CommandBar({ roomId, threadId, onExport }: CommandBarPro
   const recordingTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
 
-  // Speech recognition support
+  // [DEPRECATED] Client-side speech recognition — replaced by server-side STT (speech-to-text.ts)
+  // Kept for potential future use. UI entry removed.
   const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
   const speechSupported = !!SpeechRecognition;
 
@@ -200,6 +201,7 @@ export default function CommandBar({ roomId, threadId, onExport }: CommandBarPro
     }
   }, [handleFileUpload]);
 
+  // [DEPRECATED] Client-side speech recognition toggle — kept for potential future use
   const toggleListening = useCallback(() => {
     if (isListening) {
       recognitionRef.current?.stop();
@@ -528,26 +530,9 @@ export default function CommandBar({ roomId, threadId, onExport }: CommandBarPro
             placeholder={isArchived ? 'Bot 已停用，无法发送消息' : ''}
             rows={1}
             disabled={isArchived}
-            className={`command-bar-input w-full bg-dark-bg border border-dark-border rounded-xl px-4 py-2.5 text-base md:text-sm leading-5 text-dark-text placeholder-dark-muted resize-none focus:outline-none focus:ring-1 focus:ring-primary-500 focus:border-primary-500 transition ${
-              speechSupported ? 'pr-10' : ''
-            } ${isArchived ? 'opacity-50 cursor-not-allowed' : ''}`}
+            className={`command-bar-input w-full bg-dark-bg border border-dark-border rounded-xl px-4 py-2.5 text-base md:text-sm leading-5 text-dark-text placeholder-dark-muted resize-none focus:outline-none focus:ring-1 focus:ring-primary-500 focus:border-primary-500 transition ${isArchived ? 'opacity-50 cursor-not-allowed' : ''}`}
           />
-          {/* Voice input button inside textarea */}
-          {speechSupported && (
-            <button
-              onClick={toggleListening}
-              className={`absolute right-2 top-1/2 -translate-y-1/2 p-1.5 rounded-lg transition ${
-                isListening
-                  ? 'bg-red-500 text-white animate-pulse'
-                  : 'text-dark-muted hover:text-dark-text'
-              }`}
-              title={isListening ? 'Stop listening' : 'Voice input'}
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4M12 15a3 3 0 003-3V5a3 3 0 00-6 0v7a3 3 0 003 3z" />
-              </svg>
-            </button>
-          )}
+          {/* [DEPRECATED] Client-side voice input button — removed in favor of server-side STT */}
         </div>}
 
         {/* Recording UI overlay */}
