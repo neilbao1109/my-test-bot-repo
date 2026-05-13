@@ -310,12 +310,9 @@ export class BotBridge {
       }
 
       try {
-        const waitStart = Date.now();
-        console.log(`[BotBridge:${this.config.id}] agent.wait starting for runId=${chatRunId}`);
         await gw.rpc('agent.wait', { runId: chatRunId, timeoutMs: 120000 }, 130000);
-        console.log(`[BotBridge:${this.config.id}] agent.wait resolved in ${Date.now() - waitStart}ms`);
       } catch (err: any) {
-        console.error(`[BotBridge:${this.config.id}] agent.wait failed after ${Date.now()}ms:`, err.message);
+        console.error(`[BotBridge:${this.config.id}] agent.wait failed:`, err.message);
       }
 
       try {
