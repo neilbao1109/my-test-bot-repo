@@ -440,7 +440,7 @@ export default function MessageBubble({ message, isStreaming, streamContent, hig
             );
           })()
         ) : (
-          <div className="prose prose-invert prose-sm max-w-none break-words overflow-hidden">
+          <div className="prose prose-invert prose-base max-w-none break-words overflow-hidden">
             <ReactMarkdown
               remarkPlugins={[remarkGfmSafe]}
               rehypePlugins={[rehypeHighlight, rehypeAutolink]}
