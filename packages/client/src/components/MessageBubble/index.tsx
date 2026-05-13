@@ -56,6 +56,74 @@ interface MessageBubbleProps {
 
 const QUICK_REACTIONS = ['👍', '❤️', '😂', '🎉', '🤔', '👀'];
 
+function VoiceBubble({ attachment }: { attachment: FileAttachment }) {
+  const [playing, setPlaying] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const [duration, setDuration] = useState(attachment.duration || 0);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+
+  useEffect(() => {
+    const audio = new Audio(attachment.url);
+    audioRef.current = audio;
+    audio.addEventListener('loadedmetadata', () => {
+      if (audio.duration && audio.duration !== Infinity && !attachment.duration) {
+        setDuration(Math.round(audio.duration));
+      }
+    });
+    audio.addEventListener('timeupdate', () => {
+      if (audio.duration && audio.duration !== Infinity) {
+        setProgress(audio.currentTime / audio.duration);
+      }
+    });
+    audio.addEventListener('ended', () => {
+      setPlaying(false);
+      setProgress(0);
+    });
+    return () => {
+      audio.pause();
+      audio.src = '';
+    };
+  }, [attachment.url]);
+
+  const togglePlay = () => {
+    const audio = audioRef.current;
+    if (!audio) return;
+    if (playing) {
+      audio.pause();
+      setPlaying(false);
+    } else {
+      audio.play();
+      setPlaying(true);
+    }
+  };
+
+  const formatDur = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+
+  return (
+    <div
+      className="flex items-center gap-2 mt-1 px-3 py-2 bg-dark-bg border border-dark-border rounded-2xl cursor-pointer hover:bg-dark-hover transition"
+      style={{ minWidth: 140, maxWidth: 260 }}
+      onClick={togglePlay}
+    >
+      <button className="flex-shrink-0 w-8 h-8 rounded-full bg-primary-600 hover:bg-primary-700 text-white flex items-center justify-center transition">
+        {playing ? (
+          <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><rect x="6" y="4" width="4" height="16" rx="1" /><rect x="14" y="4" width="4" height="16" rx="1" /></svg>
+        ) : (
+          <svg className="w-4 h-4 ml-0.5" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z" /></svg>
+        )}
+      </button>
+      <div className="flex-1 min-w-0">
+        <div className="w-full h-1.5 bg-dark-border rounded-full overflow-hidden">
+          <div className="h-full bg-primary-500 rounded-full transition-all" style={{ width: `${progress * 100}%` }} />
+        </div>
+      </div>
+      <span className="text-xs text-dark-muted flex-shrink-0 font-mono">
+        {duration > 0 ? formatDur(duration) : '0:00'}
+      </span>
+    </div>
+  );
+}
+
 export default function MessageBubble({ message, isStreaming, streamContent, highlight, isSearchActive }: MessageBubbleProps) {
   const { user, roomMembers, activeRoomId, threadInfo, setReplyContext, addReplyContext, removeReplyContext, contextSelectionMode: ctxSelectMode, replyContext, messages: allMessages } = useAppStore();
   const isPinned = useAppStore((s) => activeRoomId ? (s.pinnedMessages[activeRoomId] || []).some((p) => p.messageId === message.id) : false);
@@ -315,10 +383,14 @@ export default function MessageBubble({ message, isStreaming, streamContent, hig
             let attachment: FileAttachment | null = null;
             try { attachment = JSON.parse(displayContent); } catch {}
             if (!attachment) return <p className="text-sm text-dark-muted italic">Invalid file</p>;
+            const isAudio = /^audio\//.test(attachment.mimeType);
             const isImage = attachment.mimeType.startsWith('image/');
             const isPdf = attachment.mimeType === 'application/pdf';
             const isText = /^(text\/|application\/json|application\/javascript)/.test(attachment.mimeType)
               || /\.(md|txt|json|js|ts|tsx|jsx|py|sh|css|html|yml|yaml|toml|csv|xml|sql|log|env|cfg|ini|conf)$/i.test(attachment.originalName);
+            if (isAudio) {
+              return <VoiceBubble attachment={attachment} />;
+            }
             if (isImage) {
               return (
                 <div className="block mt-1 cursor-pointer" onClick={() => setPreviewAttachment(attachment)}>

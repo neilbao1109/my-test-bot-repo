@@ -30,11 +30,17 @@ export default function CommandBar({ roomId, threadId, onExport }: CommandBarPro
   const [mentionIdx, setMentionIdx] = useState(0);
   const [isListening, setIsListening] = useState(false);
   const [showPlusMenu, setShowPlusMenu] = useState(false);
+  const [isRecording, setIsRecording] = useState(false);
+  const [recordingTime, setRecordingTime] = useState(0);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const plusMenuRef = useRef<HTMLDivElement>(null);
   const typingRef = useRef(false);
   const recognitionRef = useRef<any>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const recordingChunksRef = useRef<Blob[]>([]);
+  const recordingTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const streamRef = useRef<MediaStream | null>(null);
 
   // Speech recognition support
   const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
@@ -258,6 +264,101 @@ export default function CommandBar({ roomId, threadId, onExport }: CommandBarPro
     };
   }, []);
 
+  // Voice recording functions
+  const getAudioDuration = (blob: Blob): Promise<number> => {
+    return new Promise((resolve) => {
+      const audio = new Audio();
+      audio.addEventListener('loadedmetadata', () => {
+        if (audio.duration === Infinity) {
+          audio.currentTime = 1e101;
+          audio.addEventListener('timeupdate', function handler() {
+            audio.removeEventListener('timeupdate', handler);
+            resolve(Math.round(audio.duration));
+            audio.currentTime = 0;
+          });
+        } else {
+          resolve(Math.round(audio.duration));
+        }
+      });
+      audio.src = URL.createObjectURL(blob);
+    });
+  };
+
+  const startRecording = useCallback(async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      streamRef.current = stream;
+      const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
+        ? 'audio/webm;codecs=opus'
+        : MediaRecorder.isTypeSupported('audio/webm')
+        ? 'audio/webm'
+        : 'audio/ogg;codecs=opus';
+      const recorder = new MediaRecorder(stream, { mimeType });
+      recordingChunksRef.current = [];
+      recorder.ondataavailable = (e) => {
+        if (e.data.size > 0) recordingChunksRef.current.push(e.data);
+      };
+      recorder.start();
+      mediaRecorderRef.current = recorder;
+      setIsRecording(true);
+      setRecordingTime(0);
+      recordingTimerRef.current = setInterval(() => setRecordingTime(t => t + 1), 1000);
+    } catch (err) {
+      console.error('Microphone access denied:', err);
+    }
+  }, []);
+
+  const stopRecording = useCallback(async (send: boolean) => {
+    if (recordingTimerRef.current) {
+      clearInterval(recordingTimerRef.current);
+      recordingTimerRef.current = null;
+    }
+    const recorder = mediaRecorderRef.current;
+    if (!recorder || recorder.state === 'inactive') {
+      setIsRecording(false);
+      return;
+    }
+    return new Promise<void>((resolve) => {
+      recorder.onstop = async () => {
+        streamRef.current?.getTracks().forEach(t => t.stop());
+        streamRef.current = null;
+        if (send && recordingChunksRef.current.length > 0) {
+          const blob = new Blob(recordingChunksRef.current, { type: recorder.mimeType });
+          const ext = recorder.mimeType.includes('webm') ? 'webm' : 'ogg';
+          const file = new File([blob], `voice-message.${ext}`, { type: recorder.mimeType });
+          setUploading(true);
+          setUploadProgress(0);
+          try {
+            const attachment = await uploadFile(file, (pct) => setUploadProgress(pct));
+            const duration = await getAudioDuration(blob);
+            const withDuration = { ...attachment, duration };
+            socketService.sendMessage(roomId, JSON.stringify(withDuration), threadId, 'file');
+          } catch (err) {
+            console.error('Voice upload failed:', err);
+          } finally {
+            setUploading(false);
+            setUploadProgress(0);
+          }
+        }
+        recordingChunksRef.current = [];
+        mediaRecorderRef.current = null;
+        setIsRecording(false);
+        setRecordingTime(0);
+        resolve();
+      };
+      recorder.stop();
+    });
+  }, [roomId, threadId]);
+
+  // Cleanup recording on unmount
+  useEffect(() => {
+    return () => {
+      if (recordingTimerRef.current) clearInterval(recordingTimerRef.current);
+      mediaRecorderRef.current?.stop();
+      streamRef.current?.getTracks().forEach(t => t.stop());
+    };
+  }, []);
+
   return (
     <div className="relative flex-shrink-0">
       {/* Mention autocomplete */}
@@ -411,7 +512,7 @@ export default function CommandBar({ roomId, threadId, onExport }: CommandBarPro
             </div>
           )}
         </div>
-        <div className="flex-1 relative">
+        {!isRecording && <div className="flex-1 relative">
           <textarea
             ref={inputRef}
             value={input}
@@ -447,17 +548,58 @@ export default function CommandBar({ roomId, threadId, onExport }: CommandBarPro
               </svg>
             </button>
           )}
-        </div>
+        </div>}
 
-        <button
-          onClick={handleSend}
-          disabled={!input.trim()}
-          className="p-2.5 bg-primary-600 hover:bg-primary-700 disabled:opacity-30 disabled:cursor-not-allowed text-white rounded-xl transition flex-shrink-0"
-        >
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19V5m0 0l-7 7m7-7l7 7" />
-          </svg>
-        </button>
+        {/* Recording UI overlay */}
+        {isRecording && (
+          <div className="flex items-center gap-3 flex-1 px-3 py-2 bg-dark-bg border border-red-500/50 rounded-xl">
+            <span className="w-2.5 h-2.5 bg-red-500 rounded-full animate-pulse flex-shrink-0" />
+            <span className="text-sm text-dark-text font-mono">{Math.floor(recordingTime / 60)}:{String(recordingTime % 60).padStart(2, '0')}</span>
+            <span className="text-xs text-dark-muted flex-1">Recording...</span>
+            <button
+              onClick={() => stopRecording(false)}
+              className="p-1.5 text-dark-muted hover:text-red-400 transition"
+              title="Cancel"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+        )}
+
+        {/* Send or Mic button */}
+        {input.trim() ? (
+          <button
+            onClick={handleSend}
+            className="p-2.5 bg-primary-600 hover:bg-primary-700 text-white rounded-xl transition flex-shrink-0"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19V5m0 0l-7 7m7-7l7 7" />
+            </svg>
+          </button>
+        ) : isRecording ? (
+          <button
+            onClick={() => stopRecording(true)}
+            className="p-2.5 bg-red-600 hover:bg-red-700 text-white rounded-xl transition flex-shrink-0 animate-pulse"
+            title="Send voice message"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19V5m0 0l-7 7m7-7l7 7" />
+            </svg>
+          </button>
+        ) : (
+          <button
+            onClick={startRecording}
+            disabled={uploading || isArchived}
+            className="p-2.5 text-dark-muted hover:text-dark-text hover:bg-dark-hover disabled:opacity-30 rounded-xl transition flex-shrink-0"
+            title="Record voice message"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4M12 15a3 3 0 003-3V5a3 3 0 00-6 0v7a3 3 0 003 3z" />
+            </svg>
+          </button>
+        )}
       </div>
       {/* Upload progress */}
       {uploading && (

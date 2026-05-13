@@ -68,6 +68,7 @@ export interface FileAttachment {
   mimeType: string;
   size: number;
   url: string;
+  duration?: number; // audio duration in seconds
 }
 
 export interface PinnedMessage {
