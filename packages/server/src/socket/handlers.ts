@@ -10,6 +10,8 @@ import { shareBot, acceptBotShare, revokeBotShare, getBotShares, getPublicBots, 
 import { pinMessage, unpinMessage, getPinnedMessages } from '../services/pin.js';
 import { createInvitation, acceptInvitation, rejectInvitation, getPendingInvitations, getInvitationCount } from '../services/invitation.js';
 import { transcribeAudio } from '../services/speech-to-text.js';
+import { textToSpeech } from '../services/text-to-speech.js';
+import fs from 'fs';
 import { sendFriendRequest, acceptFriendRequest, rejectFriendRequest, removeFriend, getFriends, getFriendRequests, searchUsersByEmail, areFriends } from '../services/friendship.js';
 import { copyFileToUploads } from '../routes/upload.js';
 import { getUser, setOnline, getOnlineUsers, getAllUsers } from '../services/user.js';
@@ -802,10 +804,12 @@ export function setupSocketHandlers(io: Server) {
       let botContent = data.content;
 
       // Voice-to-text: transcribe audio messages so bots can understand them
+      let isVoiceMessage = false;
       if (data.type === 'file') {
         try {
           const attachment = JSON.parse(data.content);
           if (attachment.mimeType && attachment.mimeType.startsWith('audio/') && attachment.filename) {
+            isVoiceMessage = true;
             const audioPath = path.join(process.cwd(), 'data', 'uploads', attachment.filename);
             const transcription = await transcribeAudio(audioPath);
             if (transcription) {
@@ -961,6 +965,30 @@ export function setupSocketHandlers(io: Server) {
 
           if (data.threadId) {
             updateThreadReplyCount(data.threadId, io, data.roomId);
+          }
+
+          // L3: If user sent a voice message, also reply with TTS audio
+          if (isVoiceMessage && cleanContent) {
+            try {
+              const ttsPath = await textToSpeech(cleanContent);
+              if (ttsPath) {
+                const attachment = copyFileToUploads(ttsPath);
+                if (attachment) {
+                  const voiceReply = createMessage({
+                    roomId: data.roomId,
+                    userId: bot.id,
+                    content: JSON.stringify(attachment),
+                    type: 'file',
+                    threadId: data.threadId,
+                  });
+                  io.to(data.roomId).emit('message:new', voiceReply);
+                }
+                // Clean up temp TTS file
+                try { fs.unlinkSync(ttsPath); } catch {}
+              }
+            } catch (err) {
+              console.error('[TTS] Voice reply failed:', err);
+            }
           }
         } finally {
           // Stream completed or errored — remove from tracking
