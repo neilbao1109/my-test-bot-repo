@@ -1,4 +1,5 @@
 import { Server, Socket } from 'socket.io';
+import path from 'path';
 import { createMessage, getMessages, getLastMessage, getLastMessageByUser, getMessagesSince, getMessageById, getMessagesAroundId, editMessage, deleteMessage, addReaction, searchMessages, getReplyChain } from '../services/message.js';
 import { createRoom, getRooms, getRoomMembers, addMemberToRoom, removeMemberFromRoom, addBotToRoom, removeBotFromRoom, renameRoom, deleteRoom, searchUsers, getRoom } from '../services/room.js';
 import { getDb } from '../db/schema.js';
@@ -8,6 +9,7 @@ import { initBotRegistry, getRespondingBots, isBotUser, getAllBots, getBot, getA
 import { shareBot, acceptBotShare, revokeBotShare, getBotShares, getPublicBots, addPublicBotToUser } from '../services/bot-share.js';
 import { pinMessage, unpinMessage, getPinnedMessages } from '../services/pin.js';
 import { createInvitation, acceptInvitation, rejectInvitation, getPendingInvitations, getInvitationCount } from '../services/invitation.js';
+import { transcribeAudio } from '../services/speech-to-text.js';
 import { sendFriendRequest, acceptFriendRequest, rejectFriendRequest, removeFriend, getFriends, getFriendRequests, searchUsersByEmail, areFriends } from '../services/friendship.js';
 import { copyFileToUploads } from '../routes/upload.js';
 import { getUser, setOnline, getOnlineUsers, getAllUsers } from '../services/user.js';
@@ -798,6 +800,21 @@ export function setupSocketHandlers(io: Server) {
 
       // Build reply context if replying to a message (use contextIds or fall back to replyTo)
       let botContent = data.content;
+
+      // Voice-to-text: transcribe audio messages so bots can understand them
+      if (data.type === 'file') {
+        try {
+          const attachment = JSON.parse(data.content);
+          if (attachment.mimeType && attachment.mimeType.startsWith('audio/') && attachment.filename) {
+            const audioPath = path.join(process.cwd(), 'data', 'uploads', attachment.filename);
+            const transcription = await transcribeAudio(audioPath);
+            if (transcription) {
+              botContent = `[语音消息] ${transcription}`;
+            }
+          }
+        } catch { /* not valid JSON or not audio, keep original botContent */ }
+      }
+
       const ctxIds = data.contextIds && data.contextIds.length > 0 ? data.contextIds : (message.replyTo ? [message.replyTo] : []);
       if (ctxIds.length > 0) {
         const contextMsgs = ctxIds.map(id => getMessageById(id)).filter((m): m is NonNullable<typeof m> => m !== null);
@@ -805,7 +822,7 @@ export function setupSocketHandlers(io: Server) {
           const contextLines = contextMsgs.map(m => {
             const u = getUser(m.userId);
             const name = u?.username || m.userId;
-            const body = m.type === 'file' ? '[file]' : m.content.slice(0, 300);
+            const body = m.type === 'file' ? (() => { try { const a = JSON.parse(m.content); if (a.mimeType?.startsWith('audio/')) return '[语音消息]'; } catch {} return '[file]'; })() : m.content.slice(0, 300);
             return `[${name}]: ${body}`;
           });
           botContent = `--- Reply Context ---\n${contextLines.join('\n')}\n--- End Reply Context ---\n\n[${getUser(socket.userId)?.username || socket.userId}]: ${data.content}`;
@@ -846,7 +863,7 @@ export function setupSocketHandlers(io: Server) {
             const name = u?.username || m.userId;
             const isBot = isBotUser(m.userId);
             const tag = isBot ? ' [bot]' : '';
-            const body = m.type === 'file' ? '[file]'
+            const body = m.type === 'file' ? (() => { try { const a = JSON.parse(m.content); if (a.mimeType?.startsWith('audio/')) return '[语音消息]'; } catch {} return '[file]'; })()
               : m.type === 'forward' ? '[forwarded messages]'
               : m.content.slice(0, 500);
             return `[${name}${tag}] ${body}`;
