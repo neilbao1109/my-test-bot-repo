@@ -16,6 +16,7 @@ if (!fs.existsSync(uploadsDir)) {
 const ALLOWED_PATHS = [
   path.resolve(process.env.HOME || '/home/azureuser', '.openclaw/workspace'),
   path.resolve(process.env.HOME || '/home/azureuser', '.openclaw/canvas'),
+  '/tmp/clawchat-tts',
 ];
 
 /**
