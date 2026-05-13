@@ -805,13 +805,16 @@ export function setupSocketHandlers(io: Server) {
 
       // Voice-to-text: transcribe audio messages so bots can understand them
       let isVoiceMessage = false;
+      console.log(`[DEBUG] data.type=${data.type}, content starts with: ${data.content?.slice(0, 80)}`);
       if (data.type === 'file') {
         try {
           const attachment = JSON.parse(data.content);
           if (attachment.mimeType && attachment.mimeType.startsWith('audio/') && attachment.filename) {
             isVoiceMessage = true;
             const audioPath = path.join(process.cwd(), 'data', 'uploads', attachment.filename);
+            const sttStart = Date.now();
             const transcription = await transcribeAudio(audioPath);
+            console.log(`[STT] Transcription took ${Date.now() - sttStart}ms`);
             if (transcription) {
               botContent = `[语音消息] ${transcription}`;
             }
@@ -967,28 +970,34 @@ export function setupSocketHandlers(io: Server) {
             updateThreadReplyCount(data.threadId, io, data.roomId);
           }
 
-          // L3: If user sent a voice message, also reply with TTS audio
+          // L3: If user sent a voice message, also reply with TTS audio (async, non-blocking)
+          console.log(`[TTS] isVoiceMessage=${isVoiceMessage}, cleanContent length=${cleanContent?.length || 0}`);
           if (isVoiceMessage && cleanContent) {
-            try {
-              const ttsPath = await textToSpeech(cleanContent);
-              if (ttsPath) {
-                const attachment = copyFileToUploads(ttsPath);
-                if (attachment) {
-                  const voiceReply = createMessage({
-                    roomId: data.roomId,
-                    userId: bot.id,
-                    content: JSON.stringify(attachment),
-                    type: 'file',
-                    threadId: data.threadId,
-                  });
-                  io.to(data.roomId).emit('message:new', voiceReply);
+            // Fire-and-forget: don't block the bot response on TTS generation
+            void (async () => {
+              try {
+                const ttsStart = Date.now();
+                const ttsPath = await textToSpeech(cleanContent);
+                console.log(`[TTS] Generation took ${Date.now() - ttsStart}ms`);
+                if (ttsPath) {
+                  const attachment = copyFileToUploads(ttsPath);
+                  if (attachment) {
+                    const voiceReply = createMessage({
+                      roomId: data.roomId,
+                      userId: bot.id,
+                      content: JSON.stringify(attachment),
+                      type: 'file',
+                      threadId: data.threadId,
+                    });
+                    io.to(data.roomId).emit('message:new', voiceReply);
+                  }
+                  // Clean up temp TTS file
+                  try { fs.unlinkSync(ttsPath); } catch {}
                 }
-                // Clean up temp TTS file
-                try { fs.unlinkSync(ttsPath); } catch {}
+              } catch (err) {
+                console.error('[TTS] Voice reply failed:', err);
               }
-            } catch (err) {
-              console.error('[TTS] Voice reply failed:', err);
-            }
+            })();
           }
         } finally {
           // Stream completed or errored — remove from tracking
