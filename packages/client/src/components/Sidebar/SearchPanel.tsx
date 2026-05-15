@@ -18,7 +18,7 @@ function highlightMatch(text: string, query: string): JSX.Element {
   return (
     <>
       {text.slice(0, idx)}
-      <span className="bg-yellow-500/30 text-yellow-300">{text.slice(idx, idx + query.length)}</span>
+      <span className="bg-yellow-500/40 text-white rounded-sm px-0.5">{text.slice(idx, idx + query.length)}</span>
       {text.slice(idx + query.length)}
     </>
   );
