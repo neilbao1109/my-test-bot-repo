@@ -208,13 +208,23 @@ export default function Sidebar() {
 
       {/* Search panel or Room list or Contacts or Settings */}
       {sidebarTab === 'settings' ? (
-        showAccount ? (
-          <AccountPanel onBack={() => setShowAccount(false)} />
-        ) : (
-          <SettingsPanel onShowAccount={() => setShowAccount(true)} />
-        )
+        <>
+          <div className="p-4 border-b border-dark-border flex items-center">
+            <span className="text-sm font-semibold text-dark-text">Settings</span>
+          </div>
+          {showAccount ? (
+            <AccountPanel onBack={() => setShowAccount(false)} />
+          ) : (
+            <SettingsPanel onShowAccount={() => setShowAccount(true)} />
+          )}
+        </>
       ) : sidebarTab === 'contacts' ? (
-        <ContactsTab />
+        <>
+          <div className="p-4 border-b border-dark-border flex items-center">
+            <span className="text-sm font-semibold text-dark-text">Contacts</span>
+          </div>
+          <ContactsTab />
+        </>
       ) : showSearchPanel ? (
         <SearchPanel onClose={() => setShowSearchPanel(false)} />
       ) : (
