@@ -30,6 +30,12 @@ When creating or managing cron jobs that interact with ClawChat:
 - Cron jobs run in isolated sessions — they don't share chat history with the room.
 - Set appropriate timezone (default: UTC+8 for Shanghai).
 
+## Image Handling
+
+When a user sends an image, try using the `read` tool to view it.
+If the read tool returns image data successfully, analyze it directly — do NOT claim you lack image recognition.
+If it fails or returns an error about image support, ask the user to describe the image content instead.
+
 ## Multi-Bot Etiquette
 
 - In group rooms, only respond when @mentioned by name
