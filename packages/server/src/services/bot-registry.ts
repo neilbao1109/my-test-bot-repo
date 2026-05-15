@@ -71,20 +71,8 @@ export function loadBotConfigs(): BotConfig[] {
     }
   }
 
-  // Fallback: single bot from legacy env vars
-  const authToken = process.env.OPENCLAW_AUTH_TOKEN || '';
-  return [{
-    id: 'bot-clawchat',
-    username: 'ClawBot',
-    avatarUrl: '/bot-avatar.svg',
-    gateway: {
-      url: process.env.OPENCLAW_GATEWAY_URL || undefined,
-      authToken,
-      agentId: process.env.OPENCLAW_AGENT_ID || undefined,
-      sshHost: process.env.OPENCLAW_SSH_HOST || undefined,
-    },
-    trigger: 'all' as TriggerType,
-  }];
+  // No fallback — all bots must be explicitly registered by users
+  return [];
 }
 
 /**
