@@ -70,6 +70,7 @@ export default function SearchPanel({ onClose }: { onClose: () => void }) {
 
   const handleMessageClick = (msg: Message) => {
     setActiveRoom(msg.roomId);
+    useAppStore.getState().setScrollToMessageId(msg.id);
     useAppStore.setState({ mobileView: 'chat' });
     onClose();
   };

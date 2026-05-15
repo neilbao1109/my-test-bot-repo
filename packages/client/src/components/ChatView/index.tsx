@@ -67,6 +67,9 @@ export default function ChatView() {
     isContextMode, setContextMode, setMessages,
     contextSelectionMode, setContextSelectionMode, replyContext, addReplyContext, removeReplyContext,
   } = useAppStore();
+  const scrollToMessageId = useAppStore(s => s.scrollToMessageId);
+  const setScrollToMessageId = useAppStore(s => s.setScrollToMessageId);
+  const [flashMessageId, setFlashMessageId] = useState<string | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const messageListRef = useRef<HTMLDivElement>(null);
   const messageRefs = useRef<Record<string, HTMLDivElement | null>>({});
@@ -161,6 +164,18 @@ export default function ChatView() {
       messageRefs.current[activeSearchMsg.id]?.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }
   }, [activeSearchMsg?.id, searchActiveIdx]);
+
+  // Scroll to message from global search
+  useEffect(() => {
+    if (!scrollToMessageId) return;
+    const el = messageRefs.current[scrollToMessageId];
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      setFlashMessageId(scrollToMessageId);
+      setScrollToMessageId(null);
+      setTimeout(() => setFlashMessageId(null), 2000);
+    }
+  }, [scrollToMessageId, messages]);
 
   const handleDrop = useCallback(async (e: React.DragEvent) => {
     e.preventDefault();
@@ -302,6 +317,7 @@ export default function ChatView() {
             <div
               key={msg.id}
               ref={(el) => { messageRefs.current[msg.id] = el; }}
+              className={flashMessageId === msg.id ? 'animate-flash-highlight' : undefined}
             >
               <MessageBubble
                 message={msg}

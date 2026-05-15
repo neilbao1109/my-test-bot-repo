@@ -175,3 +175,12 @@ html, body {
 .scrollbar-none::-webkit-scrollbar {
   display: none;
 }
+
+@keyframes flash-highlight {
+  0%, 100% { background-color: transparent; }
+  25%, 75% { background-color: rgba(234, 179, 8, 0.15); }
+}
+.animate-flash-highlight {
+  animation: flash-highlight 2s ease-in-out;
+  border-radius: 0.5rem;
+}
