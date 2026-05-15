@@ -24,6 +24,20 @@ function highlightMatch(text: string, query: string): JSX.Element {
   );
 }
 
+/** Extract a snippet around the first match of query in text */
+function snippet(text: string, query: string, maxLen = 150): string {
+  const idx = text.toLowerCase().indexOf(query.toLowerCase());
+  if (idx === -1 || text.length <= maxLen) return text.slice(0, maxLen);
+  // Center the match in the snippet
+  const half = Math.floor((maxLen - query.length) / 2);
+  let start = Math.max(0, idx - half);
+  let end = Math.min(text.length, start + maxLen);
+  if (end - start < maxLen) start = Math.max(0, end - maxLen);
+  const prefix = start > 0 ? '…' : '';
+  const suffix = end < text.length ? '…' : '';
+  return prefix + text.slice(start, end) + suffix;
+}
+
 function formatTime(dateStr: string): string {
   const date = new Date(dateStr);
   const now = new Date();
@@ -206,7 +220,7 @@ export default function SearchPanel({ onClose }: { onClose: () => void }) {
                 {getSenderName(group.firstMatch)}:
               </span>
               <p className="text-[11px] text-dark-muted truncate">
-                {highlightMatch(group.firstMatch.content.slice(0, 80), query)}
+                {highlightMatch(snippet(group.firstMatch.content, query, 80), query)}
               </p>
             </div>
           </button>
@@ -228,7 +242,7 @@ export default function SearchPanel({ onClose }: { onClose: () => void }) {
               </span>
             </div>
             <p className="text-xs text-dark-text mt-0.5 line-clamp-2">
-              {highlightMatch(msg.content.slice(0, 150), query)}
+              {highlightMatch(snippet(msg.content, query, 150), query)}
             </p>
           </button>
         ))}
