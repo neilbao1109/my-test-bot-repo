@@ -804,6 +804,7 @@ export function setupSocketHandlers(io: Server) {
       let botContent = data.content;
 
       // Voice-to-text: transcribe audio messages so bots can understand them
+      // Image: resolve to full public URL so remote bots can fetch
       let isVoiceMessage = false;
       console.log(`[DEBUG] data.type=${data.type}, content starts with: ${data.content?.slice(0, 80)}`);
       if (data.type === 'file') {
@@ -818,8 +819,13 @@ export function setupSocketHandlers(io: Server) {
             if (transcription) {
               botContent = `[语音消息] ${transcription}`;
             }
+          } else if (attachment.mimeType && attachment.mimeType.startsWith('image/') && attachment.url) {
+            // Resolve relative upload URL to full public URL for remote bots
+            const publicUrl = process.env.PUBLIC_URL || `http://localhost:${process.env.PORT || 3001}`;
+            const fullUrl = attachment.url.startsWith('/') ? `${publicUrl}${attachment.url}` : attachment.url;
+            botContent = `[图片消息] ${fullUrl}`;
           }
-        } catch { /* not valid JSON or not audio, keep original botContent */ }
+        } catch { /* not valid JSON or not audio/image, keep original botContent */ }
       }
 
       const ctxIds = data.contextIds && data.contextIds.length > 0 ? data.contextIds : (message.replyTo ? [message.replyTo] : []);
