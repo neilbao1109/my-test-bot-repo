@@ -160,8 +160,8 @@ export default function Sidebar() {
       {/* Main content */}
       <div className="relative flex-1 flex overflow-hidden">
         <div className="absolute inset-0 flex flex-col">
-      {/* Header */}
-      <div className="p-4 border-b border-dark-border flex items-center justify-between"
+      {/* Header - only show on chat tab */}
+      {sidebarTab === 'chat' && <div className="p-4 border-b border-dark-border flex items-center justify-between"
            >
         <div className="flex items-center">
           <button
@@ -200,7 +200,7 @@ export default function Sidebar() {
             </>
           )}
         </div>
-      </div>
+      </div>}
 
 
       {/* Folder tabs - hidden during search */}
