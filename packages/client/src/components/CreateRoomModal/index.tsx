@@ -13,8 +13,9 @@ interface BotInfo {
 
 export default function CreateRoomModal() {
   const { showCreateRoom, setShowCreateRoom, user, onlineUsers } = useAppStore();
+  const createRoomType = useAppStore(s => s.createRoomType);
   const [name, setName] = useState('');
-  const [type, setType] = useState<'bot' | 'group'>('bot');
+  const [type, setType] = useState<'bot' | 'group'>(createRoomType);
   const [selectedBot, setSelectedBot] = useState<BotInfo | null>(null);
   const [selectedUsers, setSelectedUsers] = useState<User[]>([]);
   const [filterQuery, setFilterQuery] = useState('');
@@ -28,7 +29,7 @@ export default function CreateRoomModal() {
   useEffect(() => {
     if (!showCreateRoom) {
       setName('');
-      setType('bot');
+      setType(createRoomType);
       setSelectedBot(null);
       setSelectedUsers([]);
       setFilterQuery('');
@@ -37,6 +38,7 @@ export default function CreateRoomModal() {
       return;
     }
     setLoading(true);
+    setType(createRoomType);
     Promise.all([
       socketService.listAvailableBots(),
       socketService.getFriends(),

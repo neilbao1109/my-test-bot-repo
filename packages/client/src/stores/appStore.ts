@@ -124,6 +124,7 @@ interface AppState {
   showThread: boolean;
   showMembers: boolean;
   showCreateRoom: boolean;
+  createRoomType: 'bot' | 'group';
   showBotRegistration: boolean;
   showBotMarketplace: boolean;
   showSettings: boolean;
@@ -132,7 +133,7 @@ interface AppState {
   toggleSidebar: () => void;
   toggleThread: () => void;
   toggleMembers: () => void;
-  setShowCreateRoom: (show: boolean) => void;
+  setShowCreateRoom: (show: boolean, type?: 'bot' | 'group') => void;
   setShowBotRegistration: (show: boolean) => void;
   setShowBotMarketplace: (show: boolean) => void;
   setShowSettings: (show: boolean) => void;
@@ -489,6 +490,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   showThread: false,
   showMembers: false,
   showCreateRoom: false,
+  createRoomType: 'bot' as 'bot' | 'group',
   showBotRegistration: false,
   showBotMarketplace: false,
   showSettings: false,
@@ -501,7 +503,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   }),
   toggleThread: () => set((s) => ({ showThread: !s.showThread })),
   toggleMembers: () => set((s) => ({ showMembers: !s.showMembers })),
-  setShowCreateRoom: (show) => set({ showCreateRoom: show }),
+  setShowCreateRoom: (show, type) => set({ showCreateRoom: show, ...(type ? { createRoomType: type } : {}) }),
   setShowBotRegistration: (show) => set({ showBotRegistration: show }),
   setShowBotMarketplace: (show) => set({ showBotMarketplace: show }),
   setShowSettings: (show) => set({ showSettings: show }),

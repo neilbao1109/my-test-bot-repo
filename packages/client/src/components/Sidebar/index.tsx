@@ -189,11 +189,18 @@ export default function Sidebar() {
               <div className="fixed inset-0 z-40" onClick={() => setShowQuickMenu(false)} />
               <div className="absolute right-0 top-full mt-1 z-50 bg-dark-surface border border-dark-border rounded-lg shadow-lg py-1 min-w-[160px]">
                 <button
-                  onClick={() => { setShowCreateRoom(true); setShowQuickMenu(false); }}
+                  onClick={() => { setShowCreateRoom(true, 'bot'); setShowQuickMenu(false); }}
                   className="w-full text-left px-4 py-2.5 text-sm text-dark-text hover:bg-dark-hover flex items-center gap-2 transition"
                 >
-                  <span>＋</span>
-                  <span>New Room</span>
+                  <span>🤖</span>
+                  <span>New Bot Chat</span>
+                </button>
+                <button
+                  onClick={() => { setShowCreateRoom(true, 'group'); setShowQuickMenu(false); }}
+                  className="w-full text-left px-4 py-2.5 text-sm text-dark-text hover:bg-dark-hover flex items-center gap-2 transition"
+                >
+                  <span>👥</span>
+                  <span>New Group Chat</span>
                 </button>
 
               </div>
