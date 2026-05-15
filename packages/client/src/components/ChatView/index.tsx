@@ -156,17 +156,31 @@ export default function ChatView() {
     return () => vv.removeEventListener('resize', onResize);
   }, []);
 
-  // Scroll to message from search
+  // Scroll to message from search (load context if not in view)
   useEffect(() => {
-    if (!scrollToMessageId) return;
+    if (!scrollToMessageId || !activeRoomId) return;
     const el = messageRefs.current[scrollToMessageId];
     if (el) {
       el.scrollIntoView({ behavior: 'smooth', block: 'center' });
       setFlashMessageId(scrollToMessageId);
       setScrollToMessageId(null);
       setTimeout(() => setFlashMessageId(null), 2000);
+      return;
     }
-  }, [scrollToMessageId, messages]);
+    // Message not loaded — fetch context from server
+    const targetId = scrollToMessageId;
+    socketService.getMessageContext(targetId, activeRoomId).then((result) => {
+      if (result.error || !result.messages?.length) {
+        setScrollToMessageId(null);
+        return;
+      }
+      // Replace room messages with the context window
+      const { setMessages, setHasMore } = useAppStore.getState();
+      setMessages(activeRoomId, result.messages);
+      setHasMore(activeRoomId, result.hasOlder);
+      // scrollToMessageId stays set — next render will find the element and scroll
+    });
+  }, [scrollToMessageId, messages, activeRoomId]);
 
   const handleDrop = useCallback(async (e: React.DragEvent) => {
     e.preventDefault();
