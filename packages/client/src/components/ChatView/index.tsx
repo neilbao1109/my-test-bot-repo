@@ -5,7 +5,6 @@ import { socketService } from '../../services/socket';
 import { uploadFile } from '../../services/upload';
 import MessageBubble from '../MessageBubble';
 import CommandBar from '../CommandBar';
-import SearchBar from '../SearchBar';
 import PinnedBar from '../PinnedBar';
 import ForwardToolbar from '../ForwardToolbar';
 import UserAvatar from '../UserAvatar';
@@ -62,7 +61,7 @@ export default function ChatView() {
   const {
     activeRoomId, messages, rooms, streamingMessages,
     typingUsers, showSidebar, toggleSidebar, toggleMembers,
-    user, roomMembers, onlineUsers, toggleSearch, searchResults, searchActiveIdx, searchQuery,
+    user, roomMembers, onlineUsers,
     hasMore, loadingHistory, setLoadingHistory, setHasMore, prependMessages, backToList,
     isContextMode, setContextMode, setMessages,
     contextSelectionMode, setContextSelectionMode, replyContext, addReplyContext, removeReplyContext,
@@ -157,15 +156,7 @@ export default function ChatView() {
     return () => vv.removeEventListener('resize', onResize);
   }, []);
 
-  // Scroll to active search result
-  const activeSearchMsg = searchResults[searchActiveIdx];
-  useEffect(() => {
-    if (activeSearchMsg && messageRefs.current[activeSearchMsg.id]) {
-      messageRefs.current[activeSearchMsg.id]?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    }
-  }, [activeSearchMsg?.id, searchActiveIdx]);
-
-  // Scroll to message from global search
+  // Scroll to message from search
   useEffect(() => {
     if (!scrollToMessageId) return;
     const el = messageRefs.current[scrollToMessageId];
@@ -254,9 +245,13 @@ export default function ChatView() {
 
         {/* Search button */}
         <button
-          onClick={toggleSearch}
+          onClick={() => {
+            useAppStore.getState().setSearchRoomId(activeRoomId || null);
+            useAppStore.getState().setShowSearchPanel(true);
+            useAppStore.setState({ mobileView: 'list', sidebarTab: 'chat' });
+          }}
           className="text-dark-muted hover:text-dark-text px-2 py-1 rounded-lg hover:bg-dark-hover transition"
-          title="Search"
+          title="Search in this room"
         >
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
@@ -278,9 +273,6 @@ export default function ChatView() {
         {/* Room menu */}
         <RoomMenu room={activeRoom} userId={user?.id} />
       </div>
-
-      {/* Search bar */}
-      <SearchBar />
 
       {/* Pinned messages bar */}
       <PinnedBar />
@@ -310,8 +302,6 @@ export default function ChatView() {
         )}
 
         {roomMessages.map((msg) => {
-          const isSearchHit = searchQuery && searchResults.some(r => r.id === msg.id);
-          const isActiveHit = activeSearchMsg?.id === msg.id;
           const isCtxSelected = contextSelectionMode && replyContext.some(m => m.id === msg.id);
           return (
             <div
@@ -321,8 +311,8 @@ export default function ChatView() {
             >
               <MessageBubble
                 message={msg}
-                highlight={isSearchHit ? searchQuery : undefined}
-                isSearchActive={!!isActiveHit}
+                highlight={undefined}
+                isSearchActive={false}
               />
             </div>
           );

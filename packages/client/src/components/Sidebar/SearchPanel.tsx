@@ -1,7 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useAppStore } from '../../stores/appStore';
 import { socketService } from '../../services/socket';
-import UserAvatar from '../UserAvatar';
 import type { Message } from '../../types';
 
 interface RoomResult {
@@ -37,12 +36,17 @@ function formatTime(dateStr: string): string {
 
 export default function SearchPanel({ onClose }: { onClose: () => void }) {
   const { rooms, setActiveRoom, roomMembers } = useAppStore();
+  const searchRoomId = useAppStore(s => s.searchRoomId);
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<Message[]>([]);
   const [loading, setLoading] = useState(false);
-  const [selectedRoomId, setSelectedRoomId] = useState<string | null>(null);
+  const [selectedRoomId, setSelectedRoomId] = useState<string | null>(searchRoomId);
   const inputRef = useRef<HTMLInputElement>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout>>();
+
+  // Is this a room-scoped search?
+  const isRoomScoped = !!searchRoomId;
+  const scopedRoom = isRoomScoped ? rooms.find(r => r.id === searchRoomId) : null;
 
   useEffect(() => {
     setTimeout(() => inputRef.current?.focus(), 50);
@@ -51,16 +55,20 @@ export default function SearchPanel({ onClose }: { onClose: () => void }) {
   const doSearch = useCallback((q: string) => {
     if (!q.trim()) {
       setResults([]);
-      setSelectedRoomId(null);
+      if (!isRoomScoped) setSelectedRoomId(null);
       return;
     }
     setLoading(true);
-    setSelectedRoomId(null);
-    socketService.searchMessages(q, undefined, true, 100).then(({ results }) => {
+    if (!isRoomScoped) setSelectedRoomId(null);
+
+    // Room-scoped: search only that room; global: search all
+    const roomId = isRoomScoped ? searchRoomId! : undefined;
+    const global = !isRoomScoped;
+    socketService.searchMessages(q, roomId, global, 100).then(({ results }) => {
       setResults(results);
       setLoading(false);
     });
-  }, []);
+  }, [isRoomScoped, searchRoomId]);
 
   const handleInput = (value: string) => {
     setQuery(value);
@@ -68,10 +76,16 @@ export default function SearchPanel({ onClose }: { onClose: () => void }) {
     timerRef.current = setTimeout(() => doSearch(value), 300);
   };
 
+  const handleClose = () => {
+    useAppStore.getState().setSearchRoomId(null);
+    onClose();
+  };
+
   const handleMessageClick = (msg: Message) => {
     setActiveRoom(msg.roomId);
     useAppStore.getState().setScrollToMessageId(msg.id);
     useAppStore.setState({ mobileView: 'chat' });
+    useAppStore.getState().setSearchRoomId(null);
     onClose();
   };
 
@@ -99,14 +113,18 @@ export default function SearchPanel({ onClose }: { onClose: () => void }) {
     return member?.username || msg.userId;
   };
 
-  // Selected room's messages
-  const selectedRoom = selectedRoomId ? grouped.find(g => g.roomId === selectedRoomId) : null;
+  // For room-scoped, always show messages directly; for global, use two-layer
+  const selectedRoom = isRoomScoped
+    ? (grouped.length > 0 ? grouped[0] : null)
+    : (selectedRoomId ? grouped.find(g => g.roomId === selectedRoomId) : null);
+
+  const showRoomList = !isRoomScoped && !selectedRoomId;
 
   return (
     <div className="flex flex-col h-full">
       {/* Search header */}
       <div className="p-3 border-b border-dark-border flex items-center gap-2">
-        {selectedRoomId && (
+        {!isRoomScoped && selectedRoomId && (
           <button
             onClick={() => setSelectedRoomId(null)}
             className="text-dark-muted hover:text-dark-text p-1 flex-shrink-0"
@@ -125,19 +143,19 @@ export default function SearchPanel({ onClose }: { onClose: () => void }) {
           type="text"
           value={query}
           onChange={(e) => handleInput(e.target.value)}
-          placeholder="Search all messages..."
+          placeholder={isRoomScoped ? `Search in ${scopedRoom?.name || 'this room'}...` : 'Search all messages...'}
           className="flex-1 bg-transparent text-sm text-dark-text placeholder-dark-muted focus:outline-none"
         />
         <button
-          onClick={onClose}
+          onClick={handleClose}
           className="text-dark-muted hover:text-dark-text p-1 flex-shrink-0"
         >
           ✕
         </button>
       </div>
 
-      {/* Subtitle when viewing a room's results */}
-      {selectedRoom && (
+      {/* Subtitle when viewing a room's results (global drill-down only) */}
+      {!isRoomScoped && selectedRoom && (
         <div className="px-3 py-2 border-b border-dark-border bg-dark-bg/50">
           <span className="text-xs font-semibold text-dark-text">{selectedRoom.roomName}</span>
           <span className="text-xs text-dark-muted ml-2">{selectedRoom.matchCount} result{selectedRoom.matchCount !== 1 ? 's' : ''}</span>
@@ -150,7 +168,9 @@ export default function SearchPanel({ onClose }: { onClose: () => void }) {
         {!query.trim() && (
           <div className="text-center py-12 px-4">
             <div className="text-3xl mb-2">🔍</div>
-            <p className="text-sm text-dark-muted">Search across all conversations</p>
+            <p className="text-sm text-dark-muted">
+              {isRoomScoped ? `Search in ${scopedRoom?.name || 'this room'}` : 'Search across all conversations'}
+            </p>
           </div>
         )}
 
@@ -166,8 +186,8 @@ export default function SearchPanel({ onClose }: { onClose: () => void }) {
           </div>
         )}
 
-        {/* Layer 1: Room list */}
-        {!selectedRoomId && !loading && grouped.map((group) => (
+        {/* Layer 1: Room list (global search only) */}
+        {showRoomList && !loading && grouped.map((group) => (
           <button
             key={group.roomId}
             onClick={() => setSelectedRoomId(group.roomId)}
@@ -192,7 +212,7 @@ export default function SearchPanel({ onClose }: { onClose: () => void }) {
           </button>
         ))}
 
-        {/* Layer 2: Messages in selected room */}
+        {/* Layer 2: Messages in selected room (or room-scoped results) */}
         {selectedRoom && selectedRoom.messages.map((msg) => (
           <button
             key={msg.id}

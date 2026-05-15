@@ -78,10 +78,14 @@ interface AppState {
   searchActiveIdx: number;
   searchGlobal: boolean;
   scrollToMessageId: string | null;
+  searchRoomId: string | null;
+  showSearchPanel: boolean;
   setSearchQuery: (query: string | null) => void;
   setSearchResults: (results: Message[], total: number) => void;
   setSearchActiveIdx: (idx: number) => void;
   setScrollToMessageId: (id: string | null) => void;
+  setSearchRoomId: (id: string | null) => void;
+  setShowSearchPanel: (show: boolean) => void;
   setSearchGlobal: (global: boolean) => void;
   showSearch: boolean;
   toggleSearch: () => void;
@@ -392,10 +396,14 @@ export const useAppStore = create<AppState>((set, get) => ({
   searchActiveIdx: 0,
   searchGlobal: false,
   scrollToMessageId: null,
+  searchRoomId: null,
+  showSearchPanel: false,
   setSearchQuery: (query) => set({ searchQuery: query, searchActiveIdx: 0 }),
   setSearchResults: (results, total) => set({ searchResults: results, searchTotal: total }),
   setSearchActiveIdx: (idx) => set({ searchActiveIdx: idx }),
   setScrollToMessageId: (id) => set({ scrollToMessageId: id }),
+  setSearchRoomId: (id) => set({ searchRoomId: id }),
+  setShowSearchPanel: (show) => set({ showSearchPanel: show }),
   setSearchGlobal: (global) => set({ searchGlobal: global }),
   showSearch: false,
   toggleSearch: () => set((s) => {

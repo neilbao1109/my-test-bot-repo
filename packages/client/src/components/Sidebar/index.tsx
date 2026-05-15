@@ -44,7 +44,8 @@ export default function Sidebar() {
   const [editingFolder, setEditingFolder] = useState<ChatFolder | null>(null);
   const [showQuickMenu, setShowQuickMenu] = useState(false);
   const [showAccount, setShowAccount] = useState(false);
-  const [showSearchPanel, setShowSearchPanel] = useState(false);
+  const showSearchPanel = useAppStore(s => s.showSearchPanel);
+  const setShowSearchPanel = useAppStore(s => s.setShowSearchPanel);
 
   // Pull-to-refresh (ref-based to avoid re-renders during drag)
   const [refreshing, setRefreshing] = useState(false);
@@ -165,7 +166,7 @@ export default function Sidebar() {
            >
         <div className="flex items-center">
           <button
-            onClick={() => setShowSearchPanel(true)}
+            onClick={() => { useAppStore.getState().setSearchRoomId(null); setShowSearchPanel(true); }}
             className="text-dark-muted hover:text-dark-text p-1.5 rounded-lg hover:bg-dark-hover transition"
             title="Search"
           >
