@@ -153,8 +153,8 @@ export default function SettingsPanel({ onShowAccount }: SettingsPanelProps) {
         <SubPageHeader title={t('settings.appearance')} onBack={() => setSubPage(null)} />
         <div className="flex-1 overflow-y-auto px-4 py-4">
           <div className="flex gap-2">
-            <ThemeButton active={theme === 'dark'} onClick={() => setTheme('dark')} icon="🌙" label="Dark" />
-            <ThemeButton active={theme === 'light'} onClick={() => setTheme('light')} icon="☀️" label="Light" />
+            <ThemeButton active={theme === 'dark'} onClick={() => setTheme('dark')} icon="🌙" label={t('settings.themeDark')} />
+            <ThemeButton active={theme === 'light'} onClick={() => setTheme('light')} icon="☀️" label={t('settings.themeLight')} />
           </div>
         </div>
       </div>
@@ -216,7 +216,7 @@ export default function SettingsPanel({ onShowAccount }: SettingsPanelProps) {
         {/* Bots row */}
         <SettingsRow
           icon={<span className="text-lg">🤖</span>}
-          label="Bots"
+          label={t('settings.bots')}
           onClick={() => setSubPage('bots')}
         />
 
@@ -224,7 +224,7 @@ export default function SettingsPanel({ onShowAccount }: SettingsPanelProps) {
         <SettingsRow
           icon={<span className="text-lg">🎨</span>}
           label={t('settings.appearance')}
-          value={theme === 'dark' ? 'Dark' : 'Light'}
+          value={theme === 'dark' ? t('settings.themeDark') : t('settings.themeLight')}
           onClick={() => setSubPage('appearance')}
         />
 
@@ -373,7 +373,7 @@ function BotsSubPage({ onBack }: { onBack: () => void }) {
 
   return (
     <div className="flex flex-col h-full">
-      <SubPageHeader title="Bots" onBack={onBack} />
+      <SubPageHeader title={t('settings.bots')} onBack={onBack} />
       <div className="flex-1 overflow-y-auto px-4 py-4">
         {/* Action buttons */}
         <div className="flex gap-2 mb-4">
@@ -552,7 +552,7 @@ function BotSkillsPage({ bot, onBack }: { bot: any; onBack: () => void }) {
 
   return (
     <div className="flex flex-col h-full">
-      <SubPageHeader title={`Skills — ${bot.username || bot.name}`} onBack={onBack} />
+      <SubPageHeader title={`${t('settings.skills')} — ${bot.username || bot.name}`} onBack={onBack} />
       <div className="flex-1 overflow-y-auto px-4 py-4">
         <button
           onClick={() => setShowDeploy(true)}
@@ -584,7 +584,7 @@ function BotSkillsPage({ bot, onBack }: { bot: any; onBack: () => void }) {
                 <button
                   onClick={() => setRemoveTarget(skill.skillName)}
                   className="w-8 h-8 flex items-center justify-center rounded-lg text-dark-muted hover:text-red-400 hover:bg-red-400/10 transition text-sm"
-                  title="Remove"
+                  title={t('settings.removeSkill')}
                 >
                   ✕
                 </button>

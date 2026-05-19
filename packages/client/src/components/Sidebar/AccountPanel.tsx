@@ -1,5 +1,6 @@
 import { useAppStore } from '../../stores/appStore';
 import UserAvatar from '../UserAvatar';
+import { useT } from '../../hooks/useT';
 
 interface AccountPanelProps {
   onBack: () => void;
@@ -7,6 +8,7 @@ interface AccountPanelProps {
 
 export default function AccountPanel({ onBack }: AccountPanelProps) {
   const { user, logout } = useAppStore();
+  const t = useT();
 
   return (
     <div className="flex flex-col h-full">
@@ -52,7 +54,7 @@ export default function AccountPanel({ onBack }: AccountPanelProps) {
           className="w-full py-2.5 px-3 text-sm text-red-400 hover:bg-red-500/10 rounded-lg transition flex items-center justify-center gap-2"
         >
           <span>⏻</span>
-          <span>Logout</span>
+          <span>{t('account.logout')}</span>
         </button>
       </div>
     </div>

@@ -1,8 +1,10 @@
 import clsx from 'clsx';
 import { useAppStore } from '../../stores/appStore';
+import { useT } from '../../hooks/useT';
 
 export default function FolderTabs({ onCreateFolder }: { onCreateFolder: () => void }) {
   const { folders, activeFolderId, setActiveFolderId } = useAppStore();
+  const t = useT();
 
   return (
     <div className="flex items-center gap-0.5 px-3 py-2 border-b border-dark-border overflow-x-auto scrollbar-none">
@@ -23,7 +25,7 @@ export default function FolderTabs({ onCreateFolder }: { onCreateFolder: () => v
       <button
         onClick={onCreateFolder}
         className="px-1.5 py-1 text-xs text-dark-muted hover:text-dark-text hover:bg-dark-hover rounded-md transition flex-shrink-0"
-        title="New folder"
+        title={t('folder.newFolder')}
       >
         ＋
       </button>

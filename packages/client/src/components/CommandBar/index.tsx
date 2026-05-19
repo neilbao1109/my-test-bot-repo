@@ -5,13 +5,13 @@ import { socketService } from '../../services/socket';
 import { uploadFile } from '../../services/upload';
 
 const COMMANDS = [
-  { name: 'help', description: 'Show available commands' },
-  { name: 'clear', description: 'Clear conversation' },
-  { name: 'model', description: 'Switch or show model' },
-  { name: 'system', description: 'Set system prompt' },
-  { name: 'status', description: 'Show bot status' },
-  { name: 'export', description: 'Export chat history' },
-  { name: 'thread', description: 'Start a thread' },
+  { name: 'help', descKey: 'command.help' as const },
+  { name: 'clear', descKey: 'command.clear' as const },
+  { name: 'model', descKey: 'command.model' as const },
+  { name: 'system', descKey: 'command.system' as const },
+  { name: 'status', descKey: 'command.status' as const },
+  { name: 'export', descKey: 'command.export' as const },
+  { name: 'thread', descKey: 'command.thread' as const },
 ];
 
 interface CommandBarProps {
@@ -407,7 +407,7 @@ export default function CommandBar({ roomId, threadId, onExport }: CommandBarPro
               }`}
             >
               <span className="text-sm font-mono text-primary-400">/{cmd.name}</span>
-              <span className="text-xs text-dark-muted">{cmd.description}</span>
+              <span className="text-xs text-dark-muted">{t(cmd.descKey)}</span>
             </button>
           ))}
         </div>
@@ -442,7 +442,7 @@ export default function CommandBar({ roomId, threadId, onExport }: CommandBarPro
               <div key={msg.id} className="flex items-center gap-2 border-l-2 border-primary-500 pl-2">
                 <div className="flex-1 min-w-0">
                   <p className="text-xs text-primary-400 font-semibold truncate">
-                    {members.find(m => m.id === msg.userId)?.username || 'Unknown'}
+                    {members.find(m => m.id === msg.userId)?.username || t('common.unknown')}
                   </p>
                   <p className="text-xs text-dark-muted truncate">{msg.content}</p>
                 </div>

@@ -37,6 +37,13 @@ const en: Record<LocaleKeys, string> = {
   'bot.restore.new': 'Create New',
   'bot.restore.restoring': 'Restoring...',
   'bot.restore.restore': 'Restore',
+  'bot.error.registrationFailed': 'Registration failed',
+  'bot.error.idTaken': 'Bot ID already taken',
+  'bot.error.connectionFailed': 'Connection failed',
+  'bot.error.connectionTestFailed': 'Connection test failed',
+  'bot.error.restoreFailed': 'Restore failed',
+  'bot.connected': 'Connected',
+  'bot.connectedWithModel': 'Connected ({model})',
 
   // BotShareModal
   'botShare.title': '🔗 Share "{name}"',
@@ -320,6 +327,7 @@ const en: Record<LocaleKeys, string> = {
   'thread.dropFiles': 'Drop files to upload',
   'thread.empty': 'No replies yet. Start the conversation!',
   'thread.backTitle': 'Back to chat',
+  'thread.botThinking': 'ClawBot is thinking...',
 
   // SearchPanel
   'searchPanel.searching': 'Searching...',
@@ -353,6 +361,27 @@ const en: Record<LocaleKeys, string> = {
   'sidebar.pullRelease': '↑ Release to refresh',
   'sidebar.pullDown': '↓ Pull to refresh',
   'sidebar.refreshing': '↻ Refreshing...',
+  'sidebar.menu': 'Menu',
+
+  // FolderEditModal
+  'folder.editTitle': 'Edit Folder',
+  'folder.newTitle': 'New Folder',
+  'folder.namePlaceholder': 'Folder name',
+  'folder.save': 'Save',
+  'folder.create': 'Create',
+  'folder.cancel': 'Cancel',
+  'folder.delete': 'Delete',
+  'folder.newFolder': 'New folder',
+
+  // AccountPanel
+  'account.logout': 'Logout',
+
+  // Common
+  'common.unknown': 'Unknown',
+
+  // SettingsPanel theme
+  'settings.themeDark': 'Dark',
+  'settings.themeLight': 'Light',
 };
 
 export default en;

@@ -224,12 +224,12 @@ export default function MessageBubble({ message, isStreaming, streamContent, hig
     return (
       <div className="group flex gap-3 px-4 py-1.5 hover:bg-dark-hover/50 transition opacity-60">
         <div className="flex-shrink-0 pt-0.5">
-          <UserAvatar username={sender?.username || 'Unknown'} isBot={isBot} size="md" />
+          <UserAvatar username={sender?.username || t('common.unknown')} isBot={isBot} size="md" />
         </div>
         <div className="flex-1 min-w-0">
           <div className="flex items-baseline gap-2 mb-0.5">
             <span className="text-sm font-semibold text-dark-muted">
-              {sender?.username || 'Unknown'}
+              {sender?.username || t('common.unknown')}
             </span>
             <span className="text-xs text-dark-muted">
               {formatDistanceToNow(new Date(message.createdAt), { addSuffix: true })}
@@ -296,7 +296,7 @@ export default function MessageBubble({ message, isStreaming, streamContent, hig
       {/* Avatar */}
       <div className="flex-shrink-0 pt-0.5">
         <UserAvatar
-          username={sender?.username || 'Unknown'}
+          username={sender?.username || t('common.unknown')}
           isBot={isBot}
           size="md"
         />
@@ -307,7 +307,7 @@ export default function MessageBubble({ message, isStreaming, streamContent, hig
         {/* Header */}
         <div className="flex items-baseline gap-2 mb-0.5">
           <span className={clsx('text-sm font-semibold', isBot ? 'text-primary-400' : 'text-dark-text')}>
-            {sender?.username || 'Unknown'}
+            {sender?.username || t('common.unknown')}
           </span>
           {isBot && (
             <span className="text-[10px] px-1.5 py-0.5 bg-primary-600/20 text-primary-400 rounded font-medium">
@@ -350,7 +350,7 @@ export default function MessageBubble({ message, isStreaming, streamContent, hig
                     className="mt-1 mb-1 w-full text-left border-l-2 border-primary-500/50 pl-2 py-1 rounded-r bg-dark-hover/30 hover:bg-dark-hover/50 transition"
                   >
                     <p className="text-xs text-primary-400 font-semibold truncate">
-                      {quotedSender?.username || 'Unknown'}
+                      {quotedSender?.username || t('common.unknown')}
                     </p>
                     <p className="text-xs text-dark-muted truncate">
                       {quoted.content.length > 80 ? quoted.content.slice(0, 80) + '...' : quoted.content}

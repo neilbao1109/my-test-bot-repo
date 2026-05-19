@@ -181,7 +181,7 @@ export default function ThreadPanel() {
             </div>
             <span className="text-xs text-dark-muted animate-pulse">
               {threadTyping.some((u) => u.userId === 'bot-clawchat')
-                ? 'ClawBot is thinking...'
+                ? t('thread.botThinking')
                 : `${threadTyping.map((u) => u.username).join(', ')} ${threadTyping.length === 1 ? 'is' : 'are'} typing...`}
             </span>
           </div>

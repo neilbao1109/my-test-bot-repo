@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import clsx from 'clsx';
 import { useAppStore } from '../../stores/appStore';
+import { useT } from '../../hooks/useT';
 import type { ChatFolder } from '../../types';
 
 function generateId() {
@@ -14,6 +15,7 @@ interface FolderEditModalProps {
 
 export default function FolderEditModal({ folder, onClose }: FolderEditModalProps) {
   const { rooms, addFolder, updateFolder, removeFolder } = useAppStore();
+  const t = useT();
   const [name, setName] = useState(folder?.name || '');
   const [selectedRoomIds, setSelectedRoomIds] = useState<Set<string>>(
     new Set(folder?.roomIds || [])
@@ -61,7 +63,7 @@ export default function FolderEditModal({ folder, onClose }: FolderEditModalProp
         onClick={(e) => e.stopPropagation()}
       >
         <h3 className="text-sm font-semibold text-dark-text mb-3">
-          {isEdit ? 'Edit Folder' : 'New Folder'}
+          {isEdit ? t('folder.editTitle') : t('folder.newTitle')}
         </h3>
 
         {/* Name input */}
@@ -69,7 +71,7 @@ export default function FolderEditModal({ folder, onClose }: FolderEditModalProp
           type="text"
           value={name}
           onChange={(e) => setName(e.target.value)}
-          placeholder="Folder name"
+          placeholder={t('folder.namePlaceholder')}
           className="w-full bg-dark-bg border border-dark-border rounded-lg px-3 py-2 text-sm text-dark-text focus:outline-none focus:ring-1 focus:ring-primary-500 mb-3"
           autoFocus
           onKeyDown={(e) => { if (e.key === 'Enter') handleSave(); if (e.key === 'Escape') onClose(); }}
@@ -103,7 +105,7 @@ export default function FolderEditModal({ folder, onClose }: FolderEditModalProp
               onClick={handleDelete}
               className="text-xs text-red-400 hover:text-red-300 transition"
             >
-              Delete
+              {t('folder.delete')}
             </button>
           )}
           <div className="flex-1" />
@@ -111,14 +113,14 @@ export default function FolderEditModal({ folder, onClose }: FolderEditModalProp
             onClick={onClose}
             className="px-3 py-1.5 text-xs text-dark-muted hover:text-dark-text rounded-lg hover:bg-dark-hover transition"
           >
-            Cancel
+            {t('folder.cancel')}
           </button>
           <button
             onClick={handleSave}
             disabled={!name.trim()}
             className="px-3 py-1.5 text-xs text-white bg-primary-600 hover:bg-primary-700 rounded-lg transition disabled:opacity-50"
           >
-            {isEdit ? 'Save' : 'Create'}
+            {isEdit ? t('folder.save') : t('folder.create')}
           </button>
         </div>
       </div>

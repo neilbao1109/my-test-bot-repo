@@ -96,7 +96,7 @@ export default function BotRegistration() {
         handleClose();
       }
     } catch {
-      setError('Registration failed');
+      setError(t('bot.error.registrationFailed'));
       setStep('info');
     } finally {
       setRegistering(false);
@@ -139,7 +139,7 @@ export default function BotRegistration() {
     try {
       const result = await socketService.checkBotId(botId.trim());
       if (!result.available) {
-        setBotIdError('Bot ID already taken');
+        setBotIdError(t('bot.error.idTaken'));
         return;
       }
     } catch {
@@ -161,10 +161,10 @@ export default function BotRegistration() {
         setPairGatewayUrl(result.gatewayUrl || '');
         setStep('pending');
       } else {
-        setPairError(result.error || 'Connection failed');
+        setPairError(result.error || t('bot.error.connectionFailed'));
       }
     } catch {
-      setPairError('Connection failed');
+      setPairError(t('bot.error.connectionFailed'));
     } finally {
       setConnecting(false);
     }
@@ -181,16 +181,16 @@ export default function BotRegistration() {
         sshHost: sshHost.trim() || undefined,
       });
       if (result.ok) {
-        setTestMessage(result.model ? `Connected (${result.model})` : 'Connected');
+        setTestMessage(result.model ? t('bot.connectedWithModel').replace('{model}', result.model) : t('bot.connected'));
         // Auto-register for token mode
         await doRegister();
       } else {
         setTestStatus('error');
-        setTestMessage(result.error || 'Connection failed');
+        setTestMessage(result.error || t('bot.error.connectionFailed'));
       }
     } catch {
       setTestStatus('error');
-      setTestMessage('Connection test failed');
+      setTestMessage(t('bot.error.connectionTestFailed'));
     }
   };
 
@@ -206,7 +206,7 @@ export default function BotRegistration() {
         handleClose();
       }
     } catch {
-      setError('Restore failed');
+      setError(t('bot.error.restoreFailed'));
     } finally {
       setRestoring(false);
     }
@@ -235,7 +235,7 @@ export default function BotRegistration() {
         handleClose();
       }
     }).catch(() => {
-      setError('Registration failed');
+      setError(t('bot.error.registrationFailed'));
       setStep('info');
     }).finally(() => setRegistering(false));
   };

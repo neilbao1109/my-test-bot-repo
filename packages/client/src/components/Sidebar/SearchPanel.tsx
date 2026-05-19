@@ -116,7 +116,7 @@ export default function SearchPanel({ onClose }: { onClose: () => void }) {
     const room = rooms.find(r => r.id === roomId);
     grouped.push({
       roomId,
-      roomName: room?.name || 'Unknown',
+      roomName: room?.name || t('common.unknown'),
       matchCount: msgs.length,
       firstMatch: msgs[0],
       messages: msgs,
@@ -144,7 +144,7 @@ export default function SearchPanel({ onClose }: { onClose: () => void }) {
           <button
             onClick={() => setSelectedRoomId(null)}
             className="text-dark-muted hover:text-dark-text p-1 flex-shrink-0"
-            title="Back"
+            title={t('chat.back')}
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
