@@ -313,7 +313,7 @@ export default function CreateRoomModal() {
             onClick={() => setShowCreateRoom(false)}
             className="px-4 py-2 text-sm text-dark-muted hover:text-dark-text rounded-lg hover:bg-dark-hover transition"
           >
-            Cancel
+            {t('createRoom.cancel')}
           </button>
           <button
             onClick={handleCreate}
