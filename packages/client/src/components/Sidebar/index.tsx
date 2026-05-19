@@ -1,5 +1,6 @@
 import { useState, useMemo, useRef, useCallback } from 'react';
 import clsx from 'clsx';
+import { useT } from '../../hooks/useT';
 import { useAppStore } from '../../stores/appStore';
 import SettingsPanel from './SettingsPanel';
 import AccountPanel from './AccountPanel';
@@ -11,7 +12,7 @@ import type { ChatFolder } from '../../types';
 
 import ContactsTab from './ContactsTab';
 
-function formatTime(dateStr: string): string {
+function formatTime(dateStr: string, t: (key: any, params?: any) => string): string {
   const date = new Date(dateStr);
   const now = new Date();
   const diffMs = now.getTime() - date.getTime();
@@ -24,16 +25,17 @@ function formatTime(dateStr: string): string {
   if (isToday) {
     return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
   }
-  if (isYesterday) return '昨天';
+  if (isYesterday) return t('sidebar.yesterday');
   if (diffDays < 7) {
-    return ['周日','周一','周二','周三','周四','周五','周六'][date.getDay()];
+    const weekdays = t('sidebar.weekdays').split(',');
+    return weekdays[date.getDay()];
   }
   return `${date.getMonth()+1}/${date.getDate()}`;
 }
 
-function previewText(content: string, type: string): string {
-  if (type === 'file') return '📎 文件';
-  if (type === 'system') return '⚙️ 系统消息';
+function previewText(content: string, type: string, t: (key: any) => string): string {
+  if (type === 'file') return t('sidebar.filePreview');
+  if (type === 'system') return t('sidebar.systemMessage');
   // Strip markdown
   return content.replace(/[*_~`#>\[\]]/g, '').replace(/\n/g, ' ').slice(0, 60);
 }
@@ -46,6 +48,7 @@ export default function Sidebar() {
   const [showAccount, setShowAccount] = useState(false);
   const showSearchPanel = useAppStore(s => s.showSearchPanel);
   const setShowSearchPanel = useAppStore(s => s.setShowSearchPanel);
+  const t = useT();
 
   // Pull-to-refresh (ref-based to avoid re-renders during drag)
   const [refreshing, setRefreshing] = useState(false);
@@ -72,7 +75,7 @@ export default function Sidebar() {
       if (indicatorRef.current) {
         indicatorRef.current.style.height = `${dist}px`;
         indicatorRef.current.style.opacity = '1';
-        indicatorRef.current.textContent = dist >= PULL_THRESHOLD ? '\u2191 \u91ca\u653e\u5237\u65b0' : '\u2193 \u4e0b\u62c9\u5237\u65b0';
+        indicatorRef.current.textContent = dist >= PULL_THRESHOLD ? t('sidebar.pullRelease') : t('sidebar.pullDown');
       }
     }
   }, [refreshing]);
@@ -84,7 +87,7 @@ export default function Sidebar() {
     if (dist >= PULL_THRESHOLD && !refreshing) {
       if (indicatorRef.current) {
         indicatorRef.current.style.height = `${PULL_THRESHOLD}px`;
-        indicatorRef.current.textContent = '\u27f3 \u5237\u65b0\u4e2d...';
+        indicatorRef.current.textContent = t('sidebar.refreshing');
       }
       setRefreshing(true);
       try {
@@ -194,7 +197,7 @@ export default function Sidebar() {
                   className="w-full text-left px-4 py-2.5 text-sm text-dark-text hover:bg-dark-hover flex items-center gap-2 transition"
                 >
                   <span>＋</span>
-                  <span>New Room</span>
+                  <span>{t('sidebar.newRoom')}</span>
                 </button>
 
               </div>
@@ -211,7 +214,7 @@ export default function Sidebar() {
       {sidebarTab === 'settings' ? (
         <>
           <div className="p-4 border-b border-dark-border flex items-center">
-            <span className="text-sm font-semibold text-dark-text">Settings</span>
+            <span className="text-sm font-semibold text-dark-text">{t('settings.title')}</span>
           </div>
           {showAccount ? (
             <AccountPanel onBack={() => setShowAccount(false)} />
@@ -222,7 +225,7 @@ export default function Sidebar() {
       ) : sidebarTab === 'contacts' ? (
         <>
           <div className="p-4 border-b border-dark-border flex items-center">
-            <span className="text-sm font-semibold text-dark-text">Contacts</span>
+            <span className="text-sm font-semibold text-dark-text">{t('settings.contacts')}</span>
           </div>
           <ContactsTab />
         </>
@@ -268,7 +271,7 @@ export default function Sidebar() {
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center justify-between gap-2">
-                  <span className="text-sm truncate font-medium">{room.type === 'dm' ? (getDmDisplayName(room.id) || room.name || 'Direct Message') : (room.name || (room.type === 'bot' ? 'Bot Chat' : 'Unnamed Room'))}</span>
+                  <span className="text-sm truncate font-medium">{room.type === 'dm' ? (getDmDisplayName(room.id) || room.name || t('chat.directMessage')) : (room.name || (room.type === 'bot' ? t('chat.botChat') : t('chat.unnamed')))}</span>
                   <div className="flex items-center gap-1.5 flex-shrink-0">
                     {room.type === 'group' && memberCount > 0 && (
                       <span className="text-[10px] text-dark-muted bg-dark-hover px-1.5 py-0.5 rounded-full">
@@ -276,14 +279,14 @@ export default function Sidebar() {
                       </span>
                     )}
                     {lm && (
-                      <span className="text-[10px] text-dark-muted">{formatTime(lm.createdAt)}</span>
+                      <span className="text-[10px] text-dark-muted">{formatTime(lm.createdAt, t)}</span>
                     )}
                   </div>
                 </div>
                 {lm && (
                   <p className="text-xs text-dark-muted truncate mt-0.5">
                     {lm.senderName ? <><span className="font-medium">{lm.senderName}:</span>{' '}</> : null}
-                    {previewText(lm.content, lm.type)}
+                    {previewText(lm.content, lm.type, t)}
                   </p>
                 )}
               </div>
@@ -302,7 +305,7 @@ export default function Sidebar() {
           }`}
         >
           <span className="text-base">💬</span>
-          <span>聊天</span>
+          <span>{t('sidebar.chat')}</span>
         </button>
         <button
           onClick={() => setSidebarTab('contacts')}
@@ -311,7 +314,7 @@ export default function Sidebar() {
           }`}
         >
           <span className="text-base">📇</span>
-          <span>通讯录</span>
+          <span>{t('sidebar.contacts')}</span>
           {(friendRequests.incoming.length + pendingInvitationCount) > 0 && (
             <span className="absolute top-1 right-1/4 w-2 h-2 bg-red-500 rounded-full" />
           )}
@@ -323,7 +326,7 @@ export default function Sidebar() {
           }`}
         >
           <span className="text-base">⚙️</span>
-          <span>设置</span>
+          <span>{t('sidebar.settings')}</span>
         </button>
       </div>
 

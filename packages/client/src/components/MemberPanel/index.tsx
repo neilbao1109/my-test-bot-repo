@@ -1,5 +1,6 @@
 import { useAppStore } from '../../stores/appStore';
 import { socketService } from '../../services/socket';
+import { useT } from '../../hooks/useT';
 import UserAvatar from '../UserAvatar';
 import { useState, useEffect, useMemo } from 'react';
 import type { User } from '../../types';
@@ -32,6 +33,7 @@ export default function MemberPanel() {
   const [loading, setLoading] = useState(false);
   const [inviting, setInviting] = useState(false);
   const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
+  const t = useT();
 
   const memberIds = members.map(m => m.id).join(',');
   const friendIds = useMemo(() => new Set(friends.map(f => f.id)), [friends]);
@@ -154,7 +156,7 @@ export default function MemberPanel() {
         <div className="flex items-center justify-between px-4 py-3 border-b border-dark-border">
           <div className="flex items-center gap-2">
             <button onClick={closeInviteView} className="text-dark-muted hover:text-dark-text p-1 rounded transition text-sm">←</button>
-            <h3 className="font-semibold text-dark-text text-sm">Invite Members</h3>
+            <h3 className="font-semibold text-dark-text text-sm">{t('member.inviteMembers')}</h3>
           </div>
           <button onClick={toggleMembers} className="text-dark-muted hover:text-dark-text p-1 rounded transition">✕</button>
         </div>
@@ -165,7 +167,7 @@ export default function MemberPanel() {
             type="text"
             value={filterQuery}
             onChange={(e) => setFilterQuery(e.target.value)}
-            placeholder="Filter..."
+            placeholder={t('member.filter')}
             className="w-full bg-dark-bg border border-dark-border rounded-lg px-3 py-2 text-sm text-dark-text placeholder-dark-muted focus:outline-none focus:ring-1 focus:ring-primary-500"
           />
         </div>
@@ -173,13 +175,13 @@ export default function MemberPanel() {
         {/* List */}
         <div className="flex-1 overflow-y-auto">
           {loading ? (
-            <p className="text-xs text-dark-muted text-center py-4">Loading...</p>
+            <p className="text-xs text-dark-muted text-center py-4">{t('createRoom.loading')}</p>
           ) : (
             <>
               {/* Bots section */}
               {availableBots.length > 0 && (
                 <>
-                  <div className="px-3 py-1.5 text-[10px] font-medium text-dark-muted uppercase tracking-wider bg-dark-bg/50 sticky top-0">🤖 Bots</div>
+                  <div className="px-3 py-1.5 text-[10px] font-medium text-dark-muted uppercase tracking-wider bg-dark-bg/50 sticky top-0">{t('member.botsSection')}</div>
                   {availableBots.map((bot) => {
                     const isSelected = selectedIds.has(bot.id);
                     const isOnline = onlineUsers.has(bot.id);
@@ -203,7 +205,7 @@ export default function MemberPanel() {
               {/* Members section */}
               {availableUsers.length > 0 && (
                 <>
-                  <div className="px-3 py-1.5 text-[10px] font-medium text-dark-muted uppercase tracking-wider bg-dark-bg/50 sticky top-0">👥 Members</div>
+                  <div className="px-3 py-1.5 text-[10px] font-medium text-dark-muted uppercase tracking-wider bg-dark-bg/50 sticky top-0">{t('member.membersSection')}</div>
                   {availableUsers.map((u) => {
                     const isSelected = selectedIds.has(u.id);
                     const isOnline = onlineUsers.has(u.id);
@@ -225,7 +227,7 @@ export default function MemberPanel() {
                 </>
               )}
               {availableBots.length === 0 && availableUsers.length === 0 && (
-                <p className="text-xs text-dark-muted text-center py-4">No available members</p>
+                <p className="text-xs text-dark-muted text-center py-4">{t('member.noAvailable')}</p>
               )}
             </>
           )}
@@ -238,7 +240,7 @@ export default function MemberPanel() {
             disabled={selectedIds.size === 0 || inviting}
             className="w-full py-2 text-sm font-medium text-white bg-primary-600 rounded-lg hover:bg-primary-500 disabled:opacity-50 disabled:cursor-not-allowed transition"
           >
-            {inviting ? 'Inviting...' : `Confirm Invite (${selectedIds.size})`}
+            {inviting ? t('member.inviting') : t('member.confirmInvite', { count: selectedIds.size })}
           </button>
         </div>
       </div>
@@ -251,7 +253,7 @@ export default function MemberPanel() {
       <div className="flex items-center justify-between px-4 py-3 border-b border-dark-border">
         <div className="flex items-center gap-2">
           <span className="text-lg">👥</span>
-          <h3 className="font-semibold text-dark-text text-sm">Members</h3>
+          <h3 className="font-semibold text-dark-text text-sm">{t('member.title')}</h3>
           <span className="text-xs text-dark-muted">{members.length}</span>
         </div>
         <button
@@ -272,7 +274,7 @@ export default function MemberPanel() {
               {online.length > 0 && (
                 <div className="px-3 py-1">
                   <span className="text-xs font-semibold text-dark-muted uppercase tracking-wider">
-                    Online — {online.length}
+                    {t('member.online', { count: online.length })}
                   </span>
                 </div>
               )}
@@ -290,7 +292,7 @@ export default function MemberPanel() {
                   </div>
                   {isGroup && !m.isBot && m.id !== user?.id && !friendIds.has(m.id) && (
                     sentRequests.has(m.id) ? (
-                      <span className="text-[10px] text-dark-muted">已发送</span>
+                      <span className="text-[10px] text-dark-muted">{t('member.requestSent')}</span>
                     ) : (
                       <button
                         onClick={() => handleAddFriend(m.id)}
@@ -306,7 +308,7 @@ export default function MemberPanel() {
               {offline.length > 0 && (
                 <div className="px-3 py-1 mt-2">
                   <span className="text-xs font-semibold text-dark-muted uppercase tracking-wider">
-                    Offline — {offline.length}
+                    {t('member.offline', { count: offline.length })}
                   </span>
                 </div>
               )}
@@ -324,7 +326,7 @@ export default function MemberPanel() {
                   </div>
                   {isGroup && !m.isBot && m.id !== user?.id && !friendIds.has(m.id) && (
                     sentRequests.has(m.id) ? (
-                      <span className="text-[10px] text-dark-muted">已发送</span>
+                      <span className="text-[10px] text-dark-muted">{t('member.requestSent')}</span>
                     ) : (
                       <button
                         onClick={() => handleAddFriend(m.id)}
@@ -367,8 +369,8 @@ export default function MemberPanel() {
       {showLeaveConfirm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
           <div className="bg-dark-surface border border-dark-border rounded-xl shadow-2xl w-full max-w-sm mx-4 p-5">
-            <h3 className="text-sm font-semibold text-dark-text mb-2">确定离开群聊？</h3>
-            <p className="text-xs text-dark-muted mb-4">离开后将不再接收该群的消息，但可以被重新邀请加入。</p>
+            <h3 className="text-sm font-semibold text-dark-text mb-2">{t('member.leaveConfirm')}</h3>
+            <p className="text-xs text-dark-muted mb-4">{t('member.leaveDescription')}</p>
             <div className="flex justify-end gap-2">
               <button
                 onClick={() => setShowLeaveConfirm(false)}

@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { socketService } from '../../services/socket';
+import { useT } from '../../hooks/useT';
 import { useAppStore } from '../../stores/appStore';
 import type { User } from '../../types';
 
@@ -16,6 +17,7 @@ export default function BotShareModal({ botId, botName, onClose }: BotShareModal
   const [filterQuery, setFilterQuery] = useState('');
   const [sharing, setSharing] = useState(false);
   const [message, setMessage] = useState('');
+  const t = useT();
 
   useEffect(() => {
     loadShares();
@@ -57,7 +59,7 @@ export default function BotShareModal({ botId, botName, onClose }: BotShareModal
       const result = await socketService.shareBot(botId, userId);
       if (!result.error) successCount++;
     }
-    setMessage(`已分享给 ${successCount} 位好友`);
+    setMessage(t('botShare.shareSuccess', { count: successCount }));
     setSelectedIds(new Set());
     loadShares();
     setSharing(false);
@@ -74,7 +76,7 @@ export default function BotShareModal({ botId, botName, onClose }: BotShareModal
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
       <div className="bg-dark-surface border border-dark-border rounded-xl shadow-2xl w-full max-w-md mx-4 max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between px-5 py-4 border-b border-dark-border">
-          <h2 className="text-lg font-semibold text-dark-text">🔗 分享 "{botName}"</h2>
+          <h2 className="text-lg font-semibold text-dark-text">{t('botShare.title', { name: botName })}</h2>
           <button onClick={onClose} className="text-dark-muted hover:text-dark-text p-1 rounded transition">✕</button>
         </div>
 
@@ -84,7 +86,7 @@ export default function BotShareModal({ botId, botName, onClose }: BotShareModal
             type="text"
             value={filterQuery}
             onChange={e => setFilterQuery(e.target.value)}
-            placeholder="搜索好友..."
+            placeholder={t('botShare.searchPlaceholder')}
             className="w-full bg-dark-bg border border-dark-border rounded-lg px-3 py-2 text-sm text-dark-text placeholder-dark-muted focus:outline-none focus:ring-1 focus:ring-primary-500"
           />
 
@@ -92,7 +94,7 @@ export default function BotShareModal({ botId, botName, onClose }: BotShareModal
           <div className="max-h-44 overflow-y-auto border border-dark-border rounded-lg">
             {availableFriends.length === 0 ? (
               <p className="text-xs text-dark-muted text-center py-4">
-                {friends.length === 0 ? '暂无好友' : '所有好友已分享'}
+                {friends.length === 0 ? t('botShare.noFriends') : t('botShare.allShared')}
               </p>
             ) : (
               availableFriends.map(f => {
@@ -125,7 +127,7 @@ export default function BotShareModal({ botId, botName, onClose }: BotShareModal
               disabled={selectedIds.size === 0 || sharing}
               className="w-full py-2 text-sm font-medium text-white bg-primary-600 rounded-lg hover:bg-primary-500 disabled:opacity-50 disabled:cursor-not-allowed transition"
             >
-              {sharing ? '分享中...' : `分享 (${selectedIds.size})`}
+              {sharing ? t('botShare.sharing') : t('botShare.share', { count: selectedIds.size })}
             </button>
           )}
 
@@ -134,17 +136,17 @@ export default function BotShareModal({ botId, botName, onClose }: BotShareModal
           {/* Current shares */}
           {shares.length > 0 && (
             <div>
-              <h3 className="text-xs text-dark-muted mb-2 uppercase tracking-wide">已分享</h3>
+              <h3 className="text-xs text-dark-muted mb-2 uppercase tracking-wide">{t('botShare.sharedSection')}</h3>
               <div className="space-y-1">
                 {shares.map(share => (
                   <div key={share.id} className="flex items-center justify-between px-3 py-2 bg-dark-bg rounded-lg">
                     <div>
                       <span className="text-sm text-dark-text">{share.sharedToName}</span>
-                      <span className="text-xs text-dark-muted ml-2">({share.status === 'accepted' ? '已接受' : share.status === 'pending' ? '待接受' : share.status})</span>
+                      <span className="text-xs text-dark-muted ml-2">({share.status === 'accepted' ? t('botShare.statusAccepted') : share.status === 'pending' ? t('botShare.statusPending') : share.status})</span>
                     </div>
                     <button onClick={() => handleRevoke(share.id)}
                       className="text-xs px-2 py-1 text-red-400 hover:bg-red-400/10 rounded transition">
-                      撤销
+                      {t('botShare.revoke')}
                     </button>
                   </div>
                 ))}

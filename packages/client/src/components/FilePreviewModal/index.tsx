@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useT } from '../../hooks/useT';
 import { createPortal } from 'react-dom';
 import ReactMarkdown from 'react-markdown';
 import remarkGfmSafe from '../../utils/remarkGfmSafe';
@@ -17,6 +18,7 @@ export default function FilePreviewModal({ attachment, onClose }: FilePreviewMod
   const [pdfBlobUrl, setPdfBlobUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
+  const t = useT();
 
   const isImage = attachment.mimeType.startsWith('image/');
   const isPdf = attachment.mimeType === 'application/pdf';
@@ -83,7 +85,7 @@ export default function FilePreviewModal({ attachment, onClose }: FilePreviewMod
               download={attachment.originalName}
               className="text-xs text-primary-400 hover:text-primary-300 transition"
             >
-              ⬇ 下载
+              {t('filePreview.download')}
             </a>
             <button
               onClick={onClose}
@@ -98,9 +100,9 @@ export default function FilePreviewModal({ attachment, onClose }: FilePreviewMod
         <div className="flex-1 overflow-y-auto p-4">
           {isHtml ? (
             loading ? (
-              <div className="text-sm text-dark-muted animate-pulse py-8 text-center">加载中...</div>
+              <div className="text-sm text-dark-muted animate-pulse py-8 text-center">{t('filePreview.loading')}</div>
             ) : error ? (
-              <div className="text-sm text-red-400 py-8 text-center">加载失败</div>
+              <div className="text-sm text-red-400 py-8 text-center">{t('filePreview.loadFailed')}</div>
             ) : (
               <div className="w-full overflow-auto rounded-lg border border-dark-border" style={{ height: '70vh', WebkitOverflowScrolling: 'touch' }}>
                 <iframe
@@ -124,9 +126,9 @@ export default function FilePreviewModal({ attachment, onClose }: FilePreviewMod
             <audio src={attachment.url} controls className="w-full mt-4" />
           ) : isPdf ? (
             loading ? (
-              <div className="text-sm text-dark-muted animate-pulse py-8 text-center">加载中...</div>
+              <div className="text-sm text-dark-muted animate-pulse py-8 text-center">{t('filePreview.loading')}</div>
             ) : error ? (
-              <div className="text-sm text-red-400 py-8 text-center">加载失败</div>
+              <div className="text-sm text-red-400 py-8 text-center">{t('filePreview.loadFailed')}</div>
             ) : pdfBlobUrl ? (
               <iframe
                 src={pdfBlobUrl}
@@ -136,9 +138,9 @@ export default function FilePreviewModal({ attachment, onClose }: FilePreviewMod
             ) : null
           ) : isText ? (
             loading ? (
-              <div className="text-sm text-dark-muted animate-pulse py-8 text-center">加载中...</div>
+              <div className="text-sm text-dark-muted animate-pulse py-8 text-center">{t('filePreview.loading')}</div>
             ) : error ? (
-              <div className="text-sm text-red-400 py-8 text-center">加载失败</div>
+              <div className="text-sm text-red-400 py-8 text-center">{t('filePreview.loadFailed')}</div>
             ) : isMd ? (
               <div className="prose prose-invert prose-sm max-w-none">
                 <ReactMarkdown remarkPlugins={[remarkGfmSafe]} rehypePlugins={[rehypeHighlight, rehypeAutolink]}>
@@ -153,13 +155,13 @@ export default function FilePreviewModal({ attachment, onClose }: FilePreviewMod
           ) : (
             <div className="flex flex-col items-center justify-center py-12 text-dark-muted">
               <span className="text-5xl mb-4">📁</span>
-              <p className="text-sm">此文件类型不支持预览</p>
+              <p className="text-sm">{t('filePreview.unsupported')}</p>
               <a
                 href={attachment.url}
                 download={attachment.originalName}
                 className="mt-4 text-sm text-primary-400 hover:text-primary-300 transition"
               >
-                点击下载
+                {t('filePreview.clickDownload')}
               </a>
             </div>
           )}

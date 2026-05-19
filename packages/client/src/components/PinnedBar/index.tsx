@@ -1,12 +1,14 @@
 import { useState, useEffect, useRef } from 'react';
 import { useAppStore } from '../../stores/appStore';
 import { socketService } from '../../services/socket';
+import { useT } from '../../hooks/useT';
 
 export default function PinnedBar() {
   const { activeRoomId, pinnedMessages, roomMembers, setMessages, setHasMore, setContextMode } = useAppStore();
   const [expanded, setExpanded] = useState(false);
   const [dismissed, setDismissed] = useState(false);
   const [loading, setLoading] = useState(false);
+  const t = useT();
 
   const pins = activeRoomId ? pinnedMessages[activeRoomId] || [] : [];
   const members = activeRoomId ? roomMembers[activeRoomId] || [] : [];
@@ -83,7 +85,7 @@ export default function PinnedBar() {
             {getSenderName(latestPin.userId)}
           </span>
           <p className="text-xs text-dark-text truncate">
-            {loading ? '加载中...' : latestPin.type === 'file' ? '📎 File' : latestPin.content.slice(0, 100)}
+            {loading ? t('pinned.loading') : latestPin.type === 'file' ? t('pinned.file') : latestPin.content.slice(0, 100)}
           </p>
         </button>
 
@@ -92,14 +94,14 @@ export default function PinnedBar() {
             onClick={() => setExpanded(!expanded)}
             className="text-xs text-dark-muted hover:text-dark-text px-1.5 py-0.5 rounded hover:bg-dark-hover transition flex-shrink-0"
           >
-            {expanded ? '▴' : `▾ ${pins.length - 1} more`}
+            {expanded ? '▴' : t('pinned.more', { count: pins.length - 1 })}
           </button>
         )}
 
         <button
           onClick={() => setDismissed(true)}
           className="text-dark-muted hover:text-dark-text p-0.5 rounded hover:bg-dark-hover transition flex-shrink-0 text-xs"
-          title="Hide"
+          title={t('pinned.hide')}
         >
           ✕
         </button>
@@ -119,7 +121,7 @@ export default function PinnedBar() {
                   {getSenderName(pin.userId)}
                 </span>
                 <p className="text-xs text-dark-text truncate">
-                  {pin.type === 'file' ? '📎 File' : pin.content.slice(0, 100)}
+                  {pin.type === 'file' ? t('pinned.file') : pin.content.slice(0, 100)}
                 </p>
               </button>
             </div>

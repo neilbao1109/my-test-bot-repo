@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useAppStore } from '../../stores/appStore';
+import { useT } from '../../hooks/useT';
 import { socketService } from '../../services/socket';
 import './BotRegistration.css';
 
@@ -8,6 +9,7 @@ export default function BotRegistration() {
 
   // Step flow: info → connect → pending → (auto-register)
   const [step, setStep] = useState<'info' | 'connect' | 'pending'>('info');
+  const t = useT();
   const [connectMode, setConnectMode] = useState<'pair' | 'token'>('pair');
 
   // Bot info state (Step 1)
@@ -260,32 +262,32 @@ export default function BotRegistration() {
           {step === 'info' && (
             <>
               <div>
-                <label className="block text-xs text-dark-muted mb-1">Bot ID *</label>
-                <input type="text" value={botId} onChange={e => { setBotId(e.target.value.toLowerCase()); setBotIdError(''); }} placeholder="my-bot (lowercase, 3-32 chars)"
+                <label className="block text-xs text-dark-muted mb-1">{t('bot.id.label')}</label>
+                <input type="text" value={botId} onChange={e => { setBotId(e.target.value.toLowerCase()); setBotIdError(''); }} placeholder={t('bot.id.placeholder')}
                   className="w-full bg-dark-bg border border-dark-border rounded-lg px-3 py-2 text-sm text-dark-text placeholder-dark-muted focus:outline-none focus:ring-1 focus:ring-primary-500 font-mono" />
                 {botIdError && <p className="text-xs text-red-400 mt-1">{botIdError}</p>}
                 <p className="text-xs text-dark-muted mt-1">Identity file: device-identity-clawchat-bot-{botId || '...'}.json</p>
               </div>
 
               <div>
-                <label className="block text-xs text-dark-muted mb-1">Bot Name *</label>
-                <input type="text" value={username} onChange={e => setUsername(e.target.value)} placeholder="My Bot"
+                <label className="block text-xs text-dark-muted mb-1">{t('bot.name.label')}</label>
+                <input type="text" value={username} onChange={e => setUsername(e.target.value)} placeholder={t('bot.name.placeholder')}
                   className="w-full bg-dark-bg border border-dark-border rounded-lg px-3 py-2 text-sm text-dark-text placeholder-dark-muted focus:outline-none focus:ring-1 focus:ring-primary-500" />
               </div>
 
               <div>
-                <label className="block text-xs text-dark-muted mb-1">Avatar URL</label>
+                <label className="block text-xs text-dark-muted mb-1">{t('bot.avatar.label')}</label>
                 <input type="text" value={avatarUrl} onChange={e => setAvatarUrl(e.target.value)} placeholder="https://..."
                   className="w-full bg-dark-bg border border-dark-border rounded-lg px-3 py-2 text-sm text-dark-text placeholder-dark-muted focus:outline-none focus:ring-1 focus:ring-primary-500" />
               </div>
 
               <div>
-                <label className="block text-xs text-dark-muted mb-1">Trigger</label>
+                <label className="block text-xs text-dark-muted mb-1">{t('bot.trigger.label')}</label>
                 <select value={trigger} onChange={e => setTrigger(e.target.value as any)}
                   className="w-full bg-dark-bg border border-dark-border rounded-lg px-3 py-2 text-sm text-dark-text focus:outline-none focus:ring-1 focus:ring-primary-500">
-                  <option value="all">All messages</option>
-                  <option value="mention">@mention only</option>
-                  <option value="room-member">Room member</option>
+                  <option value="all">{t('bot.trigger.all')}</option>
+                  <option value="mention">{t('bot.trigger.mention')}</option>
+                  <option value="room-member">{t('bot.trigger.roomMember')}</option>
                 </select>
               </div>
 
@@ -293,7 +295,7 @@ export default function BotRegistration() {
 
               <button onClick={handleNextToConnect} disabled={!botId.trim() || !username.trim()}
                 className="w-full px-4 py-2 text-sm font-medium text-white bg-primary-600 rounded-lg hover:bg-primary-500 disabled:opacity-50 transition">
-                Next →
+                {t('bot.next')}
               </button>
             </>
           )}
@@ -305,55 +307,55 @@ export default function BotRegistration() {
               <div className="flex gap-2 mb-2">
                 <button onClick={() => setConnectMode('pair')}
                   className={`flex-1 py-1.5 text-xs font-medium rounded-lg transition ${connectMode === 'pair' ? 'bg-primary-600 text-white' : 'bg-dark-hover text-dark-muted'}`}>
-                  Setup Code (推荐)
+                  {t('bot.connect.setupCode')}
                 </button>
                 <button onClick={() => setConnectMode('token')}
                   className={`flex-1 py-1.5 text-xs font-medium rounded-lg transition ${connectMode === 'token' ? 'bg-primary-600 text-white' : 'bg-dark-hover text-dark-muted'}`}>
-                  Auth Token (高级)
+                  {t('bot.connect.authToken')}
                 </button>
               </div>
 
               {connectMode === 'pair' ? (
                 <>
                   <div>
-                    <label className="block text-xs text-dark-muted mb-1">Setup Code *</label>
+                    <label className="block text-xs text-dark-muted mb-1">{t('bot.connect.setupCodeLabel')}</label>
                     <textarea value={setupCode} onChange={e => { setSetupCode(e.target.value); setPairError(''); }}
-                      placeholder="粘贴 Gateway 生成的 Setup Code..."
+                      placeholder={t('bot.connect.setupCodePlaceholder')}
                       rows={3}
                       className="w-full bg-dark-bg border border-dark-border rounded-lg px-3 py-2 text-sm text-dark-text placeholder-dark-muted focus:outline-none focus:ring-1 focus:ring-primary-500 font-mono" />
                   </div>
                   <div>
-                    <label className="block text-xs text-dark-muted mb-1">Gateway URL (可选覆盖)</label>
-                    <input type="text" value={pairGatewayUrl} onChange={e => setPairGatewayUrl(e.target.value)} placeholder="留空则使用 Setup Code 中的地址"
+                    <label className="block text-xs text-dark-muted mb-1">{t('bot.connect.gatewayUrlLabel')}</label>
+                    <input type="text" value={pairGatewayUrl} onChange={e => setPairGatewayUrl(e.target.value)} placeholder={t('bot.connect.gatewayUrlPlaceholder')}
                       className="w-full bg-dark-bg border border-dark-border rounded-lg px-3 py-2 text-sm text-dark-text placeholder-dark-muted focus:outline-none focus:ring-1 focus:ring-primary-500" />
                   </div>
                   {pairError && <p className="text-xs text-red-400">{pairError}</p>}
                   <button onClick={handlePairConnect} disabled={!setupCode.trim() || connecting}
                     className="w-full px-4 py-2 text-sm font-medium text-white bg-primary-600 rounded-lg hover:bg-primary-500 disabled:opacity-50 transition">
-                    {connecting ? 'Connecting...' : 'Connect'}
+                    {connecting ? t('bot.connect.connecting') : t('bot.connect.connect')}
                   </button>
                 </>
               ) : (
                 <>
                   <div>
-                    <label className="block text-xs text-dark-muted mb-1">Gateway URL</label>
+                    <label className="block text-xs text-dark-muted mb-1">{t('bot.connect.gatewayUrl')}</label>
                     <input type="text" value={gatewayUrl} onChange={e => setGatewayUrl(e.target.value)} placeholder="ws://127.0.0.1:18789"
                       className="w-full bg-dark-bg border border-dark-border rounded-lg px-3 py-2 text-sm text-dark-text placeholder-dark-muted focus:outline-none focus:ring-1 focus:ring-primary-500" />
                   </div>
                   <div>
-                    <label className="block text-xs text-dark-muted mb-1">Auth Token *</label>
+                    <label className="block text-xs text-dark-muted mb-1">{t('bot.connect.authTokenLabel')}</label>
                     <input type="password" value={authToken} onChange={e => { setAuthToken(e.target.value); setTestStatus('idle'); }} placeholder="Bearer token"
                       className="w-full bg-dark-bg border border-dark-border rounded-lg px-3 py-2 text-sm text-dark-text placeholder-dark-muted focus:outline-none focus:ring-1 focus:ring-primary-500" />
                   </div>
                   <div>
-                    <label className="block text-xs text-dark-muted mb-1">SSH Host</label>
+                    <label className="block text-xs text-dark-muted mb-1">{t('bot.connect.sshHost')}</label>
                     <input type="text" value={sshHost} onChange={e => setSshHost(e.target.value)} placeholder="user@host (optional)"
                       className="w-full bg-dark-bg border border-dark-border rounded-lg px-3 py-2 text-sm text-dark-text placeholder-dark-muted focus:outline-none focus:ring-1 focus:ring-primary-500" />
                   </div>
                   {testStatus === 'error' && <p className="text-xs text-red-400">✕ {testMessage}</p>}
                   <button onClick={handleTokenTest} disabled={!authToken.trim() || testStatus === 'testing'}
                     className="w-full px-4 py-2 text-sm font-medium text-white bg-primary-600 rounded-lg hover:bg-primary-500 disabled:opacity-50 transition">
-                    {testStatus === 'testing' ? 'Testing...' : 'Connect'}
+                    {testStatus === 'testing' ? t('bot.connect.testing') : t('bot.connect.connect')}
                   </button>
                 </>
               )}
@@ -364,8 +366,8 @@ export default function BotRegistration() {
           {step === 'pending' && (
             <div className="text-center py-6 space-y-4">
               <div className="text-4xl">⏳</div>
-              <p className="text-sm text-dark-text font-medium">Waiting for approval...</p>
-              <p className="text-xs text-dark-muted">请在 Gateway 端执行 <code className="bg-dark-bg px-1.5 py-0.5 rounded">/pair approve</code></p>
+              <p className="text-sm text-dark-text font-medium">{t('bot.pending.waiting')}</p>
+              <p className="text-xs text-dark-muted">{t('bot.pending.instruction')} <code className="bg-dark-bg px-1.5 py-0.5 rounded">/pair approve</code></p>
               {deviceId && (
                 <p className="text-xs text-dark-muted font-mono">Device: {deviceId.slice(0, 12)}...</p>
               )}
@@ -385,7 +387,7 @@ export default function BotRegistration() {
         {/* Footer — show registering state */}
         {registering && (
           <div className="flex justify-center px-5 py-4 border-t border-dark-border">
-            <span className="text-sm text-dark-muted">Registering...</span>
+            <span className="text-sm text-dark-muted">{t('bot.registering')}</span>
           </div>
         )}
         </div>
@@ -393,19 +395,19 @@ export default function BotRegistration() {
       {deregisteredBot && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60">
           <div className="bg-dark-surface border border-dark-border rounded-xl shadow-2xl w-full max-w-sm mx-4 p-5">
-            <h3 className="text-sm font-semibold text-dark-text mb-2">检测到已注销的 Bot</h3>
+            <h3 className="text-sm font-semibold text-dark-text mb-2">{t('bot.restore.title')}</h3>
             <p className="text-xs text-dark-muted mb-1">
-              你之前注册过 Bot "{deregisteredBot.username}"（已注销），是否恢复？
+              {t('bot.restore.message', { name: deregisteredBot.username })}
             </p>
             <p className="text-xs text-dark-muted mb-4">
-              恢复将复用旧记录并恢复你的对话历史。
+              {t('bot.restore.description')}
             </p>
             {error && <p className="text-xs text-red-400 mb-2">{error}</p>}
             <div className="flex justify-end gap-2">
-              <button onClick={handleSkipRestore} className="px-3 py-1.5 text-sm text-dark-muted hover:text-dark-text rounded-lg hover:bg-dark-hover transition">新建</button>
+              <button onClick={handleSkipRestore} className="px-3 py-1.5 text-sm text-dark-muted hover:text-dark-text rounded-lg hover:bg-dark-hover transition">{t('bot.restore.new')}</button>
               <button onClick={handleRestore} disabled={restoring}
                 className="px-3 py-1.5 text-sm font-medium text-white bg-primary-600 rounded-lg hover:bg-primary-500 disabled:opacity-50 transition">
-                {restoring ? '恢复中...' : '恢复'}
+                {restoring ? t('bot.restore.restoring') : t('bot.restore.restore')}
               </button>
             </div>
           </div>

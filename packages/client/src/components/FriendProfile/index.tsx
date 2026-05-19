@@ -2,10 +2,12 @@ import { useState } from 'react';
 import { useAppStore } from '../../stores/appStore';
 import { socketService } from '../../services/socket';
 import UserAvatar from '../UserAvatar';
+import { useT } from '../../hooks/useT';
 
 export default function FriendProfile() {
   const { friendProfileUser, setFriendProfileUser, onlineUsers, setActiveRoom, addRoom, rooms, removeFriendFromList } = useAppStore();
   const [removing, setRemoving] = useState(false);
+  const t = useT();
 
   if (!friendProfileUser) return null;
 
@@ -42,7 +44,7 @@ export default function FriendProfile() {
   };
 
   const handleRemoveFriend = async () => {
-    if (!confirm(`确定删除好友 ${user.username}？`)) return;
+    if (!confirm(t('friend.removeConfirm', { name: user.username }))) return;
     setRemoving(true);
     const result = await socketService.removeFriend(user.id);
     if (result.success) {
@@ -61,7 +63,7 @@ export default function FriendProfile() {
             <h3 className="text-lg font-semibold text-dark-text">{user.username}</h3>
             {user.email && <p className="text-sm text-dark-muted">{user.email}</p>}
             <p className="text-xs text-dark-muted mt-1">
-              {isOnline ? '🟢 在线' : '⚫ 离线'}
+              {isOnline ? t('friend.online') : t('friend.offline')}
             </p>
           </div>
         </div>
@@ -71,14 +73,14 @@ export default function FriendProfile() {
             onClick={handleSendMessage}
             className="w-full bg-primary-600 text-white py-2 rounded-lg text-sm hover:bg-primary-700 transition"
           >
-            💬 发消息
+            {t('friend.sendMessage')}
           </button>
           <button
             onClick={handleRemoveFriend}
             disabled={removing}
             className="w-full bg-dark-hover text-red-400 py-2 rounded-lg text-sm hover:bg-red-500/10 transition"
           >
-            删除好友
+            {t('friend.removeFriend')}
           </button>
         </div>
       </div>

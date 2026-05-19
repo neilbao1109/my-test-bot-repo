@@ -4,6 +4,7 @@ import { clearToken } from '../services/auth';
 import { socketService } from '../services/socket';
 import type { ImageQuality } from '../services/upload';
 import { setDefaultImageQuality } from '../services/upload';
+import type { SupportedLocale } from '../locales';
 
 interface ThreadInfo {
   replyCount: number;
@@ -165,6 +166,10 @@ interface AppState {
   setFriendRequests: (requests: { incoming: any[]; outgoing: any[] }) => void;
   addFriend: (user: User) => void;
   removeFriendFromList: (userId: string) => void;
+
+  // Language
+  language: SupportedLocale;
+  setLanguage: (lang: SupportedLocale) => void;
 
   // Sidebar tab
   sidebarTab: 'chat' | 'contacts' | 'settings';
@@ -560,6 +565,17 @@ export const useAppStore = create<AppState>((set, get) => ({
   removeFriendFromList: (userId) => set((s) => ({
     friends: s.friends.filter(f => f.id !== userId),
   })),
+
+  // Language
+  language: (() => {
+    const saved = localStorage.getItem('clawchat-language');
+    if (saved === 'zh' || saved === 'en') return saved as SupportedLocale;
+    return (navigator.language || '').startsWith('zh') ? 'zh' as SupportedLocale : 'en' as SupportedLocale;
+  })(),
+  setLanguage: (lang) => {
+    localStorage.setItem('clawchat-language', lang);
+    set({ language: lang });
+  },
 
   // Sidebar tab
   sidebarTab: 'chat',

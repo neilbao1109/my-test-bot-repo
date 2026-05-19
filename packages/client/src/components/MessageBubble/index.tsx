@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import clsx from 'clsx';
+import { useT } from '../../hooks/useT';
 import ReactMarkdown from 'react-markdown';
 import remarkGfmSafe from '../../utils/remarkGfmSafe';
 import rehypeHighlight from 'rehype-highlight';
@@ -14,6 +15,7 @@ import FilePreviewModal from '../FilePreviewModal';
 
 function CodeBlockPre({ text, children }: { text: string; children: React.ReactNode }) {
   const [copied, setCopied] = useState(false);
+  const t = useT();
   const handleCopy = () => {
     if (navigator.clipboard?.writeText) {
       navigator.clipboard.writeText(text);
@@ -35,7 +37,7 @@ function CodeBlockPre({ text, children }: { text: string; children: React.ReactN
       <button
         onClick={handleCopy}
         className="absolute right-2 top-2 px-1.5 py-0.5 rounded text-xs bg-dark-surface border border-dark-border text-dark-muted hover:text-dark-text opacity-0 group-hover/code:opacity-100 md:opacity-0 max-md:opacity-60 transition z-10"
-        title="Copy code"
+        title={t('message.copyCode')}
       >
         {copied ? '✅' : '📋'}
       </button>
@@ -140,6 +142,7 @@ export default function MessageBubble({ message, isStreaming, streamContent, hig
   const [copied, setCopied] = useState(false);
   const [speaking, setSpeaking] = useState(false);
   const [previewAttachment, setPreviewAttachment] = useState<FileAttachment | null>(null);
+  const t = useT();
   const editRef = useRef<HTMLTextAreaElement>(null);
   const reactionRef = useRef<HTMLDivElement>(null);
   const actionsRef = useRef<HTMLDivElement>(null);
@@ -185,7 +188,7 @@ export default function MessageBubble({ message, isStreaming, streamContent, hig
   };
 
   const handleDelete = () => {
-    if (activeRoomId && confirm('Delete this message?')) {
+    if (activeRoomId && confirm(t('message.deleteConfirm'))) {
       socketService.deleteMessage(message.id, activeRoomId);
     }
   };
@@ -232,7 +235,7 @@ export default function MessageBubble({ message, isStreaming, streamContent, hig
               {formatDistanceToNow(new Date(message.createdAt), { addSuffix: true })}
             </span>
           </div>
-          <p className="text-sm text-dark-muted italic">This message was deleted</p>
+          <p className="text-sm text-dark-muted italic">{t('message.deleted')}</p>
         </div>
       </div>
     );
@@ -315,7 +318,7 @@ export default function MessageBubble({ message, isStreaming, streamContent, hig
             {formatDistanceToNow(new Date(message.createdAt), { addSuffix: true })}
           </span>
           {message.isEdited && (
-            <span className="text-xs text-dark-muted">(edited)</span>
+            <span className="text-xs text-dark-muted">{t('message.edited')}</span>
           )}
           {isPinned && (
             <span className="text-xs text-primary-400">📌</span>
@@ -374,15 +377,15 @@ export default function MessageBubble({ message, isStreaming, streamContent, hig
               rows={3}
             />
             <div className="flex gap-2 mt-1">
-              <button onClick={handleEdit} className="text-xs text-primary-400 hover:underline">Save</button>
-              <button onClick={() => setIsEditing(false)} className="text-xs text-dark-muted hover:underline">Cancel</button>
+              <button onClick={handleEdit} className="text-xs text-primary-400 hover:underline">{t('message.save')}</button>
+              <button onClick={() => setIsEditing(false)} className="text-xs text-dark-muted hover:underline">{t('message.cancel')}</button>
             </div>
           </div>
         ) : message.type === 'file' ? (
           (() => {
             let attachment: FileAttachment | null = null;
             try { attachment = JSON.parse(displayContent); } catch {}
-            if (!attachment) return <p className="text-sm text-dark-muted italic">Invalid file</p>;
+            if (!attachment) return <p className="text-sm text-dark-muted italic">{t('message.invalidFile')}</p>;
             const isAudio = /^audio\//.test(attachment.mimeType);
             const isImage = attachment.mimeType.startsWith('image/');
             const isPdf = attachment.mimeType === 'application/pdf';
@@ -413,7 +416,7 @@ export default function MessageBubble({ message, isStreaming, streamContent, hig
                   <p className="text-sm text-dark-text truncate">{attachment.originalName}</p>
                   <p className="text-xs text-dark-muted">{formatFileSize(attachment.size)}</p>
                 </div>
-                <span className="text-primary-400 text-xs flex-shrink-0">预览</span>
+                <span className="text-primary-400 text-xs flex-shrink-0">{t('message.preview')}</span>
               </div>
             );
           })() 
@@ -421,12 +424,12 @@ export default function MessageBubble({ message, isStreaming, streamContent, hig
           (() => {
             let fwd: { sourceRoom?: string; messages?: Array<{ username: string; content: string; createdAt: string }> } | null = null;
             try { fwd = JSON.parse(displayContent); } catch {}
-            if (!fwd?.messages?.length) return <p className="text-sm text-dark-muted italic">Invalid forward</p>;
+            if (!fwd?.messages?.length) return <p className="text-sm text-dark-muted italic">{t('message.invalidForward')}</p>;
             return (
               <div className="bg-dark-hover/30 border border-dark-border rounded-lg overflow-hidden mt-1 max-w-md">
                 <div className="px-3 py-2 border-b border-dark-border bg-dark-bg/50 flex items-center gap-2">
                   <span className="text-sm">📨</span>
-                  <span className="text-xs text-dark-muted">聊天记录来自 #{fwd.sourceRoom || 'unknown'} ({fwd.messages.length}条)</span>
+                  <span className="text-xs text-dark-muted">{t('message.forwardFrom', { room: fwd.sourceRoom || 'unknown', count: fwd.messages.length })}</span>
                 </div>
                 <div className="px-3 py-2 space-y-1.5 max-h-48 overflow-y-auto">
                   {fwd.messages.map((m, i) => (
@@ -506,7 +509,7 @@ export default function MessageBubble({ message, isStreaming, streamContent, hig
             <button
               onClick={() => setShowReactions(!showReactions)}
               className="inline-flex items-center justify-center w-6 h-6 rounded-full border border-dark-border bg-dark-bg text-dark-muted hover:border-dark-muted hover:text-dark-text transition text-xs"
-              title="Add reaction"
+              title={t('message.addReaction')}
             >
               +
             </button>
@@ -520,8 +523,8 @@ export default function MessageBubble({ message, isStreaming, streamContent, hig
             className="mt-1 text-xs text-primary-400 hover:underline flex items-center gap-1"
           >
             <span>🧵</span>
-            <span>{msgThreadInfo.replyCount} {msgThreadInfo.replyCount === 1 ? 'reply' : 'replies'}</span>
-            <span className="text-dark-muted">- View thread</span>
+            <span>{msgThreadInfo.replyCount === 1 ? t('message.reply_one', { count: msgThreadInfo.replyCount }) : t('message.reply_other', { count: msgThreadInfo.replyCount })}</span>
+            <span className="text-dark-muted">{t('message.viewThread')}</span>
           </button>
         )}
       </div>
@@ -547,7 +550,7 @@ export default function MessageBubble({ message, isStreaming, streamContent, hig
             onClick={() => setShowReactions(!showReactions)}
             className="flex items-center gap-1.5 px-2 py-2 text-dark-muted hover:text-dark-text hover:bg-dark-hover rounded-lg transition text-xs"
           >
-            <span className="text-sm w-4 text-center flex-shrink-0">😀</span><span>React</span>
+            <span className="text-sm w-4 text-center flex-shrink-0">😀</span><span>{t('message.react')}</span>
           </button>
           <button
             onClick={() => {
@@ -571,7 +574,7 @@ export default function MessageBubble({ message, isStreaming, streamContent, hig
             }}
             className="flex items-center gap-1.5 px-2 py-2 text-dark-muted hover:text-dark-text hover:bg-dark-hover rounded-lg transition text-xs"
           >
-            <span className="text-sm w-4 text-center flex-shrink-0">{copied ? '✅' : '📋'}</span><span>Copy</span>
+            <span className="text-sm w-4 text-center flex-shrink-0">{copied ? '✅' : '📋'}</span><span>{t('message.copy')}</span>
           </button>
           {message.type !== 'file' && (
             <button
@@ -599,32 +602,32 @@ export default function MessageBubble({ message, isStreaming, streamContent, hig
               }}
               className="flex items-center gap-1.5 px-2 py-2 text-dark-muted hover:text-dark-text hover:bg-dark-hover rounded-lg transition text-xs"
             >
-              <span className="text-sm w-4 text-center flex-shrink-0">{speaking ? '⏹️' : '🔊'}</span><span>{speaking ? 'Stop' : 'Read'}</span>
+              <span className="text-sm w-4 text-center flex-shrink-0">{speaking ? '⏹️' : '🔊'}</span><span>{speaking ? t('message.stop') : t('message.read')}</span>
             </button>
           )}
           <button
             onClick={() => { setReplyContext([message]); setShowActions(false); setTimeout(() => document.querySelector<HTMLTextAreaElement>('.command-bar-input')?.focus(), 50); }}
             className="flex items-center gap-1.5 px-2 py-2 text-dark-muted hover:text-dark-text hover:bg-dark-hover rounded-lg transition text-xs"
           >
-            <span className="text-sm w-4 text-center flex-shrink-0">↩️</span><span>Reply</span>
+            <span className="text-sm w-4 text-center flex-shrink-0">↩️</span><span>{t('message.reply')}</span>
           </button>
           <button
             onClick={handleStartThread}
             className="flex items-center gap-1.5 px-2 py-2 text-dark-muted hover:text-dark-text hover:bg-dark-hover rounded-lg transition text-xs"
           >
-            <span className="text-sm w-4 text-center flex-shrink-0">🧵</span><span>Thread</span>
+            <span className="text-sm w-4 text-center flex-shrink-0">🧵</span><span>{t('message.thread')}</span>
           </button>
           <button
             onClick={handlePin}
             className={clsx('flex items-center gap-1.5 px-2 py-2 hover:bg-dark-hover rounded-lg transition text-xs', isPinned ? 'text-primary-400' : 'text-dark-muted hover:text-dark-text')}
           >
-            <span className="text-sm w-4 text-center flex-shrink-0">{isPinned ? '📍' : '📌'}</span><span>{isPinned ? 'Unpin' : 'Pin'}</span>
+            <span className="text-sm w-4 text-center flex-shrink-0">{isPinned ? '📍' : '📌'}</span><span>{isPinned ? t('message.unpin') : t('message.pin')}</span>
           </button>
           <button
             onClick={() => { useAppStore.getState().toggleSelectionMode(); useAppStore.getState().toggleMessageSelection(message.id); }}
             className="flex items-center gap-1.5 px-2 py-2 text-dark-muted hover:text-dark-text hover:bg-dark-hover rounded-lg transition text-xs"
           >
-            <span className="text-sm w-4 text-center flex-shrink-0">↗️</span><span>Forward</span>
+            <span className="text-sm w-4 text-center flex-shrink-0">↗️</span><span>{t('message.forward')}</span>
           </button>
           {isOwn && (
             <>
@@ -633,13 +636,13 @@ export default function MessageBubble({ message, isStreaming, streamContent, hig
                 onClick={() => { setIsEditing(true); setEditContent(message.content); }}
                 className="flex items-center gap-1.5 px-2 py-2 text-dark-muted hover:text-dark-text hover:bg-dark-hover rounded-lg transition text-xs"
               >
-                <span className="text-sm w-4 text-center flex-shrink-0">✏️</span><span>Edit</span>
+                <span className="text-sm w-4 text-center flex-shrink-0">✏️</span><span>{t('message.edit')}</span>
               </button>
               <button
                 onClick={handleDelete}
                 className="flex items-center gap-1.5 px-2 py-2 text-dark-muted hover:text-red-400 hover:bg-dark-hover rounded-lg transition text-xs"
               >
-                <span className="text-sm w-4 text-center flex-shrink-0">🗑️</span><span>Delete</span>
+                <span className="text-sm w-4 text-center flex-shrink-0">🗑️</span><span>{t('message.delete')}</span>
               </button>
             </>
           )}

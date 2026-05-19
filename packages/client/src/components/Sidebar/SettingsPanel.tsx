@@ -1,23 +1,24 @@
 import { useState, useEffect, useRef } from 'react';
 import { useAppStore } from '../../stores/appStore';
+import { useT } from '../../hooks/useT';
 import { socketService } from '../../services/socket';
 import { deploySkill, listSkills, removeSkill, type SkillDeployment } from '../../services/skill-api';
 import BotShareModal from '../BotShareModal';
 import UserAvatar from '../UserAvatar';
 import type { ImageQuality } from '../../services/upload';
 
-const IMAGE_QUALITY_OPTIONS: { value: ImageQuality; label: string; desc: string }[] = [
-  { value: 'original', label: '原图', desc: '不压缩，保留完整分辨率' },
-  { value: 'high', label: '高清', desc: '最长边 2048px' },
-  { value: 'medium', label: '标准', desc: '最长边 1280px（推荐）' },
-  { value: 'low', label: '省流', desc: '最长边 800px' },
+const IMAGE_QUALITY_KEYS: { value: ImageQuality; labelKey: string; descKey: string }[] = [
+  { value: 'original', labelKey: 'settings.qualityOriginal', descKey: 'settings.qualityOriginalDesc' },
+  { value: 'high', labelKey: 'settings.qualityHigh', descKey: 'settings.qualityHighDesc' },
+  { value: 'medium', labelKey: 'settings.qualityMedium', descKey: 'settings.qualityMediumDesc' },
+  { value: 'low', labelKey: 'settings.qualityLow', descKey: 'settings.qualityLowDesc' },
 ];
 
-const QUALITY_LABELS: Record<ImageQuality, string> = {
-  original: '原图',
-  high: '高清',
-  medium: '标准',
-  low: '省流',
+const QUALITY_LABEL_KEYS: Record<ImageQuality, string> = {
+  original: 'settings.qualityOriginal',
+  high: 'settings.qualityHigh',
+  medium: 'settings.qualityMedium',
+  low: 'settings.qualityLow',
 };
 
 interface SettingsPanelProps {
@@ -34,6 +35,7 @@ function BotActionMenu({ bot, onTogglePause, onShare, onDeregister, onUnshare, o
 }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+  const t = useT();
 
   useEffect(() => {
     if (!open) return;
@@ -51,7 +53,7 @@ function BotActionMenu({ bot, onTogglePause, onShare, onDeregister, onUnshare, o
       <button
         onClick={() => setOpen(!open)}
         className="w-8 h-8 flex items-center justify-center rounded-lg text-dark-muted hover:text-dark-text hover:bg-dark-hover transition text-sm"
-        title="操作"
+        title={t('settings.actions')}
       >
         ⋮
       </button>
@@ -71,7 +73,7 @@ function BotActionMenu({ bot, onTogglePause, onShare, onDeregister, onUnshare, o
                   bot.status === 'paused' ? 'text-green-400' : 'text-yellow-400'
                 }`}
               >
-                {bot.status === 'paused' ? '▶ 恢复' : '❘❘ 暂停'}
+                {bot.status === 'paused' ? t('settings.resume') : t('settings.pause')}
               </button>
               <button
                 onClick={() => { onShare(); setOpen(false); }}
@@ -102,8 +104,42 @@ function BotActionMenu({ bot, onTogglePause, onShare, onDeregister, onUnshare, o
 }
 
 export default function SettingsPanel({ onShowAccount }: SettingsPanelProps) {
-  const { theme, setTheme, imageQuality, setImageQuality, user } = useAppStore();
-  const [subPage, setSubPage] = useState<null | 'appearance' | 'imageUpload' | 'bots'>(null);
+  const { theme, setTheme, imageQuality, setImageQuality, user, language, setLanguage } = useAppStore();
+  const [subPage, setSubPage] = useState<null | 'appearance' | 'imageUpload' | 'bots' | 'language'>(null);
+  const t = useT();
+
+  // Sub-page: Language
+  if (subPage === 'language') {
+    return (
+      <div className="flex flex-col h-full">
+        <SubPageHeader title={t('settings.language')} onBack={() => setSubPage(null)} />
+        <div className="flex-1 overflow-y-auto px-4 py-4">
+          <div className="space-y-1.5">
+            {([['zh', '中文'], ['en', 'English']] as const).map(([code, label]) => (
+              <button
+                key={code}
+                onClick={() => setLanguage(code)}
+                className={`w-full text-left px-3 py-2.5 rounded-lg transition flex items-center gap-3 ${
+                  language === code
+                    ? 'bg-primary-600/20 text-primary-400 ring-1 ring-primary-500/30'
+                    : 'text-dark-text hover:bg-dark-hover'
+                }`}
+              >
+                <span className={`w-4 h-4 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${
+                  language === code ? 'border-primary-500' : 'border-dark-muted'
+                }`}>
+                  {language === code && (
+                    <span className="w-2 h-2 rounded-full bg-primary-500" />
+                  )}
+                </span>
+                <span className="text-sm font-medium">{label}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   // Sub-page: Bots
   if (subPage === 'bots') {
@@ -114,7 +150,7 @@ export default function SettingsPanel({ onShowAccount }: SettingsPanelProps) {
   if (subPage === 'appearance') {
     return (
       <div className="flex flex-col h-full">
-        <SubPageHeader title="外观" onBack={() => setSubPage(null)} />
+        <SubPageHeader title={t('settings.appearance')} onBack={() => setSubPage(null)} />
         <div className="flex-1 overflow-y-auto px-4 py-4">
           <div className="flex gap-2">
             <ThemeButton active={theme === 'dark'} onClick={() => setTheme('dark')} icon="🌙" label="Dark" />
@@ -129,13 +165,13 @@ export default function SettingsPanel({ onShowAccount }: SettingsPanelProps) {
   if (subPage === 'imageUpload') {
     return (
       <div className="flex flex-col h-full">
-        <SubPageHeader title="图片上传" onBack={() => setSubPage(null)} />
+        <SubPageHeader title={t('settings.imageUpload')} onBack={() => setSubPage(null)} />
         <div className="flex-1 overflow-y-auto px-4 py-4">
           <p className="text-xs text-dark-muted mb-3">
-            Compress images before uploading to save bandwidth
+            {t('settings.imageCompressHint')}
           </p>
           <div className="space-y-1.5">
-            {IMAGE_QUALITY_OPTIONS.map((opt) => (
+            {IMAGE_QUALITY_KEYS.map((opt) => (
               <button
                 key={opt.value}
                 onClick={() => setImageQuality(opt.value)}
@@ -153,8 +189,8 @@ export default function SettingsPanel({ onShowAccount }: SettingsPanelProps) {
                   )}
                 </span>
                 <div>
-                  <span className="text-sm font-medium">{opt.label}</span>
-                  <span className="text-xs text-dark-muted ml-2">{opt.desc}</span>
+                  <span className="text-sm font-medium">{t(opt.labelKey as any)}</span>
+                  <span className="text-xs text-dark-muted ml-2">{t(opt.descKey as any)}</span>
                 </div>
               </button>
             ))}
@@ -187,23 +223,31 @@ export default function SettingsPanel({ onShowAccount }: SettingsPanelProps) {
         {/* Appearance row */}
         <SettingsRow
           icon={<span className="text-lg">🎨</span>}
-          label="外观"
+          label={t('settings.appearance')}
           value={theme === 'dark' ? 'Dark' : 'Light'}
           onClick={() => setSubPage('appearance')}
+        />
+
+        {/* Language row */}
+        <SettingsRow
+          icon={<span className="text-lg">🌐</span>}
+          label={t('settings.language')}
+          value={language === 'zh' ? '中文' : 'English'}
+          onClick={() => setSubPage('language')}
         />
 
         {/* Image Upload row */}
         <SettingsRow
           icon={<span className="text-lg">📷</span>}
-          label="图片上传"
-          value={QUALITY_LABELS[imageQuality]}
+          label={t('settings.imageUpload')}
+          value={t(QUALITY_LABEL_KEYS[imageQuality] as any)}
           onClick={() => setSubPage('imageUpload')}
         />
       </div>
 
       {/* Footer */}
       <div className="p-4 border-t border-dark-border">
-        <p className="text-[10px] text-dark-muted text-center">ClawChat • Settings are saved locally</p>
+        <p className="text-[10px] text-dark-muted text-center">{t('settings.footer')}</p>
         <p className="text-[10px] text-dark-muted/50 text-center mt-1">Build: {__BUILD_HASH__} • {__BUILD_TIME__}</p>
       </div>
     </div>
@@ -276,6 +320,7 @@ function BotsSubPage({ onBack }: { onBack: () => void }) {
   const [unshareTarget, setUnshareTarget] = useState<any>(null);
   const [unsharing, setUnsharing] = useState(false);
   const [skillsBot, setSkillsBot] = useState<any>(null);
+  const t = useT();
 
   const loadBots = () => {
     socketService.listAvailableBots().then((res) => {
@@ -336,22 +381,22 @@ function BotsSubPage({ onBack }: { onBack: () => void }) {
             onClick={() => useAppStore.getState().setShowBotRegistration(true)}
             className="flex-1 py-2.5 rounded-lg bg-primary-600/20 text-primary-400 text-sm font-medium hover:bg-primary-600/30 transition"
           >
-            ＋ 注册 Bot
+            {t('settings.registerBot')}
           </button>
           <button
             onClick={() => useAppStore.getState().setShowBotMarketplace(true)}
             className="flex-1 py-2.5 rounded-lg bg-dark-hover text-dark-text text-sm font-medium hover:bg-dark-border transition"
           >
-            🏪 Bot 市场
+            {t('settings.botMarketplace')}
           </button>
         </div>
 
         {/* My Bots */}
-        <h4 className="text-xs text-dark-muted font-medium mb-2">My Bots</h4>
+        <h4 className="text-xs text-dark-muted font-medium mb-2">{t('settings.myBots')}</h4>
         {loading ? (
-          <p className="text-xs text-dark-muted">加载中...</p>
+          <p className="text-xs text-dark-muted">{t('settings.botsLoading')}</p>
         ) : bots.length === 0 ? (
-          <p className="text-xs text-dark-muted">暂无自定义 Bot</p>
+          <p className="text-xs text-dark-muted">{t('settings.noBots')}</p>
         ) : (
           <div className="space-y-1">
             {bots.map((bot: any) => (
@@ -364,10 +409,10 @@ function BotsSubPage({ onBack }: { onBack: () => void }) {
                 <div className="min-w-0 flex-1">
                   <span className="text-sm text-dark-text font-medium truncate block">
                     {bot.username || bot.name}
-                    {bot.isOwner === false && <span className="ml-1 text-[10px] text-primary-400 bg-primary-600/15 px-1.5 py-0.5 rounded-full">共享</span>}
+                    {bot.isOwner === false && <span className="ml-1 text-[10px] text-primary-400 bg-primary-600/15 px-1.5 py-0.5 rounded-full">{t('settings.shared')}</span>}
                   </span>
                   <span className="text-[10px] text-dark-muted">
-                    {bot.status === 'paused' ? '❘❘ 已暂停' : (bot.trigger || bot.triggerType || '')}
+                    {bot.status === 'paused' ? t('settings.paused') : (bot.trigger || bot.triggerType || '')}
                   </span>
                 </div>
                 <BotActionMenu
@@ -390,15 +435,15 @@ function BotsSubPage({ onBack }: { onBack: () => void }) {
       {deregisterTarget && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
           <div className="bg-dark-surface border border-dark-border rounded-xl shadow-2xl w-full max-w-sm mx-4 p-5">
-            <h3 className="text-sm font-semibold text-dark-text mb-2">确认注销 Bot "{deregisterTarget.username || deregisterTarget.name}"？</h3>
+            <h3 className="text-sm font-semibold text-dark-text mb-2">{t('settings.deregisterConfirm', { name: deregisterTarget.username || deregisterTarget.name })}</h3>
             <p className="text-xs text-dark-muted mb-4">
-              注销后所有分享将被撤销，相关对话将被归档。此操作不可撤销（但可通过重新注册恢复）。
+              {t('settings.deregisterDescription')}
             </p>
             <div className="flex justify-end gap-2">
-              <button onClick={() => setDeregisterTarget(null)} className="px-3 py-1.5 text-sm text-dark-muted hover:text-dark-text rounded-lg hover:bg-dark-hover transition">取消</button>
+              <button onClick={() => setDeregisterTarget(null)} className="px-3 py-1.5 text-sm text-dark-muted hover:text-dark-text rounded-lg hover:bg-dark-hover transition">{t('settings.deregisterCancel')}</button>
               <button onClick={handleDeregister} disabled={deregistering}
                 className="px-3 py-1.5 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-500 disabled:opacity-50 transition">
-                {deregistering ? '注销中...' : '确认注销'}
+                {deregistering ? t('settings.deregistering') : t('settings.deregisterConfirmBtn')}
               </button>
             </div>
           </div>
@@ -409,15 +454,15 @@ function BotsSubPage({ onBack }: { onBack: () => void }) {
       {unshareTarget && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
           <div className="bg-dark-surface border border-dark-border rounded-xl shadow-2xl w-full max-w-sm mx-4 p-5">
-            <h3 className="text-sm font-semibold text-dark-text mb-2">确定移除 Bot "{unshareTarget.username || unshareTarget.name}"？</h3>
+            <h3 className="text-sm font-semibold text-dark-text mb-2">{t('settings.removeConfirm', { name: unshareTarget.username || unshareTarget.name })}</h3>
             <p className="text-xs text-dark-muted mb-4">
-              移除后将无法使用该 Bot，需要 Bot 所有者重新分享。
+              {t('settings.removeDescription')}
             </p>
             <div className="flex justify-end gap-2">
-              <button onClick={() => setUnshareTarget(null)} className="px-3 py-1.5 text-sm text-dark-muted hover:text-dark-text rounded-lg hover:bg-dark-hover transition">取消</button>
+              <button onClick={() => setUnshareTarget(null)} className="px-3 py-1.5 text-sm text-dark-muted hover:text-dark-text rounded-lg hover:bg-dark-hover transition">{t('settings.removeCancel')}</button>
               <button onClick={handleUnshare} disabled={unsharing}
                 className="px-3 py-1.5 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-500 disabled:opacity-50 transition">
-                {unsharing ? '移除中...' : '确认移除'}
+                {unsharing ? t('settings.removing') : t('settings.removeConfirmBtn')}
               </button>
             </div>
           </div>
@@ -437,6 +482,7 @@ function BotSkillsPage({ bot, onBack }: { bot: any; onBack: () => void }) {
   const [error, setError] = useState('');
   const [removeTarget, setRemoveTarget] = useState<string | null>(null);
   const [removing, setRemoving] = useState(false);
+  const t = useT();
 
   const loadSkills = async () => {
     try {

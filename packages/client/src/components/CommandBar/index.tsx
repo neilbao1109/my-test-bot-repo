@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useAppStore } from '../../stores/appStore';
+import { useT } from '../../hooks/useT';
 import { socketService } from '../../services/socket';
 import { uploadFile } from '../../services/upload';
 
@@ -50,6 +51,7 @@ export default function CommandBar({ roomId, threadId, onExport }: CommandBarPro
   const { rooms, roomMembers, activeRoomId, replyContext, clearReplyContext, removeReplyContext, setContextSelectionMode, mobileView, user } = useAppStore();
   const members = activeRoomId ? roomMembers[activeRoomId] || [] : [];
   const currentRoom = rooms.find(r => r.id === roomId);
+  const t = useT();
   const isArchived = !!currentRoom?.archivedAt;
   const mentionableMembers = members.filter(m => m.id !== user?.id);
   const filteredMentions = mentionQuery
@@ -417,7 +419,7 @@ export default function CommandBar({ roomId, threadId, onExport }: CommandBarPro
           <div className="flex items-center gap-2 mb-1">
             <span className="text-xs text-primary-400">↩️</span>
             <span className="text-xs text-dark-muted">
-              {replyContext.length === 1 ? 'Replying to' : `📎 ${replyContext.length} messages`}
+              {replyContext.length === 1 ? t('command.replyingTo') : t('command.messagesCount', { count: replyContext.length })}
             </span>
             <div className="flex-1" />
             {replyContext.length < 5 && (
@@ -479,7 +481,7 @@ export default function CommandBar({ roomId, threadId, onExport }: CommandBarPro
             onClick={() => setShowPlusMenu(!showPlusMenu)}
             disabled={uploading}
             className="p-2.5 text-dark-muted hover:text-dark-text hover:bg-dark-hover disabled:opacity-30 rounded-xl transition"
-            title="Actions"
+            title={t('command.actions')}
           >
             <svg
               className={`w-5 h-5 transition-transform duration-200 ${showPlusMenu ? 'rotate-45' : ''}`}
@@ -497,7 +499,7 @@ export default function CommandBar({ roomId, threadId, onExport }: CommandBarPro
                 className="w-full text-left px-3 py-2.5 text-sm text-dark-text hover:bg-dark-hover transition flex items-center gap-3"
               >
                 <span className="text-base">📄</span>
-                <span>File</span>
+                <span>{t('command.file')}</span>
               </button>
               {onExport && (
                 <>
@@ -507,7 +509,7 @@ export default function CommandBar({ roomId, threadId, onExport }: CommandBarPro
                     className="w-full text-left px-3 py-2.5 text-sm text-dark-text hover:bg-dark-hover transition flex items-center gap-3"
                   >
                     <span className="text-base">📥</span>
-                    <span>Export Chat</span>
+                    <span>{t('command.exportChat')}</span>
                   </button>
                 </>
               )}
@@ -527,7 +529,7 @@ export default function CommandBar({ roomId, threadId, onExport }: CommandBarPro
               }, 400);
             }}
             onPaste={handlePaste}
-            placeholder={isArchived ? 'Bot 已停用，无法发送消息' : ''}
+            placeholder={isArchived ? t('command.archivedPlaceholder') : ''}
             rows={1}
             disabled={isArchived}
             className={`command-bar-input w-full bg-dark-bg border border-dark-border rounded-xl px-4 py-2.5 text-base md:text-sm leading-5 text-dark-text placeholder-dark-muted resize-none focus:outline-none focus:ring-1 focus:ring-primary-500 focus:border-primary-500 transition ${isArchived ? 'opacity-50 cursor-not-allowed' : ''}`}
@@ -540,11 +542,11 @@ export default function CommandBar({ roomId, threadId, onExport }: CommandBarPro
           <div className="flex items-center gap-3 flex-1 px-3 py-2 bg-dark-bg border border-red-500/50 rounded-xl">
             <span className="w-2.5 h-2.5 bg-red-500 rounded-full animate-pulse flex-shrink-0" />
             <span className="text-sm text-dark-text font-mono">{Math.floor(recordingTime / 60)}:{String(recordingTime % 60).padStart(2, '0')}</span>
-            <span className="text-xs text-dark-muted flex-1">Recording...</span>
+            <span className="text-xs text-dark-muted flex-1">{t('command.recording')}</span>
             <button
               onClick={() => stopRecording(false)}
               className="p-1.5 text-dark-muted hover:text-red-400 transition"
-              title="Cancel"
+              title={t('forward.cancel')}
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -567,7 +569,7 @@ export default function CommandBar({ roomId, threadId, onExport }: CommandBarPro
           <button
             onClick={() => stopRecording(true)}
             className="p-2.5 bg-red-600 hover:bg-red-700 text-white rounded-xl transition flex-shrink-0 animate-pulse"
-            title="Send voice message"
+            title={t('command.sendVoice')}
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19V5m0 0l-7 7m7-7l7 7" />
@@ -578,7 +580,7 @@ export default function CommandBar({ roomId, threadId, onExport }: CommandBarPro
             onClick={startRecording}
             disabled={uploading || isArchived}
             className="p-2.5 text-dark-muted hover:text-dark-text hover:bg-dark-hover disabled:opacity-30 rounded-xl transition flex-shrink-0"
-            title="Record voice message"
+            title={t('command.recordVoice')}
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4M12 15a3 3 0 003-3V5a3 3 0 00-6 0v7a3 3 0 003 3z" />
@@ -595,7 +597,7 @@ export default function CommandBar({ roomId, threadId, onExport }: CommandBarPro
               style={{ width: `${uploadProgress}%` }}
             />
           </div>
-          <p className="text-xs text-dark-muted mt-1">Uploading... {uploadProgress}%</p>
+          <p className="text-xs text-dark-muted mt-1">{t('command.uploading', { progress: uploadProgress })}</p>
         </div>
       )}
     </div>

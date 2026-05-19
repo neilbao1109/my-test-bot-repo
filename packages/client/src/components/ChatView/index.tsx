@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import clsx from 'clsx';
+import { useT } from '../../hooks/useT';
 import { useAppStore } from '../../stores/appStore';
 import { socketService } from '../../services/socket';
 import { uploadFile } from '../../services/upload';
@@ -68,6 +69,7 @@ export default function ChatView() {
   } = useAppStore();
   const scrollToMessageId = useAppStore(s => s.scrollToMessageId);
   const setScrollToMessageId = useAppStore(s => s.setScrollToMessageId);
+  const t = useT();
   const [flashMessageId, setFlashMessageId] = useState<string | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const messageListRef = useRef<HTMLDivElement>(null);
@@ -202,8 +204,8 @@ export default function ChatView() {
       <div className="flex-1 flex items-center justify-center bg-dark-bg">
         <div className="text-center">
           <div className="text-6xl mb-4">💬</div>
-          <h2 className="text-xl font-semibold text-dark-text mb-2">Welcome to ClawChat</h2>
-          <p className="text-dark-muted">Select a conversation to start chatting</p>
+          <h2 className="text-xl font-semibold text-dark-text mb-2">{t('chat.welcome')}</h2>
+          <p className="text-dark-muted">{t('chat.selectConversation')}</p>
         </div>
       </div>
     );
@@ -219,7 +221,7 @@ export default function ChatView() {
       {/* Drag overlay */}
       {dragOver && (
         <div className="absolute inset-0 bg-primary-600/20 border-2 border-dashed border-primary-400 rounded-lg z-50 flex items-center justify-center">
-          <p className="text-primary-400 text-lg font-semibold">Drop files to upload</p>
+          <p className="text-primary-400 text-lg font-semibold">{t('chat.dropFiles')}</p>
         </div>
       )}
       {/* Header */}
@@ -229,7 +231,7 @@ export default function ChatView() {
           <button
             onClick={backToList}
             className="text-dark-muted hover:text-dark-text p-2 rounded transition"
-            title="返回"
+            title={t('chat.back')}
           >
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
@@ -250,10 +252,10 @@ export default function ChatView() {
           <RoomNameHeader room={activeRoom} userId={user?.id} />
           <p className="text-xs text-dark-muted">
             {activeRoom.type === 'dm'
-              ? 'Direct Message'
+              ? t('chat.directMessage')
               : activeRoom.type === 'bot'
-              ? 'Bot Chat'
-              : `${members.length} members, ${onlineCount} online`}
+              ? t('chat.botChat')
+              : t('chat.membersOnline', { members: members.length, online: onlineCount })}
           </p>
         </div>
 
@@ -265,7 +267,7 @@ export default function ChatView() {
             useAppStore.setState({ mobileView: 'list', sidebarTab: 'chat' });
           }}
           className="text-dark-muted hover:text-dark-text px-2 py-1 rounded-lg hover:bg-dark-hover transition"
-          title="Search in this room"
+          title={t('chat.searchRoom')}
         >
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
@@ -276,7 +278,7 @@ export default function ChatView() {
         <button
           onClick={toggleMembers}
           className="flex items-center gap-1.5 text-dark-muted hover:text-dark-text px-2 py-1 rounded-lg hover:bg-dark-hover transition"
-          title="Members"
+          title={t('chat.members')}
         >
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z" />
@@ -296,13 +298,13 @@ export default function ChatView() {
       <div ref={messageListRef} onScroll={handleScroll} className="flex-1 overflow-y-auto py-4 min-h-0 overscroll-contain">
         {activeRoomId && loadingHistory[activeRoomId] && (
           <div className="text-center py-2">
-            <span className="text-xs text-dark-muted animate-pulse">Loading...</span>
+            <span className="text-xs text-dark-muted animate-pulse">{t('chat.loading')}</span>
           </div>
         )}
 
         {activeRoomId && !hasMore[activeRoomId] && roomMessages.length > 0 && (
           <div className="text-center py-2">
-            <span className="text-xs text-dark-muted">Beginning of conversation</span>
+            <span className="text-xs text-dark-muted">{t('chat.beginningOfConversation')}</span>
           </div>
         )}
 
@@ -310,7 +312,7 @@ export default function ChatView() {
           <div className="text-center py-12">
             <div className="text-4xl mb-3">🤖</div>
             <p className="text-dark-muted text-sm">
-              Start a conversation! Type a message or use <code className="bg-dark-surface px-1.5 py-0.5 rounded text-primary-400">/help</code> for commands.
+              {t('chat.startConversation', { command: '/help' })}
             </p>
           </div>
         )}
@@ -386,7 +388,7 @@ export default function ChatView() {
       {/* Context selection floating bar */}
       {contextSelectionMode && (
         <div className="flex justify-center items-center gap-3 py-2 px-4 border-t border-dark-border bg-dark-surface/90">
-          <span className="text-xs text-dark-muted">{replyContext.length} selected</span>
+          <span className="text-xs text-dark-muted">{t('chat.selected', { count: replyContext.length })}</span>
           <button
             onClick={() => setContextSelectionMode(false)}
             className="px-4 py-1.5 text-xs font-medium text-white bg-primary-600 hover:bg-primary-700 rounded-full transition"
@@ -424,11 +426,12 @@ function RoomNameHeader({ room, userId }: { room: Room; userId?: string }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const canRename = room.type !== 'dm' && (room.type === 'bot' || !room.createdBy || room.createdBy === userId);
   const members = useAppStore((s) => s.roomMembers[room.id] || EMPTY_MEMBERS);
+  const t = useT();
 
   // For DM rooms, display the other participant's name
   const displayName = room.type === 'dm'
-    ? (members.find(m => m.id !== userId)?.username || room.name || 'Direct Message')
-    : (room.name || (room.type === 'bot' ? 'Bot Chat' : 'Unnamed Room'));
+    ? (members.find(m => m.id !== userId)?.username || room.name || t('chat.directMessage'))
+    : (room.name || (room.type === 'bot' ? t('chat.botChat') : t('chat.unnamed')));
 
   useEffect(() => {
     if (editing) {
@@ -475,7 +478,7 @@ function RoomNameHeader({ room, userId }: { room: Room; userId?: string }) {
         canRename ? 'cursor-pointer hover:text-primary-400 transition' : ''
       }`}
       onClick={() => canRename && setEditing(true)}
-      title={canRename ? 'Click to rename' : undefined}
+      title={canRename ? t('chat.clickToRename') : undefined}
     >
       {displayName}
       {canRename && (
@@ -491,6 +494,7 @@ function RoomMenu({ room, userId }: { room: Room; userId?: string }) {
   const [open, setOpen] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
+  const t = useT();
   const canDelete = !room.createdBy || room.createdBy === userId;
 
   useEffect(() => {
@@ -519,7 +523,7 @@ function RoomMenu({ room, userId }: { room: Room; userId?: string }) {
         <button
           onClick={() => setOpen(!open)}
           className="text-dark-muted hover:text-dark-text px-2 py-1 rounded-lg hover:bg-dark-hover transition"
-          title="Room options"
+          title={t('chat.roomOptions')}
         >
           <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
             <circle cx="12" cy="5" r="2" />
@@ -546,22 +550,22 @@ function RoomMenu({ room, userId }: { room: Room; userId?: string }) {
       {confirmDelete && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={() => setConfirmDelete(false)}>
           <div className="bg-dark-surface border border-dark-border rounded-xl p-6 max-w-sm mx-4 shadow-xl" onClick={(e) => e.stopPropagation()}>
-            <h3 className="text-lg font-semibold text-dark-text mb-2">Delete "{room.name}"?</h3>
+            <h3 className="text-lg font-semibold text-dark-text mb-2">{t('chat.deleteConfirm', { name: room.name || '' })}</h3>
             <p className="text-sm text-dark-muted mb-6">
-              All messages will be permanently deleted. This cannot be undone.
+              {t('chat.deleteWarning')}
             </p>
             <div className="flex justify-end gap-3">
               <button
                 onClick={() => setConfirmDelete(false)}
                 className="px-4 py-2 text-sm text-dark-muted hover:text-dark-text rounded-lg hover:bg-dark-hover transition"
               >
-                Cancel
+                {t('chat.cancel')}
               </button>
               <button
                 onClick={handleDelete}
                 className="px-4 py-2 text-sm text-white bg-red-600 hover:bg-red-700 rounded-lg transition"
               >
-                Delete
+                {t('chat.delete')}
               </button>
             </div>
           </div>

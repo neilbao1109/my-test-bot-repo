@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useAppStore } from '../../stores/appStore';
+import { useT } from '../../hooks/useT';
 import { socketService } from '../../services/socket';
 import type { User } from '../../types';
 
@@ -23,6 +24,7 @@ export default function CreateRoomModal() {
   const [bots, setBots] = useState<BotInfo[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(false);
+  const t = useT();
 
   // Fetch bot + user lists when modal opens
   useEffect(() => {
@@ -130,7 +132,7 @@ export default function CreateRoomModal() {
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-dark-border">
           <h2 className="text-lg font-semibold text-dark-text">
-            {type === 'bot' ? 'New Bot Chat' : 'Create Room'}
+            {type === 'bot' ? t('createRoom.newBotChat') : t('createRoom.createRoom')}
           </h2>
           <button
             onClick={() => setShowCreateRoom(false)}
@@ -170,17 +172,17 @@ export default function CreateRoomModal() {
             type="text"
             value={name}
             onChange={(e) => setName(e.target.value)}
-            placeholder="Room name"
+            placeholder={t('createRoom.roomName')}
             className="w-full bg-dark-bg border border-dark-border rounded-lg px-3 py-2 text-sm text-dark-text placeholder-dark-muted focus:outline-none focus:ring-1 focus:ring-primary-500"
           />
 
           {loading ? (
-            <p className="text-xs text-dark-muted text-center py-4">Loading...</p>
+            <p className="text-xs text-dark-muted text-center py-4">{t('createRoom.loading')}</p>
           ) : type === 'bot' ? (
             /* Bot tab: radio list */
             <div className="max-h-52 overflow-y-auto border border-dark-border rounded-lg">
               {bots.length === 0 ? (
-                <p className="text-xs text-dark-muted text-center py-4">No bots available</p>
+                <p className="text-xs text-dark-muted text-center py-4">{t('createRoom.noBots')}</p>
               ) : bots.map((bot) => {
                 const isOnline = onlineUsers.has(bot.id);
                 const isSelected = selectedBot?.id === bot.id;
@@ -220,7 +222,7 @@ export default function CreateRoomModal() {
                 type="text"
                 value={filterQuery}
                 onChange={(e) => setFilterQuery(e.target.value)}
-                placeholder="Filter users..."
+                placeholder={t('createRoom.filterUsers')}
                 className="w-full bg-dark-bg border border-dark-border rounded-lg px-3 py-2 text-sm text-dark-text placeholder-dark-muted focus:outline-none focus:ring-1 focus:ring-primary-500"
               />
 
@@ -243,7 +245,7 @@ export default function CreateRoomModal() {
                 {/* Bots section */}
                 {filteredBots.length > 0 && (
                   <>
-                    <div className="px-3 py-1.5 text-[10px] font-medium text-dark-muted uppercase tracking-wider bg-dark-bg/50 sticky top-0">🤖 Bots</div>
+                    <div className="px-3 py-1.5 text-[10px] font-medium text-dark-muted uppercase tracking-wider bg-dark-bg/50 sticky top-0">{t('createRoom.botsSection')}</div>
                     {filteredBots.map((bot) => {
                       const isSelected = selectedUsers.some(s => s.id === bot.id);
                       const isOnline = onlineUsers.has(bot.id);
@@ -273,7 +275,7 @@ export default function CreateRoomModal() {
                 {/* Members section */}
                 {filteredUsers.length > 0 && (
                   <>
-                    <div className="px-3 py-1.5 text-[10px] font-medium text-dark-muted uppercase tracking-wider bg-dark-bg/50 sticky top-0">👥 Members</div>
+                    <div className="px-3 py-1.5 text-[10px] font-medium text-dark-muted uppercase tracking-wider bg-dark-bg/50 sticky top-0">{t('createRoom.membersSection')}</div>
                     {filteredUsers.map((u) => {
                       const isSelected = selectedUsers.some((s) => s.id === u.id);
                       return (
@@ -297,10 +299,10 @@ export default function CreateRoomModal() {
                   </>
                 )}
                 {filteredBots.length === 0 && filteredUsers.length === 0 && (
-                  <p className="text-xs text-dark-muted text-center py-4">No results</p>
+                  <p className="text-xs text-dark-muted text-center py-4">{t('createRoom.noResults')}</p>
                 )}
               </div>
-              <p className="text-[10px] text-dark-muted">💡 Bot 在群聊中仅响应 @mention</p>
+              <p className="text-[10px] text-dark-muted">{t('createRoom.botMentionHint')}</p>
             </>
           )}
         </div>
@@ -318,7 +320,7 @@ export default function CreateRoomModal() {
             disabled={isCreateDisabled}
             className="px-4 py-2 text-sm font-medium text-white bg-primary-600 rounded-lg hover:bg-primary-500 disabled:opacity-50 disabled:cursor-not-allowed transition"
           >
-            {type === 'bot' ? 'Start Bot Chat' : 'Create'}
+            {type === 'bot' ? t('createRoom.startBotChat') : t('createRoom.create')}
           </button>
         </div>
       </div>
