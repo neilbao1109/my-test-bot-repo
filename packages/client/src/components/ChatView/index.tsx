@@ -405,7 +405,7 @@ export default function ChatView() {
             onClick={returnToLatest}
             className="px-4 py-1.5 text-xs font-medium text-primary-400 bg-dark-hover rounded-full hover:bg-dark-border transition flex items-center gap-1"
           >
-            ↓ 回到最新消息
+            {t('chat.returnToLatest')}
           </button>
         </div>
       )}

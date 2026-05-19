@@ -298,7 +298,7 @@ export default function MemberPanel() {
                         onClick={() => handleAddFriend(m.id)}
                         className="text-[10px] bg-primary-600/20 text-primary-400 px-1.5 py-0.5 rounded hover:bg-primary-600/40 transition"
                       >
-                        加好友
+                        {t('member.addFriend')}
                       </button>
                     )
                   )}
@@ -332,7 +332,7 @@ export default function MemberPanel() {
                         onClick={() => handleAddFriend(m.id)}
                         className="text-[10px] bg-primary-600/20 text-primary-400 px-1.5 py-0.5 rounded hover:bg-primary-600/40 transition"
                       >
-                        加好友
+                        {t('member.addFriend')}
                       </button>
                     )
                   )}
@@ -360,7 +360,7 @@ export default function MemberPanel() {
             onClick={() => setShowLeaveConfirm(true)}
             className="w-full py-2 text-sm text-red-400 hover:bg-red-400/10 rounded-lg transition"
           >
-            🚪 离开群聊
+            {t('member.leaveGroup')}
           </button>
         </div>
       )}
@@ -376,7 +376,7 @@ export default function MemberPanel() {
                 onClick={() => setShowLeaveConfirm(false)}
                 className="px-3 py-1.5 text-sm text-dark-muted hover:text-dark-text rounded-lg hover:bg-dark-hover transition"
               >
-                取消
+                {t('member.leaveCancel')}
               </button>
               <button
                 onClick={async () => {
@@ -388,7 +388,7 @@ export default function MemberPanel() {
                 }}
                 className="px-3 py-1.5 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-500 transition"
               >
-                确定离开
+                {t('member.leaveConfirmBtn')}
               </button>
             </div>
           </div>

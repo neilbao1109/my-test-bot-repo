@@ -79,14 +79,14 @@ function BotActionMenu({ bot, onTogglePause, onShare, onDeregister, onUnshare, o
                 onClick={() => { onShare(); setOpen(false); }}
                 className="w-full text-left px-3 py-2.5 text-sm text-dark-text hover:bg-dark-hover transition flex items-center gap-2"
               >
-                🔗 分享
+                {t('settings.share')}
               </button>
               <div className="border-t border-dark-border my-1" />
               <button
                 onClick={() => { onDeregister(); setOpen(false); }}
                 className="w-full text-left px-3 py-2.5 text-sm text-red-400 hover:bg-red-400/10 transition flex items-center gap-2"
               >
-                ✕ 注销
+                {t('settings.deregister')}
               </button>
             </>
           ) : (
@@ -94,7 +94,7 @@ function BotActionMenu({ bot, onTogglePause, onShare, onDeregister, onUnshare, o
               onClick={() => { onUnshare(); setOpen(false); }}
               className="w-full text-left px-3 py-2.5 text-sm text-red-400 hover:bg-red-400/10 transition flex items-center gap-2"
             >
-              🗑 移除
+              {t('settings.remove')}
             </button>
           )}
         </div>
@@ -558,13 +558,13 @@ function BotSkillsPage({ bot, onBack }: { bot: any; onBack: () => void }) {
           onClick={() => setShowDeploy(true)}
           className="w-full py-2.5 rounded-lg bg-primary-600/20 text-primary-400 text-sm font-medium hover:bg-primary-600/30 transition mb-4"
         >
-          ➕ Deploy Skill
+          {t('settings.deploySkill')}
         </button>
 
         {loading ? (
-          <p className="text-xs text-dark-muted">Loading...</p>
+          <p className="text-xs text-dark-muted">{t('settings.skillsLoading')}</p>
         ) : skills.length === 0 ? (
-          <p className="text-xs text-dark-muted">No skills deployed yet</p>
+          <p className="text-xs text-dark-muted">{t('settings.noSkills')}</p>
         ) : (
           <div className="space-y-1">
             {skills.map((skill) => (
@@ -598,29 +598,29 @@ function BotSkillsPage({ bot, onBack }: { bot: any; onBack: () => void }) {
       {showDeploy && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
           <div className="bg-dark-surface border border-dark-border rounded-xl shadow-2xl w-full max-w-md mx-4 p-5">
-            <h3 className="text-sm font-semibold text-dark-text mb-3">Deploy Skill</h3>
+            <h3 className="text-sm font-semibold text-dark-text mb-3">{t('settings.deploySkill')}</h3>
             <input
               type="text"
-              placeholder="Skill name (e.g. my-skill)"
+              placeholder={t('settings.skillNamePlaceholder')}
               value={skillName}
               onChange={(e) => setSkillName(e.target.value.replace(/[^a-zA-Z0-9-]/g, ''))}
               className="w-full px-3 py-2 bg-dark-bg border border-dark-border rounded-lg text-sm text-dark-text mb-2 outline-none focus:border-primary-500"
             />
             <textarea
-              placeholder="Paste SKILL.md content here..."
+              placeholder={t('settings.skillContentPlaceholder')}
               value={skillContent}
               onChange={(e) => setSkillContent(e.target.value)}
               className="w-full px-3 py-2 bg-dark-bg border border-dark-border rounded-lg text-sm text-dark-text mb-2 outline-none focus:border-primary-500 h-48 resize-none font-mono text-xs"
             />
             {error && <p className="text-xs text-red-400 mb-2">{error}</p>}
             <div className="flex justify-end gap-2">
-              <button onClick={() => { setShowDeploy(false); setError(''); }} className="px-3 py-1.5 text-sm text-dark-muted hover:text-dark-text rounded-lg hover:bg-dark-hover transition">Cancel</button>
+              <button onClick={() => { setShowDeploy(false); setError(''); }} className="px-3 py-1.5 text-sm text-dark-muted hover:text-dark-text rounded-lg hover:bg-dark-hover transition">{t('settings.cancelDeploy')}</button>
               <button
                 onClick={handleDeploy}
                 disabled={deploying || !skillName.trim() || !skillContent.trim()}
                 className="px-3 py-1.5 text-sm font-medium text-white bg-primary-600 rounded-lg hover:bg-primary-500 disabled:opacity-50 transition"
               >
-                {deploying ? 'Deploying...' : 'Deploy'}
+                {deploying ? t('settings.deploying') : t('settings.deploy')}
               </button>
             </div>
           </div>
@@ -631,13 +631,13 @@ function BotSkillsPage({ bot, onBack }: { bot: any; onBack: () => void }) {
       {removeTarget && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
           <div className="bg-dark-surface border border-dark-border rounded-xl shadow-2xl w-full max-w-sm mx-4 p-5">
-            <h3 className="text-sm font-semibold text-dark-text mb-2">Remove skill "{removeTarget}"?</h3>
-            <p className="text-xs text-dark-muted mb-4">This will uninstall the skill from the bot agent.</p>
+            <h3 className="text-sm font-semibold text-dark-text mb-2">{t('settings.removeSkillConfirm', { name: removeTarget })}</h3>
+            <p className="text-xs text-dark-muted mb-4">{t('settings.removeSkillDescription')}</p>
             <div className="flex justify-end gap-2">
-              <button onClick={() => setRemoveTarget(null)} className="px-3 py-1.5 text-sm text-dark-muted hover:text-dark-text rounded-lg hover:bg-dark-hover transition">Cancel</button>
+              <button onClick={() => setRemoveTarget(null)} className="px-3 py-1.5 text-sm text-dark-muted hover:text-dark-text rounded-lg hover:bg-dark-hover transition">{t('settings.cancelRemoveSkill')}</button>
               <button onClick={handleRemove} disabled={removing}
                 className="px-3 py-1.5 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-500 disabled:opacity-50 transition">
-                {removing ? 'Removing...' : 'Remove'}
+                {removing ? t('settings.removingSkill') : t('settings.removeSkill')}
               </button>
             </div>
           </div>

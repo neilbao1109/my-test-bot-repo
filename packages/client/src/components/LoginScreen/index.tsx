@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import * as authService from '../../services/auth';
 import type { User } from '../../types';
+import { useT } from '../../hooks/useT';
 
 interface LoginScreenProps {
   onLogin: (user: User, token: string) => void;
@@ -14,6 +15,7 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const t = useT();
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -34,7 +36,7 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
     e.preventDefault();
     setError('');
     if (password !== confirmPassword) {
-      setError('Passwords do not match');
+      setError(t('login.passwordMismatch'));
       return;
     }
     setLoading(true);
@@ -59,8 +61,8 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
           <div className="inline-flex items-center justify-center w-16 h-16 bg-primary-600 rounded-2xl mb-4">
             <span className="text-2xl font-bold text-dark-text">CC</span>
           </div>
-          <h1 className="text-2xl font-bold text-dark-text">ClawChat</h1>
-          <p className="text-dark-muted mt-2">Chat with AI, together.</p>
+          <h1 className="text-2xl font-bold text-dark-text">{t('login.title')}</h1>
+          <p className="text-dark-muted mt-2">{t('login.subtitle')}</p>
         </div>
 
         {/* Tabs */}
@@ -69,13 +71,13 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
             onClick={() => { setTab('login'); setError(''); }}
             className={`flex-1 py-2 text-sm font-medium rounded-lg transition ${tab === 'login' ? 'bg-primary-600 text-white' : 'text-dark-muted hover:text-dark-text'}`}
           >
-            Login
+            {t('login.tab')}
           </button>
           <button
             onClick={() => { setTab('register'); setError(''); }}
             className={`flex-1 py-2 text-sm font-medium rounded-lg transition ${tab === 'register' ? 'bg-primary-600 text-white' : 'text-dark-muted hover:text-dark-text'}`}
           >
-            Register
+            {t('login.registerTab')}
           </button>
         </div>
 
@@ -88,37 +90,37 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
         {tab === 'login' ? (
           <form onSubmit={handleLogin} className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-dark-text mb-2">Email</label>
-              <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="you@example.com" autoFocus className={inputClass} />
+              <label className="block text-sm font-medium text-dark-text mb-2">{t('login.email')}</label>
+              <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder={t('login.emailPlaceholder')} autoFocus className={inputClass} />
             </div>
             <div>
-              <label className="block text-sm font-medium text-dark-text mb-2">Password</label>
-              <input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="••••••••" className={inputClass} />
+              <label className="block text-sm font-medium text-dark-text mb-2">{t('login.password')}</label>
+              <input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder={t('login.passwordPlaceholder')} className={inputClass} />
             </div>
             <button type="submit" disabled={loading || !email || !password} className="w-full py-3 px-4 bg-primary-600 hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-medium rounded-xl transition">
-              {loading ? 'Logging in...' : 'Login'}
+              {loading ? t('login.logging') : t('login.loginBtn')}
             </button>
           </form>
         ) : (
           <form onSubmit={handleRegister} className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-dark-text mb-2">Email</label>
-              <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="you@example.com" autoFocus className={inputClass} />
+              <label className="block text-sm font-medium text-dark-text mb-2">{t('login.email')}</label>
+              <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder={t('login.emailPlaceholder')} autoFocus className={inputClass} />
             </div>
             <div>
-              <label className="block text-sm font-medium text-dark-text mb-2">Display Name</label>
-              <input type="text" value={username} onChange={e => setUsername(e.target.value)} placeholder="Your name" className={inputClass} />
+              <label className="block text-sm font-medium text-dark-text mb-2">{t('login.displayName')}</label>
+              <input type="text" value={username} onChange={e => setUsername(e.target.value)} placeholder={t('login.displayNamePlaceholder')} className={inputClass} />
             </div>
             <div>
-              <label className="block text-sm font-medium text-dark-text mb-2">Password</label>
-              <input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="Min 6 characters" className={inputClass} />
+              <label className="block text-sm font-medium text-dark-text mb-2">{t('login.password')}</label>
+              <input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder={t('login.minChars')} className={inputClass} />
             </div>
             <div>
-              <label className="block text-sm font-medium text-dark-text mb-2">Confirm Password</label>
-              <input type="password" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} placeholder="••••••••" className={inputClass} />
+              <label className="block text-sm font-medium text-dark-text mb-2">{t('login.confirmPassword')}</label>
+              <input type="password" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} placeholder={t('login.passwordPlaceholder')} className={inputClass} />
             </div>
             <button type="submit" disabled={loading || !email || !username || !password || !confirmPassword} className="w-full py-3 px-4 bg-primary-600 hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-medium rounded-xl transition">
-              {loading ? 'Creating account...' : 'Create Account'}
+              {loading ? t('login.creating') : t('login.createBtn')}
             </button>
           </form>
         )}

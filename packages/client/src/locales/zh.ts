@@ -276,6 +276,67 @@ const zh = {
   'settings.removingSkill': 'Removing...',
   'settings.removeSkill': 'Remove',
   'settings.language': '语言',
+  'settings.skillsLoading': '加载中...',
+  'settings.cancelDeploy': '取消',
+  'settings.cancelRemoveSkill': '取消',
+
+  // BotMarketplace
+  'marketplace.title': '🏪 Bot 市场',
+  'marketplace.loading': '加载中...',
+  'marketplace.empty': '暂无公开的 Bot。',
+  'marketplace.trigger': '触发方式: {trigger}',
+  'marketplace.added': '✓ 已添加',
+  'marketplace.add': '添加',
+
+  // SearchBar
+  'searchBar.placeholder': '搜索消息...',
+  'searchBar.noResults': '无结果',
+
+  // LoginScreen
+  'login.title': 'ClawChat',
+  'login.subtitle': '与 AI 对话，一起。',
+  'login.tab': '登录',
+  'login.registerTab': '注册',
+  'login.email': '邮箱',
+  'login.emailPlaceholder': 'you@example.com',
+  'login.password': '密码',
+  'login.passwordPlaceholder': '••••••••',
+  'login.displayName': '显示名称',
+  'login.displayNamePlaceholder': '你的名字',
+  'login.confirmPassword': '确认密码',
+  'login.minChars': '最少6个字符',
+  'login.logging': '登录中...',
+  'login.loginBtn': '登录',
+  'login.creating': '创建账号中...',
+  'login.createBtn': '创建账号',
+  'login.passwordMismatch': '两次密码不一致',
+
+  // ThreadPanel
+  'thread.title': '话题',
+  'thread.reply_one': '{count} 条回复',
+  'thread.reply_other': '{count} 条回复',
+  'thread.dropFiles': '拖放文件上传',
+  'thread.empty': '还没有回复，开始对话吧！',
+  'thread.backTitle': '返回聊天',
+
+  // SearchPanel
+  'searchPanel.searching': '搜索中...',
+  'searchPanel.noResults': '没有找到结果',
+  'searchPanel.searchIn': '在 {name} 中搜索...',
+  'searchPanel.searchAll': '搜索所有消息...',
+  'searchPanel.searchInRoom': '在 {name} 中搜索',
+  'searchPanel.searchAllHint': '搜索所有对话',
+
+  // InvitationList
+  'invitation.title': '邀请',
+  'invitation.loading': '加载中...',
+  'invitation.empty': '暂无待处理的邀请',
+  'invitation.room': '👥 群聊',
+  'invitation.dm': '💬 私聊',
+  'invitation.botShare': '🤖 Bot 分享',
+  'invitation.from': '来自: {name}',
+  'invitation.accept': '接受',
+  'invitation.reject': '拒绝',
 
   // Sidebar
   'sidebar.chat': '聊天',

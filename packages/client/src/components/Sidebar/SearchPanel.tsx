@@ -2,6 +2,7 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import { useAppStore } from '../../stores/appStore';
 import { socketService } from '../../services/socket';
 import type { Message } from '../../types';
+import { useT } from '../../hooks/useT';
 
 interface RoomResult {
   roomId: string;
@@ -57,6 +58,7 @@ export default function SearchPanel({ onClose }: { onClose: () => void }) {
   const [selectedRoomId, setSelectedRoomId] = useState<string | null>(searchRoomId);
   const inputRef = useRef<HTMLInputElement>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout>>();
+  const t = useT();
 
   // Is this a room-scoped search?
   const isRoomScoped = !!searchRoomId;
@@ -157,7 +159,7 @@ export default function SearchPanel({ onClose }: { onClose: () => void }) {
           type="text"
           value={query}
           onChange={(e) => handleInput(e.target.value)}
-          placeholder={isRoomScoped ? `Search in ${scopedRoom?.name || 'this room'}...` : 'Search all messages...'}
+          placeholder={isRoomScoped ? t('searchPanel.searchIn', { name: scopedRoom?.name || 'this room' }) : t('searchPanel.searchAll')}
           className="flex-1 bg-transparent text-sm text-dark-text placeholder-dark-muted focus:outline-none"
         />
         <button
@@ -183,20 +185,20 @@ export default function SearchPanel({ onClose }: { onClose: () => void }) {
           <div className="text-center py-12 px-4">
             <div className="text-3xl mb-2">🔍</div>
             <p className="text-sm text-dark-muted">
-              {isRoomScoped ? `Search in ${scopedRoom?.name || 'this room'}` : 'Search across all conversations'}
+              {isRoomScoped ? t('searchPanel.searchInRoom', { name: scopedRoom?.name || 'this room' }) : t('searchPanel.searchAllHint')}
             </p>
           </div>
         )}
 
         {loading && (
           <div className="text-center py-4">
-            <span className="text-xs text-dark-muted animate-pulse">Searching...</span>
+            <span className="text-xs text-dark-muted animate-pulse">{t('searchPanel.searching')}</span>
           </div>
         )}
 
         {query.trim() && !loading && results.length === 0 && (
           <div className="text-center py-12 px-4">
-            <p className="text-sm text-dark-muted">No results found</p>
+            <p className="text-sm text-dark-muted">{t('searchPanel.noResults')}</p>
           </div>
         )}
 

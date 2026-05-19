@@ -5,6 +5,7 @@ import { uploadFile } from '../../services/upload';
 import MessageBubble from '../MessageBubble';
 import CommandBar from '../CommandBar';
 import UserAvatar from '../UserAvatar';
+import { useT } from '../../hooks/useT';
 
 export default function ThreadPanel() {
   const {
@@ -14,6 +15,7 @@ export default function ThreadPanel() {
   } = useAppStore();
   const bottomRef = useRef<HTMLDivElement>(null);
   const [dragOver, setDragOver] = useState(false);
+  const t = useT();
 
   const activeRoom = rooms.find((r) => r.id === activeRoomId);
 
@@ -82,7 +84,7 @@ export default function ThreadPanel() {
       {/* Drag overlay */}
       {dragOver && (
         <div className="absolute inset-0 bg-primary-600/20 border-2 border-dashed border-primary-400 rounded-lg z-50 flex items-center justify-center">
-          <p className="text-primary-400 text-lg font-semibold">Drop files to upload</p>
+          <p className="text-primary-400 text-lg font-semibold">{t('thread.dropFiles')}</p>
         </div>
       )}
 
@@ -92,7 +94,7 @@ export default function ThreadPanel() {
         <button
           onClick={() => setActiveThread(null)}
           className="text-dark-muted hover:text-dark-text p-1 rounded transition"
-          title="Back to chat"
+          title={t('thread.backTitle')}
         >
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
@@ -102,9 +104,9 @@ export default function ThreadPanel() {
         <span className="text-lg">🧵</span>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
-            <h2 className="font-semibold text-dark-text text-sm">Thread</h2>
+            <h2 className="font-semibold text-dark-text text-sm">{t('thread.title')}</h2>
             <span className="text-xs text-dark-muted">
-              {activeThread.replyCount} {activeThread.replyCount === 1 ? 'reply' : 'replies'}
+              {activeThread.replyCount} {activeThread.replyCount === 1 ? t('thread.reply_one', { count: activeThread.replyCount }) : t('thread.reply_other', { count: activeThread.replyCount })}
             </span>
           </div>
           {parentPreview && (
@@ -131,7 +133,7 @@ export default function ThreadPanel() {
         {threadMessages.length === 0 && !threadStreamingMsgs.length && (
           <div className="text-center py-12">
             <div className="text-4xl mb-3">🧵</div>
-            <p className="text-dark-muted text-sm">No replies yet. Start the conversation!</p>
+            <p className="text-dark-muted text-sm">{t('thread.empty')}</p>
           </div>
         )}
 

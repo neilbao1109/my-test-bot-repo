@@ -1,6 +1,7 @@
 import { useRef, useEffect, useCallback } from 'react';
 import { useAppStore } from '../../stores/appStore';
 import { socketService } from '../../services/socket';
+import { useT } from '../../hooks/useT';
 
 export default function SearchBar() {
   const {
@@ -10,6 +11,7 @@ export default function SearchBar() {
   } = useAppStore();
   const inputRef = useRef<HTMLInputElement>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout>>();
+  const t = useT();
 
   useEffect(() => {
     if (showSearch) {
@@ -67,7 +69,7 @@ export default function SearchBar() {
           type="text"
           value={searchQuery || ''}
           onChange={(e) => handleInput(e.target.value)}
-          placeholder="Search messages..."
+          placeholder={t('searchBar.placeholder')}
           className="flex-1 bg-transparent text-sm text-dark-text placeholder-dark-muted focus:outline-none"
         />
         {/* No scope toggle - search is current room only */}
@@ -88,7 +90,7 @@ export default function SearchBar() {
               <button onClick={handleNext} className="hover:text-dark-text px-1">▼</button>
             </>
           ) : (
-            <span>No results</span>
+            <span>{t('searchBar.noResults')}</span>
           )}
         </div>
       )}

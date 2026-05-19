@@ -171,14 +171,7 @@ function FriendRequestsPanel({ onBack }: { onBack: () => void }) {
                   disabled={loading}
                   className="text-xs bg-primary-600 text-white px-2 py-1 rounded hover:bg-primary-700 transition"
                 >
-                  接受
-                </button>
-                <button
-                  onClick={() => handleReject(req.id)}
-                  disabled={loading}
-                  className="text-xs bg-dark-hover text-dark-muted px-2 py-1 rounded hover:bg-dark-border transition"
-                >
-                  拒绝
+                  {t('contacts.accept')}
                 </button>
               </div>
             ))}
@@ -252,7 +245,7 @@ function FriendSearchPanel({ onBack }: { onBack: () => void }) {
             disabled={searching}
             className="bg-primary-600 text-white px-3 py-2 rounded-lg text-sm hover:bg-primary-700 transition"
           >
-            搜索
+                {t('contacts.search')}
           </button>
         </div>
       </div>
@@ -273,7 +266,7 @@ function FriendSearchPanel({ onBack }: { onBack: () => void }) {
                 onClick={() => handleSendRequest(user.id)}
                 className="text-xs bg-primary-600 text-white px-2 py-1 rounded hover:bg-primary-700 transition"
               >
-                添加
+                {t('contacts.add')}
               </button>
             )}
           </div>
@@ -300,11 +293,6 @@ interface Invitation {
   updatedAt: string;
 }
 
-const typeLabels: Record<string, string> = {
-  room: '👥 群聊邀请',
-  dm: '💬 私聊邀请',
-  bot_share: '🤖 Bot 分享',
-};
 
 function timeAgo(dateStr: string, t: (key: any, params?: any) => string): string {
   const diff = Date.now() - new Date(dateStr).getTime();
@@ -374,13 +362,13 @@ function InvitationPanel({ onBack }: { onBack: () => void }) {
                   onClick={() => handleAccept(inv.id)}
                   className="flex-1 px-3 py-1.5 text-xs font-medium text-white bg-primary-600 hover:bg-primary-500 rounded-lg transition"
                 >
-                  接受
+                  {t('contacts.accept')}
                 </button>
                 <button
                   onClick={() => handleReject(inv.id)}
                   className="flex-1 px-3 py-1.5 text-xs font-medium text-dark-muted hover:text-dark-text bg-dark-hover hover:bg-dark-border rounded-lg transition"
                 >
-                  拒绝
+                  {t('contacts.reject')}
                 </button>
               </div>
               <div className="border-b border-dark-border/50 mt-1" />

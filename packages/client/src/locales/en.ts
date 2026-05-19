@@ -278,6 +278,67 @@ const en: Record<LocaleKeys, string> = {
   'settings.removingSkill': 'Removing...',
   'settings.removeSkill': 'Remove',
   'settings.language': 'Language',
+  'settings.skillsLoading': 'Loading...',
+  'settings.cancelDeploy': 'Cancel',
+  'settings.cancelRemoveSkill': 'Cancel',
+
+  // BotMarketplace
+  'marketplace.title': '🏪 Bot Marketplace',
+  'marketplace.loading': 'Loading...',
+  'marketplace.empty': 'No public bots available yet.',
+  'marketplace.trigger': 'Trigger: {trigger}',
+  'marketplace.added': '✓ Added',
+  'marketplace.add': 'Add',
+
+  // SearchBar
+  'searchBar.placeholder': 'Search messages...',
+  'searchBar.noResults': 'No results',
+
+  // LoginScreen
+  'login.title': 'ClawChat',
+  'login.subtitle': 'Chat with AI, together.',
+  'login.tab': 'Login',
+  'login.registerTab': 'Register',
+  'login.email': 'Email',
+  'login.emailPlaceholder': 'you@example.com',
+  'login.password': 'Password',
+  'login.passwordPlaceholder': '••••••••',
+  'login.displayName': 'Display Name',
+  'login.displayNamePlaceholder': 'Your name',
+  'login.confirmPassword': 'Confirm Password',
+  'login.minChars': 'Min 6 characters',
+  'login.logging': 'Logging in...',
+  'login.loginBtn': 'Login',
+  'login.creating': 'Creating account...',
+  'login.createBtn': 'Create Account',
+  'login.passwordMismatch': 'Passwords do not match',
+
+  // ThreadPanel
+  'thread.title': 'Thread',
+  'thread.reply_one': '{count} reply',
+  'thread.reply_other': '{count} replies',
+  'thread.dropFiles': 'Drop files to upload',
+  'thread.empty': 'No replies yet. Start the conversation!',
+  'thread.backTitle': 'Back to chat',
+
+  // SearchPanel
+  'searchPanel.searching': 'Searching...',
+  'searchPanel.noResults': 'No results found',
+  'searchPanel.searchIn': 'Search in {name}...',
+  'searchPanel.searchAll': 'Search all messages...',
+  'searchPanel.searchInRoom': 'Search in {name}',
+  'searchPanel.searchAllHint': 'Search across all conversations',
+
+  // InvitationList
+  'invitation.title': 'Invitations',
+  'invitation.loading': 'Loading...',
+  'invitation.empty': 'No pending invitations',
+  'invitation.room': '👥 Group Room',
+  'invitation.dm': '💬 DM',
+  'invitation.botShare': '🤖 Bot Share',
+  'invitation.from': 'From: {name}',
+  'invitation.accept': 'Accept',
+  'invitation.reject': 'Reject',
 
   // Sidebar
   'sidebar.chat': 'Chats',
