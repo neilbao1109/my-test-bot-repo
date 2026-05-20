@@ -186,10 +186,21 @@ export class OpenClawClient extends EventEmitter {
             reasonStr.includes('device token mismatch') ||
             reasonStr.includes('unauthorized')
           );
+          const isPairingRequired = code === 1008 && reasonStr.includes('pairing required');
           const inPairingFlow = !!this.config.bootstrapToken;
           if (isAuthError && !inPairingFlow) {
             console.log(`[OpenClaw] Fatal auth error, stopping reconnect: ${reasonStr}`);
+            if (isPairingRequired) {
+              // Emit specific event so callers can distinguish pairing-required from other auth errors
+              this.emit('pairing-required', { code, reason: reasonStr });
+            }
             this.emit('fatal-auth-error', { code, reason: reasonStr });
+            // Reject connect promise if handshake hasn't completed
+            if (!this.handshakeComplete) {
+              const err = new Error(`connect failed: ${reasonStr}`);
+              (err as any).isPairingRequired = isPairingRequired;
+              reject(err);
+            }
           } else {
             this.scheduleReconnect();
           }

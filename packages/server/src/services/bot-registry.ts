@@ -622,6 +622,37 @@ export async function pairStatus(pairId: string): Promise<{
   }
 }
 
+export async function tokenPairConnect(config: {
+  gatewayUrl?: string;
+  authToken: string;
+  clientId: string;
+}): Promise<{ ok: boolean; pairId?: string; deviceId?: string; gatewayUrl?: string; error?: string }> {
+  const effectiveUrl = config.gatewayUrl || 'ws://127.0.0.1:18789';
+  const client = new OpenClawClient({
+    url: effectiveUrl,
+    authToken: config.authToken,
+    clientId: config.clientId,
+  });
+
+  const pairId = config.clientId;
+
+  try {
+    await client.connect();
+    // Connected successfully — device already approved
+    pendingPairs.set(pairId, { client, url: effectiveUrl, bootstrapToken: '', createdAt: Date.now() });
+    return { ok: true, pairId, deviceId: client.deviceId, gatewayUrl: effectiveUrl };
+  } catch (err: any) {
+    const msg = err.message || '';
+    if (err.isPairingRequired || msg.includes('pairing') || msg.includes('PAIRING_REQUIRED')) {
+      // Device needs approval — store for polling via pairStatus
+      pendingPairs.set(pairId, { client, url: effectiveUrl, bootstrapToken: '', createdAt: Date.now() });
+      return { ok: true, pairId, deviceId: client.deviceId, gatewayUrl: effectiveUrl };
+    }
+    client.disconnect();
+    return { ok: false, error: msg || 'Connection failed' };
+  }
+}
+
 /** Test bot connection to gateway */
 export async function testBotConnection(config: {
   gatewayUrl?: string;

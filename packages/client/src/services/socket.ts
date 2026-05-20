@@ -233,6 +233,12 @@ class SocketService {
     });
   }
 
+  tokenPairConnect(config: { gatewayUrl?: string; authToken: string; clientId: string }): Promise<{ ok: boolean; pairId?: string; deviceId?: string; gatewayUrl?: string; error?: string }> {
+    return new Promise((resolve) => {
+      this.socket?.emit('bot:token-pair-connect', config, resolve);
+    });
+  }
+
   registerBot(config: { botId: string; username: string; avatarUrl?: string; gatewayUrl?: string; authToken: string; agentId?: string; sshHost?: string; trigger?: string; identityKey?: string; skipDeregisteredCheck?: boolean }): Promise<{ bot?: any; error?: string; deregisteredBot?: any }> {
     return new Promise((resolve) => {
       this.socket?.emit('bot:register', config, resolve);

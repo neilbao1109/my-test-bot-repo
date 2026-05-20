@@ -60,7 +60,9 @@ export default function BotRegistration() {
           setPairDeviceToken(result.deviceToken || '');
           if (result.gatewayUrl) setPairGatewayUrl(result.gatewayUrl);
           // Auto-register with the approved token
-          await doRegister(result.deviceToken || '', result.gatewayUrl);
+          // For token mode, use original authToken (not deviceToken); for pair mode, use deviceToken
+          const regToken = connectMode === 'token' ? authToken.trim() : (result.deviceToken || '');
+          await doRegister(regToken, result.gatewayUrl);
         }
       }, 5000);
       return () => { if (pollRef.current) clearInterval(pollRef.current); };
@@ -175,15 +177,18 @@ export default function BotRegistration() {
     setTestStatus('testing');
     setTestMessage('');
     try {
-      const result = await socketService.testBotConnection({
+      const clientId = `clawchat-bot-${botId}`;
+      const result = await socketService.tokenPairConnect({
         gatewayUrl: gatewayUrl.trim() || undefined,
         authToken: authToken.trim(),
-        sshHost: sshHost.trim() || undefined,
+        clientId,
       });
       if (result.ok) {
-        setTestMessage(result.model ? t('bot.connectedWithModel').replace('{model}', result.model) : t('bot.connected'));
-        // Auto-register for token mode
-        await doRegister();
+        setPairId(result.pairId || '');
+        setDeviceId(result.deviceId || '');
+        if (result.gatewayUrl) setPairGatewayUrl(result.gatewayUrl);
+        setStep('pending');
+        // pairStatus polling will auto-register when approved
       } else {
         setTestStatus('error');
         setTestMessage(result.error || t('bot.error.connectionFailed'));
@@ -367,7 +372,7 @@ export default function BotRegistration() {
             <div className="text-center py-6 space-y-4">
               <div className="text-4xl">⏳</div>
               <p className="text-sm text-dark-text font-medium">{t('bot.pending.waiting')}</p>
-              <p className="text-xs text-dark-muted">{t('bot.pending.instruction')} <code className="bg-dark-bg px-1.5 py-0.5 rounded">/pair approve</code></p>
+              <p className="text-xs text-dark-muted">{t('bot.pending.instruction')} <code className="bg-dark-bg px-1.5 py-0.5 rounded">{connectMode === 'token' ? 'openclaw devices approve' : '/pair approve'}</code></p>
               {deviceId && (
                 <p className="text-xs text-dark-muted font-mono">Device: {deviceId.slice(0, 12)}...</p>
               )}
