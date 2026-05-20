@@ -97,7 +97,6 @@ const zh = {
   'command.messagesCount': '📎 {count} 条消息',
   'command.add': '+ 添加',
   'command.file': '文件',
-  'command.photoVideo': '照片/视频',
   'command.exportChat': '导出聊天',
   'command.archivedPlaceholder': 'Bot 已停用，无法发送消息',
   'command.recording': '录音中...',
