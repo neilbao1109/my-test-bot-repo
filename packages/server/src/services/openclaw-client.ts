@@ -245,6 +245,15 @@ export class OpenClawClient extends EventEmitter {
     }
 
     if (frame.type === 'event') {
+      // Debug: log all non-tick events
+      if (frame.event !== 'tick' && frame.event !== 'presence' && frame.event !== 'health') {
+        const summary = frame.event === 'agent' 
+          ? `runId=${frame.payload?.runId?.slice(0,16)} stream=${frame.payload?.stream} delta=${typeof frame.payload?.data?.delta === 'string' ? frame.payload.data.delta.length : 'N/A'}`
+          : frame.event === 'chat'
+          ? `runId=${frame.payload?.runId?.slice(0,16)} state=${frame.payload?.state} sessionKey=${frame.payload?.sessionKey?.slice(0,30)}`
+          : JSON.stringify(frame.payload).slice(0, 120);
+        console.log(`[OpenClaw:EVENT] ${frame.event}: ${summary}`);
+      }
       this.emit('gateway-event', frame);
       this.emit(`event:${frame.event}`, frame.payload);
     }

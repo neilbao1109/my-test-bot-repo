@@ -33,6 +33,7 @@ export class BotBridge {
   private subscribedSessions = new Set<string>();
   private activeResponseSessions = new Set<string>();
   private contextInjectedSessions = new Set<string>(); // tracks which sessions got platform context
+  private lastChatSendTime = new Map<string, number>(); // sessionKey → timestamp of last chat.send
   private connectionMode: ConnectionMode;
   private mgmtSessionKey: string | null = null;
 
@@ -101,6 +102,7 @@ export class BotBridge {
       this.client.on('event:session.message', (payload: any) => this.handleSessionMessage(payload));
       this.client.on('event:session.tool', () => {});
       this.client.on('event:agent', (payload: any) => this.handleAgentEvent(payload));
+      this.client.on('event:chat', (payload: any) => this.handleChatEvent(payload));
 
       await this.client.connect();
       console.log(`[BotBridge:${this.config.id}] Connected (mode: ${this.connectionMode})`);
@@ -120,6 +122,7 @@ export class BotBridge {
       });
       this.client.on('event:session.message', (payload: any) => this.handleSessionMessage(payload));
       this.client.on('event:agent', (payload: any) => this.handleAgentEvent(payload));
+      this.client.on('event:chat', (payload: any) => this.handleChatEvent(payload));
       await this.client.connect();
 
       for (const sessionKey of this.subscribedSessions) {
@@ -135,24 +138,185 @@ export class BotBridge {
 
   private handleAgentEvent(payload: any) {
     const { runId: gwRunId, stream, data, sessionKey } = payload;
-    if (!gwRunId || !data) return;
+    if (!gwRunId) return;
+    // Debug: log every agent event with matching context
+    if (this.activeStreams.size > 0) {
+      const streamEntries = [...this.activeStreams.entries()].map(([k, v]) => `${k.slice(0,30)}→gwR:${v.gwRunId?.slice(0,20)}`);
+      console.log(`[BotBridge:${this.config.id}] handleAgentEvent: gwRunId=${gwRunId.slice(0,20)} stream=${stream} activeStreams=[${streamEntries.join(', ')}]`);
+    }
+    // data can be empty for some event types, but we still need to process for mapping
 
     // Find matching active stream by gwRunId
-    for (const [, activeStream] of this.activeStreams) {
+    let matched = false;
+    for (const [streamKey, activeStream] of this.activeStreams) {
       if (activeStream.gwRunId === gwRunId) {
+        matched = true;
         // Update activity timestamp for ANY agent event (keeps idle timeout alive during tool calls)
         activeStream.lastActivity = Date.now();
 
-        if (stream === 'assistant' && typeof data.delta === 'string' && data.delta.length > 0) {
+        // If the agent event sessionKey differs from the BotBridge session key,
+        // map it to the same room (this captures the agent main session key)
+        if (sessionKey && !this.sessionRooms.has(sessionKey)) {
+          for (const [rid, sk] of this.roomSessions) {
+            if (streamKey.startsWith(sk + ':')) {
+              this.sessionRooms.set(sessionKey, rid);
+              console.log(`[BotBridge:${this.config.id}] Mapped agent main session ${sessionKey} -> room ${rid}`);
+              break;
+            }
+          }
+          if (!this.sessionRooms.has(sessionKey)) {
+            console.log(`[BotBridge:${this.config.id}] Failed to map: streamKey=${streamKey} roomSessions=${JSON.stringify([...this.roomSessions.entries()].map(([k,v])=>v).slice(0,3))}`);
+          }
+        }
+
+        if (data && stream === 'assistant' && typeof data.delta === 'string' && data.delta.length > 0) {
           activeStream.chunks.push(data.delta);
           for (const listener of activeStream.listeners) listener(data.delta, false);
-        } else if (stream === 'lifecycle' && data.endedAt) {
+        } else if (data && stream === 'lifecycle' && data.endedAt) {
           activeStream.done = true;
+          this.completedRunIds.add(gwRunId);
+          setTimeout(() => this.completedRunIds.delete(gwRunId), 30000);
           for (const listener of activeStream.listeners) listener('', true);
         }
         return;
       }
     }
+    if (!matched && this.activeStreams.size > 0) {
+      const streamGwRunIds = [...this.activeStreams.values()].map(s => s.gwRunId).join(',');
+      console.log(`[BotBridge:${this.config.id}] agent event unmatched: gwRunId=${gwRunId.slice(0,20)} activeStreams=${this.activeStreams.size} streamGwRunIds=${streamGwRunIds}`);
+    }
+  }
+
+  /** Accumulated announce text, keyed by runId */
+  private announceBuffers = new Map<string, { sessionKey: string; chunks: string[]; timer: ReturnType<typeof setTimeout> | null }>();
+  private completedRunIds = new Set<string>();
+
+  /**
+   * Handle 'chat' events from Gateway.
+   * Two responsibilities:
+   * 1. Map agent main session key → room (from regular chat events that match an activeStream)
+   * 2. Capture announce replies and push them to the room
+   */
+  private handleChatEvent(payload: any) {
+    const { runId, sessionKey, state, message } = payload;
+    if (!runId || !sessionKey) return;
+
+    // --- Mapping: learn the agent main session key from ANY chat event ---
+    // When a regular chat event arrives with a runId matching our activeStream,
+    // the sessionKey is the agent main session. Map it to the room.
+    if (!this.sessionRooms.has(sessionKey)) {
+      for (const [, activeStream] of this.activeStreams) {
+        if (activeStream.gwRunId === runId) {
+          // Find which room this activeStream belongs to
+          for (const [streamKey] of this.activeStreams) {
+            if (this.activeStreams.get(streamKey) === activeStream) {
+              for (const [rid, sk] of this.roomSessions) {
+                if (streamKey.startsWith(sk + ':')) {
+                  this.sessionRooms.set(sessionKey, rid);
+                  console.log(`[BotBridge:${this.config.id}] Mapped agent main session ${sessionKey} -> room ${rid} (via chat event)`);
+                  break;
+                }
+              }
+              break;
+            }
+          }
+          break;
+        }
+      }
+    }
+
+    // --- Announce / push-back handling ---
+    // Previously checked for runId.startsWith('announce:'), but Gateway doesn't
+    // use that prefix. Instead, detect "unsolicited" chat events for sessions
+    // we know map to a room but have no active stream (e.g. sub-agent completion
+    // triggers a new agent turn after the original stream ended).
+
+    // Skip if this runId was already handled by streamResponse
+    if (this.completedRunIds.has(runId)) return;
+
+    // Skip if there's an active stream for this session (streamResponse handles it)
+    let hasActiveStream = false;
+    for (const [key] of this.activeStreams) {
+      if (key.startsWith(sessionKey + ':')) {
+        hasActiveStream = true;
+        break;
+      }
+    }
+    if (hasActiveStream || this.activeResponseSessions.has(sessionKey)) {
+      // Active stream exists — streamResponse will handle this
+      return;
+    }
+
+    const roomId = this.sessionRooms.get(sessionKey);
+    if (!roomId || !this.onPushMessage) {
+      if (state === 'final') {
+        console.log(`[BotBridge:${this.config.id}] Chat event (no room mapping): sessionKey=${sessionKey.slice(0,40)} sessionRooms keys=[${[...this.sessionRooms.keys()].map(k => k.slice(0,30)).join(', ')}]`);
+      }
+      return;
+    }
+
+    // Only push back if this session had a recent chat.send from us (within 10 min)
+    // This prevents pushing webchat/other-client turns back to ClawChat
+    const PUSH_BACK_WINDOW_MS = 600000; // 10 min
+    const lastSend = this.lastChatSendTime.get(sessionKey);
+    if (!lastSend || (Date.now() - lastSend > PUSH_BACK_WINDOW_MS)) {
+      if (state === 'final') {
+        console.log(`[BotBridge:${this.config.id}] Push-back skipped (no recent chat.send): sessionKey=${sessionKey.slice(0,40)} lastSend=${lastSend ? new Date(lastSend).toISOString() : 'never'}`);
+      }
+      return;
+    }
+
+    console.log(`[BotBridge:${this.config.id}] Push-back chat event: runId=${runId.slice(0,20)} state=${state} sessionKey=${sessionKey.slice(0,40)} room=${roomId.slice(0,12)}`);
+
+    // Accumulate text from delta messages
+    if (state === 'delta' && message?.content) {
+      const text = this.extractContentValue(message.content);
+      if (text) {
+        let buf = this.announceBuffers.get(runId);
+        if (!buf) {
+          buf = { sessionKey, chunks: [], timer: null };
+          this.announceBuffers.set(runId, buf);
+        }
+        buf.chunks.push(text);
+        if (buf.timer) clearTimeout(buf.timer);
+        buf.timer = setTimeout(() => this.flushAnnounceBuffer(runId, roomId), 3000);
+      }
+    }
+
+    // If we get a final, flush immediately with the complete text
+    if (state === 'final') {
+      if (message?.content) {
+        const text = this.extractContentValue(message.content);
+        if (text) {
+          const buf = this.announceBuffers.get(runId);
+          if (buf?.timer) clearTimeout(buf.timer);
+          this.announceBuffers.delete(runId);
+          console.log(`[BotBridge:${this.config.id}] Chat announce push text: [${text}] len=${text.length}`);
+          if (/^(NO_REPLY|NO|HEARTBEAT_OK)\s*$/i.test(text.trim())) {
+            console.log(`[BotBridge:${this.config.id}] Filtered out NO_REPLY/HEARTBEAT_OK: [${text}]`);
+            return;
+          }
+          console.log(`[BotBridge:${this.config.id}] Chat announce push (final): room=${roomId}`);
+          this.onPushMessage(roomId, this.config.id, text);
+          return;
+        }
+      }
+      this.flushAnnounceBuffer(runId, roomId);
+    }
+  }
+
+  private flushAnnounceBuffer(runId: string, roomId: string) {
+    const buf = this.announceBuffers.get(runId);
+    if (!buf) return;
+    if (buf.timer) clearTimeout(buf.timer);
+    this.announceBuffers.delete(runId);
+
+    const text = buf.chunks.join('');
+    if (!text || !this.onPushMessage) return;
+    if (/^(NO_REPLY|NO|HEARTBEAT_OK)\s*$/i.test(text.trim())) return;
+
+    console.log(`[BotBridge:${this.config.id}] Chat announce push (debounce): room=${roomId} text=${text.slice(0, 80)}...`);
+    this.onPushMessage(roomId, this.config.id, text);
   }
 
   private handleSessionMessage(payload: any) {
@@ -329,6 +493,19 @@ export class BotBridge {
       }
 
       const chatRunId = sendResult?.runId;
+      const actualSessionKey = sendResult?.sessionKey;
+      console.log(`[BotBridge:${this.config.id}] chat.send result: runId=${chatRunId} sessionKey=${sessionKey} actualSessionKey=${actualSessionKey} sendResultKeys=${Object.keys(sendResult || {}).join(',')}`);
+
+      // If Gateway returned a different sessionKey (agent main session),
+      // map it to the same room so announce events can find the room later
+      if (actualSessionKey && actualSessionKey !== sessionKey) {
+        const roomId = this.sessionRooms.get(sessionKey);
+        if (roomId && !this.sessionRooms.has(actualSessionKey)) {
+          this.sessionRooms.set(actualSessionKey, roomId);
+          console.log(`[BotBridge:${this.config.id}] Mapped agent session ${actualSessionKey} -> room ${roomId}`);
+        }
+      }
+
       if (!chatRunId) {
         yield '⚠️ Failed to start AI response';
         return;
@@ -336,6 +513,7 @@ export class BotBridge {
 
       // Link the Gateway runId so handleAgentEvent can match
       stream.gwRunId = chatRunId;
+      this.lastChatSendTime.set(sessionKey, Date.now());
       console.log(`[BotBridge:${this.config.id}] Streaming started, gwRunId=${chatRunId}`);
 
       // Event-driven: yield chunks as they arrive via handleAgentEvent
