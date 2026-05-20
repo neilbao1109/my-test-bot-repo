@@ -134,7 +134,7 @@ export default function MessageBubble({ message, isStreaming, streamContent, hig
   const toggleMessageSelection = useAppStore((s) => s.toggleMessageSelection);
   const isCtxSelected = ctxSelectMode && replyContext.some(m => m.id === message.id);
   const [showActions, setShowActions] = useState(false);
-  const [showHoverDots, setShowHoverDots] = useState(false);
+
   const [showReactions, setShowReactions] = useState(false);
   const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
   const [isEditing, setIsEditing] = useState(false);
@@ -264,8 +264,7 @@ export default function MessageBubble({ message, isStreaming, streamContent, hig
         isCtxSelected && 'bg-primary-500/15',
       )}
       onClick={ctxSelectMode ? (e) => { e.stopPropagation(); if (isCtxSelected) { removeReplyContext(message.id); } else if (replyContext.length < 5) { addReplyContext(message); } } : selectionMode ? (e) => { e.stopPropagation(); toggleMessageSelection(message.id); } : undefined}
-      onMouseEnter={() => !isMobile && !selectionMode && setShowHoverDots(true)}
-      onMouseLeave={() => { if (!isMobile) { setShowHoverDots(false); setShowActions(false); setShowReactions(false); } }}
+      onMouseLeave={() => { if (!isMobile) { setShowActions(false); setShowReactions(false); } }}
     >
       {/* Selection checkbox */}
       {selectionMode && (
@@ -529,8 +528,8 @@ export default function MessageBubble({ message, isStreaming, streamContent, hig
         )}
       </div>
 
-      {/* ⋮ menu button - mobile always, desktop on hover */}
-      {(isMobile || showHoverDots || showActions) && !isStreaming && !message.isDeleted && (
+      {/* ⋮ menu button - always visible */}
+      {!isStreaming && !message.isDeleted && (
         <button
           onClick={() => setShowActions(!showActions)}
           className="flex-shrink-0 self-start mt-1 p-1 text-dark-muted/40 hover:text-dark-muted rounded transition"
