@@ -748,8 +748,9 @@ export function setupSocketHandlers(io: Server) {
     socket.on('message:send', async (data: { roomId: string; content: string; threadId?: string; replyTo?: string; type?: string; contextIds?: string[] }) => {
       if (!socket.userId) return;
 
-      // Check if it's a command
-      const cmd = parseCommand(data.content);
+      // Slash commands disabled — treat as regular messages
+      // const cmd = parseCommand(data.content);
+      const cmd = null as ReturnType<typeof parseCommand>;
       if (cmd) {
         const userMsg = createMessage({
           roomId: data.roomId,

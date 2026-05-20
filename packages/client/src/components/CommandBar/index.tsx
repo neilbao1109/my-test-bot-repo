@@ -4,15 +4,7 @@ import { useT } from '../../hooks/useT';
 import { socketService } from '../../services/socket';
 import { uploadFile } from '../../services/upload';
 
-const COMMANDS = [
-  { name: 'help', descKey: 'command.help' as const },
-  { name: 'clear', descKey: 'command.clear' as const },
-  { name: 'model', descKey: 'command.model' as const },
-  { name: 'system', descKey: 'command.system' as const },
-  { name: 'status', descKey: 'command.status' as const },
-  { name: 'export', descKey: 'command.export' as const },
-  { name: 'thread', descKey: 'command.thread' as const },
-];
+const COMMANDS: { name: string; descKey: string }[] = []; // disabled
 
 interface CommandBarProps {
   roomId: string;
@@ -407,7 +399,7 @@ export default function CommandBar({ roomId, threadId, onExport }: CommandBarPro
               }`}
             >
               <span className="text-sm font-mono text-primary-400">/{cmd.name}</span>
-              <span className="text-xs text-dark-muted">{t(cmd.descKey)}</span>
+              <span className="text-xs text-dark-muted">{t(cmd.descKey as any)}</span>
             </button>
           ))}
         </div>
