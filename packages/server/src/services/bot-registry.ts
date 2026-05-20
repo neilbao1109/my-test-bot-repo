@@ -637,7 +637,11 @@ export async function tokenPairConnect(config: {
   const pairId = config.clientId;
 
   try {
-    await client.connect();
+    // Race connect against a 15s timeout
+    await Promise.race([
+      client.connect(),
+      new Promise<never>((_, reject) => setTimeout(() => reject(new Error('Connection timed out')), 15000)),
+    ]);
     // Connected successfully — device already approved
     pendingPairs.set(pairId, { client, url: effectiveUrl, bootstrapToken: '', createdAt: Date.now() });
     return { ok: true, pairId, deviceId: client.deviceId, gatewayUrl: effectiveUrl };
