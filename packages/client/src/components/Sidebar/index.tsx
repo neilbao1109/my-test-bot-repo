@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef, useCallback } from 'react';
+import { useState, useMemo, useRef } from 'react';
 import clsx from 'clsx';
 import { useT } from '../../hooks/useT';
 import { useAppStore } from '../../stores/appStore';
@@ -50,59 +50,7 @@ export default function Sidebar() {
   const setShowSearchPanel = useAppStore(s => s.setShowSearchPanel);
   const t = useT();
 
-  // Pull-to-refresh (ref-based to avoid re-renders during drag)
-  const [refreshing, setRefreshing] = useState(false);
-  const touchStartY = useRef(0);
-  const pullDistRef = useRef(0);
   const listRef = useRef<HTMLDivElement>(null);
-  const indicatorRef = useRef<HTMLDivElement>(null);
-  const PULL_THRESHOLD = 50;
-
-  const handleTouchStart = useCallback((e: React.TouchEvent) => {
-    if (listRef.current && listRef.current.scrollTop === 0 && !refreshing) {
-      touchStartY.current = e.touches[0].clientY;
-    } else {
-      touchStartY.current = 0;
-    }
-  }, [refreshing]);
-
-  const handleTouchMove = useCallback((e: React.TouchEvent) => {
-    if (!touchStartY.current || refreshing) return;
-    const dy = e.touches[0].clientY - touchStartY.current;
-    if (dy > 0 && listRef.current && listRef.current.scrollTop === 0) {
-      const dist = Math.min(dy * 0.4, 80);
-      pullDistRef.current = dist;
-      if (indicatorRef.current) {
-        indicatorRef.current.style.height = `${dist}px`;
-        indicatorRef.current.style.opacity = '1';
-        indicatorRef.current.textContent = dist >= PULL_THRESHOLD ? t('sidebar.pullRelease') : t('sidebar.pullDown');
-      }
-    }
-  }, [refreshing]);
-
-  const handleTouchEnd = useCallback(async () => {
-    const dist = pullDistRef.current;
-    pullDistRef.current = 0;
-    touchStartY.current = 0;
-    if (dist >= PULL_THRESHOLD && !refreshing) {
-      if (indicatorRef.current) {
-        indicatorRef.current.style.height = `${PULL_THRESHOLD}px`;
-        indicatorRef.current.textContent = t('sidebar.refreshing');
-      }
-      setRefreshing(true);
-      try {
-        const result = await socketService.refreshRooms();
-        if (result?.rooms) {
-          useAppStore.getState().setRooms(result.rooms);
-        }
-      } catch (_) {}
-      setRefreshing(false);
-    }
-    if (indicatorRef.current) {
-      indicatorRef.current.style.height = '0px';
-      indicatorRef.current.style.opacity = '0';
-    }
-  }, [refreshing]);
 
   const isMobile = window.innerWidth < 768;
 
@@ -235,16 +183,7 @@ export default function Sidebar() {
       <div
         ref={listRef}
         className="flex-1 overflow-y-auto py-2 relative"
-        onTouchStart={handleTouchStart}
-        onTouchMove={handleTouchMove}
-        onTouchEnd={handleTouchEnd}
       >
-        {/* Pull-to-refresh indicator */}
-        <div
-          ref={indicatorRef}
-          className="flex items-center justify-center text-xs text-dark-muted overflow-hidden transition-opacity"
-          style={{ height: 0, opacity: 0 }}
-        />
         {sortedRooms.map((room) => {
           const memberCount = (roomMembers[room.id] || []).length;
           const online = isRoomOnline(room.id);

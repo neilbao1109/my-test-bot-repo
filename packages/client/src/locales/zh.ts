@@ -358,9 +358,6 @@ const zh = {
   'sidebar.weekdays': '周日,周一,周二,周三,周四,周五,周六',
   'sidebar.filePreview': '📎 文件',
   'sidebar.systemMessage': '⚙️ 系统消息',
-  'sidebar.pullRelease': '↑ 释放刷新',
-  'sidebar.pullDown': '↓ 下拉刷新',
-  'sidebar.refreshing': '↻ 刷新中...',
   'sidebar.menu': '菜单',
 
   // FolderEditModal

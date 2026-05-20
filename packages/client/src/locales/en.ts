@@ -358,9 +358,6 @@ const en: Record<LocaleKeys, string> = {
   'sidebar.weekdays': 'Sun,Mon,Tue,Wed,Thu,Fri,Sat',
   'sidebar.filePreview': '📎 File',
   'sidebar.systemMessage': '⚙️ System',
-  'sidebar.pullRelease': '↑ Release to refresh',
-  'sidebar.pullDown': '↓ Pull to refresh',
-  'sidebar.refreshing': '↻ Refreshing...',
   'sidebar.menu': 'Menu',
 
   // FolderEditModal
