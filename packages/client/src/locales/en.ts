@@ -99,6 +99,7 @@ const en: Record<LocaleKeys, string> = {
   'command.messagesCount': '📎 {count} messages',
   'command.add': '+ Add',
   'command.file': 'File',
+  'command.photoVideo': 'Photo / Video',
   'command.exportChat': 'Export Chat',
   'command.archivedPlaceholder': 'Bot is deactivated, cannot send messages',
   'command.recording': 'Recording...',
