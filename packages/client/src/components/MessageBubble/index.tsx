@@ -12,6 +12,7 @@ import { socketService } from '../../services/socket';
 import { formatFileSize } from '../../utils/format';
 import UserAvatar from '../UserAvatar';
 import FilePreviewModal from '../FilePreviewModal';
+import MessageActionOverlay from './MessageActionOverlay';
 
 function CodeBlockPre({ text, children }: { text: string; children: React.ReactNode }) {
   const [copied, setCopied] = useState(false);
@@ -145,7 +146,7 @@ export default function MessageBubble({ message, isStreaming, streamContent, hig
   const t = useT();
   const editRef = useRef<HTMLTextAreaElement>(null);
   const reactionRef = useRef<HTMLDivElement>(null);
-  const actionsRef = useRef<HTMLDivElement>(null);
+
 
   const members = activeRoomId ? roomMembers[activeRoomId] || [] : [];
   const sender = members.find((m) => m.id === message.userId);
@@ -168,9 +169,7 @@ export default function MessageBubble({ message, isStreaming, streamContent, hig
       if (reactionRef.current && !reactionRef.current.contains(e.target as Node)) {
         setShowReactions(false);
       }
-      if (actionsRef.current && !actionsRef.current.contains(e.target as Node)) {
-        setShowActions(false);
-      }
+
     };
     document.addEventListener('mousedown', handler);
     document.addEventListener('touchstart', handler);
@@ -542,110 +541,89 @@ export default function MessageBubble({ message, isStreaming, streamContent, hig
         </button>
       )}
 
-      {/* Action buttons */}
+      {/* Action overlay */}
       {showActions && !isEditing && !isStreaming && (
-        <div ref={actionsRef} className="absolute right-4 -top-3 grid grid-cols-3 gap-1 bg-dark-surface border border-dark-border rounded-xl shadow-lg p-1.5 z-40 min-w-[210px]">
-          <button
-            onClick={() => setShowReactions(!showReactions)}
-            className="flex items-center gap-1.5 px-2 py-2 text-dark-muted hover:text-dark-text hover:bg-dark-hover rounded-lg transition text-xs"
-          >
-            <span className="text-sm w-4 text-center flex-shrink-0">😀</span><span>{t('message.react')}</span>
-          </button>
-          <button
-            onClick={() => {
-              const text = message.type === 'file'
-                ? (() => { try { return JSON.parse(message.content).url || message.content; } catch { return message.content; } })()
-                : message.content;
-              if (navigator.clipboard?.writeText) {
-                navigator.clipboard.writeText(text);
-              } else {
-                const ta = document.createElement('textarea');
-                ta.value = text;
-                ta.style.position = 'fixed';
-                ta.style.opacity = '0';
-                document.body.appendChild(ta);
-                ta.select();
-                document.execCommand('copy');
-                document.body.removeChild(ta);
+        <MessageActionOverlay
+          message={message}
+          senderName={sender?.username || t('common.unknown')}
+          isBot={isBot}
+          isOwnMessage={isOwn}
+          isPinned={isPinned}
+          copied={copied}
+          speaking={speaking}
+          onClose={() => setShowActions(false)}
+          onAction={(action) => {
+            switch (action) {
+              case 'react':
+                setShowReactions(true);
+                setShowActions(false);
+                break;
+              case 'copy': {
+                const text = message.type === 'file'
+                  ? (() => { try { return JSON.parse(message.content).url || message.content; } catch { return message.content; } })()
+                  : message.content;
+                if (navigator.clipboard?.writeText) {
+                  navigator.clipboard.writeText(text);
+                } else {
+                  const ta = document.createElement('textarea');
+                  ta.value = text;
+                  ta.style.position = 'fixed';
+                  ta.style.opacity = '0';
+                  document.body.appendChild(ta);
+                  ta.select();
+                  document.execCommand('copy');
+                  document.body.removeChild(ta);
+                }
+                setCopied(true);
+                setTimeout(() => setCopied(false), 1500);
+                break;
               }
-              setCopied(true);
-              setTimeout(() => setCopied(false), 1500);
-            }}
-            className="flex items-center gap-1.5 px-2 py-2 text-dark-muted hover:text-dark-text hover:bg-dark-hover rounded-lg transition text-xs"
-          >
-            <span className="text-sm w-4 text-center flex-shrink-0">{copied ? '✅' : '📋'}</span><span>{t('message.copy')}</span>
-          </button>
-          {message.type !== 'file' && (
-            <button
-              onClick={() => {
+              case 'reply':
+                setReplyContext([message]);
+                setTimeout(() => document.querySelector<HTMLTextAreaElement>('.command-bar-input')?.focus(), 50);
+                break;
+              case 'thread':
+                handleStartThread();
+                break;
+              case 'pin':
+                handlePin();
+                break;
+              case 'forward':
+                useAppStore.getState().toggleSelectionMode();
+                useAppStore.getState().toggleMessageSelection(message.id);
+                break;
+              case 'speak': {
                 if (speaking) {
                   speechSynthesis.cancel();
                   setSpeaking(false);
                   return;
                 }
-                // Strip markdown syntax for cleaner speech
-                const text = message.content
+                const spText = message.content
                   .replace(/```[\s\S]*?```/g, ' code block ')
                   .replace(/`([^`]+)`/g, '$1')
                   .replace(/[#*_~>\[\]()!|-]/g, '')
                   .replace(/\n+/g, '. ')
                   .trim();
-                if (!text) return;
+                if (!spText) return;
                 speechSynthesis.cancel();
-                const utterance = new SpeechSynthesisUtterance(text);
-                utterance.lang = /[\u4e00-\u9fa5]/.test(text) ? 'zh-CN' : 'en-US';
+                const utterance = new SpeechSynthesisUtterance(spText);
+                utterance.lang = /[\u4e00-\u9fa5]/.test(spText) ? 'zh-CN' : 'en-US';
                 utterance.onend = () => setSpeaking(false);
                 utterance.onerror = () => setSpeaking(false);
                 setSpeaking(true);
                 speechSynthesis.speak(utterance);
-              }}
-              className="flex items-center gap-1.5 px-2 py-2 text-dark-muted hover:text-dark-text hover:bg-dark-hover rounded-lg transition text-xs"
-            >
-              <span className="text-sm w-4 text-center flex-shrink-0">{speaking ? '⏹️' : '🔊'}</span><span>{speaking ? t('message.stop') : t('message.read')}</span>
-            </button>
-          )}
-          <button
-            onClick={() => { setReplyContext([message]); setShowActions(false); setTimeout(() => document.querySelector<HTMLTextAreaElement>('.command-bar-input')?.focus(), 50); }}
-            className="flex items-center gap-1.5 px-2 py-2 text-dark-muted hover:text-dark-text hover:bg-dark-hover rounded-lg transition text-xs"
-          >
-            <span className="text-sm w-4 text-center flex-shrink-0">↩️</span><span>{t('message.reply')}</span>
-          </button>
-          <button
-            onClick={handleStartThread}
-            className="flex items-center gap-1.5 px-2 py-2 text-dark-muted hover:text-dark-text hover:bg-dark-hover rounded-lg transition text-xs"
-          >
-            <span className="text-sm w-4 text-center flex-shrink-0">🧵</span><span>{t('message.thread')}</span>
-          </button>
-          <button
-            onClick={handlePin}
-            className={clsx('flex items-center gap-1.5 px-2 py-2 hover:bg-dark-hover rounded-lg transition text-xs', isPinned ? 'text-primary-400' : 'text-dark-muted hover:text-dark-text')}
-          >
-            <span className="text-sm w-4 text-center flex-shrink-0">{isPinned ? '📍' : '📌'}</span><span>{isPinned ? t('message.unpin') : t('message.pin')}</span>
-          </button>
-          <button
-            onClick={() => { useAppStore.getState().toggleSelectionMode(); useAppStore.getState().toggleMessageSelection(message.id); }}
-            className="flex items-center gap-1.5 px-2 py-2 text-dark-muted hover:text-dark-text hover:bg-dark-hover rounded-lg transition text-xs"
-          >
-            <span className="text-sm w-4 text-center flex-shrink-0">↗️</span><span>{t('message.forward')}</span>
-          </button>
-          {isOwn && (
-            <>
-              <div className="col-span-3 h-px bg-dark-border mx-0.5 my-0.5" />
-              <button
-                onClick={() => { setIsEditing(true); setEditContent(message.content); }}
-                className="flex items-center gap-1.5 px-2 py-2 text-dark-muted hover:text-dark-text hover:bg-dark-hover rounded-lg transition text-xs"
-              >
-                <span className="text-sm w-4 text-center flex-shrink-0">✏️</span><span>{t('message.edit')}</span>
-              </button>
-              <button
-                onClick={handleDelete}
-                className="flex items-center gap-1.5 px-2 py-2 text-dark-muted hover:text-red-400 hover:bg-dark-hover rounded-lg transition text-xs"
-              >
-                <span className="text-sm w-4 text-center flex-shrink-0">🗑️</span><span>{t('message.delete')}</span>
-              </button>
-            </>
-          )}
-        </div>
+                break;
+              }
+              case 'edit':
+                setIsEditing(true);
+                setEditContent(message.content);
+                break;
+              case 'delete':
+                handleDelete();
+                break;
+            }
+          }}
+        />
       )}
 
       {/* Reaction picker - positioned relative to parent */}
