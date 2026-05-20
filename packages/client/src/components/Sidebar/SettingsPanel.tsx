@@ -331,6 +331,15 @@ function BotsSubPage({ onBack }: { onBack: () => void }) {
 
   useEffect(() => {
     loadBots();
+    // Refresh bot list when a new bot is registered
+    const socket = socketService.getSocket();
+    const onBotChanged = () => loadBots();
+    socket?.on('bot:registered', onBotChanged);
+    socket?.on('bot:restored', onBotChanged);
+    return () => {
+      socket?.off('bot:registered', onBotChanged);
+      socket?.off('bot:restored', onBotChanged);
+    };
   }, []);
 
   const handleTogglePause = async (bot: any) => {
