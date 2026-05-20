@@ -321,6 +321,22 @@ export const useAppStore = create<AppState>((set, get) => ({
             [finalMessage.roomId]: [...roomMessages, finalMessage],
           };
         }
+        // Update room's lastMessage for sidebar preview
+        const members = s.roomMembers[finalMessage.roomId] || [];
+        const sender = members.find(m => m.id === finalMessage.userId);
+        newState.rooms = (newState.rooms || s.rooms).map(r =>
+          r.id === finalMessage.roomId
+            ? {
+                ...r,
+                lastMessage: {
+                  content: finalMessage.content,
+                  type: finalMessage.type,
+                  senderName: sender?.username || 'Unknown',
+                  createdAt: finalMessage.createdAt,
+                },
+              }
+            : r
+        );
       }
       return newState as any;
     }),
