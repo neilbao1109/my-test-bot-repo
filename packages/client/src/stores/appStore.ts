@@ -178,6 +178,10 @@ interface AppState {
   // Friend profile
   friendProfileUser: User | null;
   setFriendProfileUser: (user: User | null) => void;
+
+  // Capabilities
+  capabilities: { stt: boolean; tts: boolean };
+  setCapabilities: (caps: { stt: boolean; tts: boolean }) => void;
 }
 
 export const useAppStore = create<AppState>((set, get) => ({
@@ -600,6 +604,10 @@ export const useAppStore = create<AppState>((set, get) => ({
   // Friend profile
   friendProfileUser: null,
   setFriendProfileUser: (user) => set({ friendProfileUser: user }),
+
+  // Capabilities
+  capabilities: { stt: false, tts: false },
+  setCapabilities: (caps) => set({ capabilities: caps }),
 }));
 
 // Sync image quality on load

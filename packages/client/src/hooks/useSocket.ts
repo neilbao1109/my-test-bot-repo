@@ -199,6 +199,10 @@ export function useSocket() {
       store.removeFriendFromList(data.userId);
     });
 
+    socket.on('capabilities', (data: { stt: boolean; tts: boolean }) => {
+      useAppStore.getState().setCapabilities(data);
+    });
+
     // Bot lifecycle events
     socket.on('bot:status-changed', (data: { botId: string; status: string }) => {
       // Refresh rooms to get updated archived_at states
@@ -263,6 +267,7 @@ export function useSocket() {
       socket.off('friend:new');
       socket.off('friend:accepted');
       socket.off('friend:removed');
+      socket.off('capabilities');
       socket.off('bot:registered');
       socket.off('bot:status-changed');
       socket.off('bot:deregistered');

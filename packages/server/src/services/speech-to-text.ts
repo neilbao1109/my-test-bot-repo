@@ -10,6 +10,10 @@ import { execFile } from 'child_process';
 const AZURE_SPEECH_KEY = process.env.AZURE_SPEECH_KEY || '';
 const AZURE_SPEECH_REGION = process.env.AZURE_SPEECH_REGION || '';
 
+export function isSttAvailable(): boolean {
+  return !!(process.env.AZURE_SPEECH_KEY && process.env.AZURE_SPEECH_REGION);
+}
+
 /**
  * Convert audio file to WAV format using ffmpeg.
  * Azure Speech REST API works best with WAV (PCM 16kHz mono 16-bit).

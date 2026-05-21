@@ -9,8 +9,8 @@ import { initBotRegistry, getRespondingBots, isBotUser, getAllBots, getBot, getA
 import { shareBot, acceptBotShare, revokeBotShare, getBotShares, getPublicBots, addPublicBotToUser } from '../services/bot-share.js';
 import { pinMessage, unpinMessage, getPinnedMessages } from '../services/pin.js';
 import { createInvitation, acceptInvitation, rejectInvitation, getPendingInvitations, getInvitationCount } from '../services/invitation.js';
-import { transcribeAudio } from '../services/speech-to-text.js';
-import { textToSpeech } from '../services/text-to-speech.js';
+import { transcribeAudio, isSttAvailable } from '../services/speech-to-text.js';
+import { textToSpeech, isTtsAvailable } from '../services/text-to-speech.js';
 import fs from 'fs';
 import { sendFriendRequest, acceptFriendRequest, rejectFriendRequest, removeFriend, getFriends, getFriendRequests, searchUsersByEmail, areFriends } from '../services/friendship.js';
 import { copyFileToUploads } from '../routes/upload.js';
@@ -125,6 +125,9 @@ export function setupSocketHandlers(io: Server) {
       }
 
       const pendingInvitationCount = getInvitationCount(user.id);
+
+      // Send capabilities to client
+      socket.emit('capabilities', { stt: isSttAvailable(), tts: isTtsAvailable() });
 
       callback({ user, pendingInvitationCount, rooms: rooms.map(r => {
         const lastMsg = getLastMessage(r.id);

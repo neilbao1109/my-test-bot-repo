@@ -41,6 +41,7 @@ export default function CommandBar({ roomId, threadId, onExport }: CommandBarPro
   const speechSupported = !!SpeechRecognition;
 
   const { rooms, roomMembers, activeRoomId, replyContext, clearReplyContext, removeReplyContext, setContextSelectionMode, mobileView, user } = useAppStore();
+  const { stt: sttEnabled } = useAppStore(s => s.capabilities);
   const members = activeRoomId ? roomMembers[activeRoomId] || [] : [];
   const currentRoom = rooms.find(r => r.id === roomId);
   const t = useT();
@@ -567,7 +568,7 @@ export default function CommandBar({ roomId, threadId, onExport }: CommandBarPro
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19V5m0 0l-7 7m7-7l7 7" />
             </svg>
           </button>
-        ) : (
+        ) : sttEnabled && (
           <button
             onClick={startRecording}
             disabled={uploading || isArchived}

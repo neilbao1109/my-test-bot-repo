@@ -2,6 +2,7 @@ import { useEffect, useCallback, useState } from 'react';
 import { createPortal } from 'react-dom';
 import clsx from 'clsx';
 import { useT } from '../../hooks/useT';
+import { useAppStore } from '../../stores/appStore';
 import UserAvatar from '../UserAvatar';
 import { formatDistanceToNow } from 'date-fns';
 import type { Message } from '../../types';
@@ -32,6 +33,7 @@ export default function MessageActionOverlay({
   onAction,
 }: MessageActionOverlayProps) {
   const t = useT();
+  const { tts: ttsEnabled } = useAppStore(s => s.capabilities);
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {
@@ -185,7 +187,7 @@ export default function MessageActionOverlay({
             <span className="text-base w-5 text-center">↗️</span>
             <span>{t('message.forward')}</span>
           </button>
-          {message.type !== 'file' && (
+          {message.type !== 'file' && ttsEnabled && (
             <button
               onClick={() => handleAction('speak')}
               className="w-full flex items-center gap-3 px-3 py-3 md:py-2.5 text-dark-muted hover:text-dark-text hover:bg-dark-hover rounded-xl transition text-sm"

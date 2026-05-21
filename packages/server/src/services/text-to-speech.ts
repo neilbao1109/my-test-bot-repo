@@ -8,6 +8,10 @@ import path from 'path';
 
 const AZURE_SPEECH_KEY = process.env.AZURE_SPEECH_KEY || '';
 const AZURE_SPEECH_REGION = process.env.AZURE_SPEECH_REGION || '';
+
+export function isTtsAvailable(): boolean {
+  return !!(process.env.AZURE_SPEECH_KEY && process.env.AZURE_SPEECH_REGION);
+}
 const TTS_TEMP_DIR = '/tmp/clawchat-tts';
 const MAX_TTS_CHARS = 500;
 
