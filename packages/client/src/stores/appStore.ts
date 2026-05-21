@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import type { User, Room, Message, Thread, StreamingMessage, TypingUser, PinnedMessage, ChatFolder } from '../types';
 import { clearToken } from '../services/auth';
 import { socketService } from '../services/socket';
+import { clearCache } from '../services/cache';
 import type { ImageQuality } from '../services/upload';
 import { setDefaultImageQuality } from '../services/upload';
 import type { SupportedLocale } from '../locales';
@@ -191,6 +192,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   logout: () => {
     clearToken();
     socketService.disconnect();
+    clearCache();
     set({ user: null, rooms: [], activeRoomId: null, messages: {}, roomMembers: {}, threadInfo: {}, streamingMessages: {}, typingUsers: {}, onlineUsers: new Set<string>() });
   },
 
