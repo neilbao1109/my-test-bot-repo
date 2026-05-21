@@ -1,19 +1,59 @@
 # ClawChat 💬
 
-A web-based chat application for talking with AI bots, powered by OpenClaw.
+A self-hosted web chat app for talking with AI bots, powered by [OpenClaw](https://github.com/openclaw/openclaw). Register multiple bots, share them with friends, and chat in real-time.
 
 ## Features
 
-- **💬 Single & Multi-user Chat** — DM with a bot or invite multiple people to a room
-- **🧵 Threads** — Open threads on any message for focused discussion
-- **⚡ Streaming Responses** — Bot replies stream in real-time, character by character
-- **📝 Markdown + Code Highlighting** — Rich message rendering with syntax highlighting
-- **🎯 Slash Commands** — `/help`, `/clear`, `/model`, `/status`, `/system`, `/export`, `/thread`
-- **😀 Reactions** — Emoji reactions on any message
-- **✏️ Edit & Delete** — Edit or delete your own messages
-- **⌨️ Typing Indicators** — See when others are typing
-- **🌙 Dark Theme** — Modern dark UI, responsive for desktop and mobile
-- **🤖 OpenClaw Integration** — Real AI responses via OpenClaw Gateway (with mock fallback)
+### 💬 Chat
+- **Real-time messaging** — Socket.IO with streaming bot responses
+- **Threads** — focused side-conversations on any message
+- **Reactions** — emoji reactions on messages
+- **Reply / Quote** — reply to specific messages with context
+- **Edit & Delete** — edit or delete your own messages
+- **Message forwarding** — forward individual or merged messages to other rooms
+- **Pin messages** — pin important messages for quick reference
+- **Typing indicators** — see when others are typing
+- **Markdown rendering** — rich text with syntax-highlighted code blocks
+
+### 🤖 Bot Management
+- **Multi-bot support** — register multiple OpenClaw bots, each with its own Gateway connection
+- **UI-based registration** — register bots via the app (OpenClaw Pair protocol + token mode)
+- **Bot lifecycle** — pause, resume, deregister, and restore bots
+- **Bot sharing** — share your registered bots with other users via invitation
+- **Skill deployment** — deploy custom skills to bots through the UI
+- **Platform context** — inject system-level context into bot conversations
+
+### 👥 Social
+- **User auth** — email/password registration and login (JWT)
+- **Friend system** — send/accept friend requests, manage friend list
+- **Invitations** — room invites, bot share invites with accept/reject flow
+- **Group chat** — create rooms and invite multiple users + bots
+
+### 🔍 Search
+- **Global search** — two-layer search: rooms first, then messages within a room
+- **Search highlighting** — matched keywords highlighted with context snippets
+- **Jump to message** — click a search result to scroll to and highlight the original message
+
+### 🎤 Voice
+- **Speech-to-text** — voice input via Azure Speech Service
+- **Text-to-speech** — bot messages read aloud via Azure Speech Service
+
+### 📎 Files
+- **File & image upload** — drag-and-drop or click to upload
+- **Client-side image compression** — 4 quality tiers (original / high / medium / low)
+- **File preview** — inline image preview and file download
+
+### 🌐 Internationalization
+- **Chinese & English** — full i18n coverage with `zh` and `en` locales
+- **Switchable in settings** — no restart needed
+
+### 📱 Mobile & PWA
+- **Responsive layout** — optimized for desktop and mobile
+- **iOS/Android touch** — long-press menus, touch-friendly interactions
+- **Dark / Light theme** — toggle in settings
+
+### 📣 Push Notifications
+- **HTTP webhook** — `POST /api/push` endpoint for external integrations (cron jobs, CI, etc.)
 
 ## Tech Stack
 
@@ -23,10 +63,14 @@ A web-based chat application for talking with AI bots, powered by OpenClaw.
 | Styling | Tailwind CSS |
 | State | Zustand |
 | Realtime | Socket.IO |
-| Backend | Node.js + Express |
+| Backend | Node.js + Express + TypeScript |
 | Database | SQLite (better-sqlite3) |
-| AI | OpenClaw Gateway (WebSocket) |
+| Auth | JWT (jsonwebtoken + bcrypt) |
+| File Upload | Multer |
+| AI Backend | OpenClaw Gateway (WebSocket, ed25519 device auth) |
+| Voice | Azure Speech Service (STT + TTS) |
 | Markdown | react-markdown + remark-gfm + rehype-highlight |
+| i18n | Custom locale system (zh / en) |
 
 ## Quick Start
 
@@ -38,115 +82,148 @@ cd my-test-bot-repo
 # Install dependencies
 npm install
 
-# Configure OpenClaw (required for real AI responses)
+# Configure server
 cp packages/server/.env.example packages/server/.env
-# Edit .env and set OPENCLAW_AUTH_TOKEN (see below)
+# Edit .env — see Environment Variables below
 
-# Start server (port 3001)
-cd packages/server && npm run dev
-
-# In another terminal, start client (port 5173)
-cd packages/client && npm run dev
+# Start both server and client
+npm run dev
+# Or separately:
+#   npm run dev:server   → server on port 3001
+#   npm run dev:client   → client on port 5173
 ```
 
-Open http://localhost:5173 in your browser.
+Open http://localhost:5173, register an account, then register a bot to start chatting.
 
-## OpenClaw Integration
+## Bot Registration
 
-ClawChat connects to an OpenClaw Gateway for real AI responses. Three connection modes are supported:
+ClawChat uses a **multi-bot architecture** — each user can register their own bots, each connecting to an OpenClaw Gateway independently.
 
-### Mode 1 — Local (simplest)
+### How to Register a Bot
 
-Run ClawChat on the same machine as OpenClaw Gateway.
+1. Open **Settings** → **Bots** → **Register Bot**
+2. Enter the Gateway URL and auth credentials
+3. The app initiates the OpenClaw Pair protocol (ed25519 device auth)
+4. Once paired, the bot appears in your bot list and is ready to chat
 
-```bash
-# .env
-OPENCLAW_AUTH_TOKEN=your_token
-```
+### Bot Features
 
-Get your token: `openclaw config get gateway.auth.token`
+- **Pause / Resume** — temporarily disable a bot without losing its config
+- **Deregister / Restore** — soft-delete with option to restore later
+- **Share** — invite other users to use your registered bot
+- **Skills** — deploy custom skills to a bot through the UI
 
-### Mode 2 — Remote (direct URL)
+### Without a Gateway
 
-Connect to a remote Gateway directly. Requires the Gateway port to be reachable (via Tailscale, VPN, or exposed port).
+If you don't have an OpenClaw Gateway, you can still use the app for group messaging between users — just skip bot registration.
 
-```bash
-# .env
-OPENCLAW_GATEWAY_URL=ws://your-server:18789
-OPENCLAW_AUTH_TOKEN=your_token
-```
-
-### Mode 3 — Remote (auto SSH tunnel)
-
-ClawChat automatically creates an SSH tunnel to the remote Gateway. No need to manually manage tunnels or expose ports.
-
-```bash
-# .env
-OPENCLAW_SSH_HOST=user@your-server
-OPENCLAW_AUTH_TOKEN=your_token
-
-# Optional:
-# OPENCLAW_SSH_KEY=~/.ssh/id_ed25519
-# OPENCLAW_SSH_PORT=22
-# OPENCLAW_REMOTE_GW_PORT=18789
-```
-
-The SSH tunnel auto-reconnects if the connection drops.
-
-### Mode 4 — Mock (no token)
-
-Without `OPENCLAW_AUTH_TOKEN`, the bot returns demo responses. Useful for frontend development.
-
-### How It Works
-
-```
-┌──────────┐     Socket.IO     ┌───────────────┐     WS      ┌──────────────────┐
-│ Browser  │ ◄──────────────── │ ClawChat      │ ◄────────── │ OpenClaw Gateway │
-│ (React)  │ ──────────────▶   │ Server        │ ──────────▶ │ (local/remote)   │
-└──────────┘                   │               │             └──────────────────┘
-                               │  SSH tunnel?  │──── ssh ───▶ (auto if Mode 3)
-                               └───────────────┘
-```
-
-### Environment Variables
+## Environment Variables
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `OPENCLAW_AUTH_TOKEN` | _(none)_ | Gateway auth token (required for AI) |
-| `OPENCLAW_GATEWAY_URL` | `ws://127.0.0.1:18789` | Direct Gateway URL (Mode 2) |
-| `OPENCLAW_SSH_HOST` | _(none)_ | SSH host for tunnel (Mode 3) |
-| `OPENCLAW_SSH_PORT` | `22` | SSH port |
-| `OPENCLAW_SSH_KEY` | _(default)_ | Path to SSH private key |
-| `OPENCLAW_REMOTE_GW_PORT` | `18789` | Gateway port on remote host |
-| `OPENCLAW_LOCAL_GW_PORT` | `0` (auto) | Local port for SSH tunnel |
-| `OPENCLAW_AGENT_ID` | `default` | Which OpenClaw agent to use |
-| `PORT` | `3001` | ClawChat server port |
-| `CLIENT_URL` | `http://localhost:5173` | Client URL for CORS |
+| `PORT` | `3001` | Server port |
+| `HOST` | `0.0.0.0` | Server bind address |
+| `JWT_SECRET` | _(random)_ | Secret for signing JWT tokens. Set this to persist sessions across restarts |
+| `PUBLIC_URL` | _(none)_ | Public URL of the server (for remote bot connections) |
+| `CORS_ORIGIN` | `*` | Allowed CORS origin for Socket.IO |
+| `AZURE_SPEECH_KEY` | _(none)_ | Azure Speech Service key (for STT + TTS) |
+| `AZURE_SPEECH_REGION` | _(none)_ | Azure Speech Service region |
+| `CLAWCHAT_PUSH_SECRET` | _(none)_ | Optional secret for push webhook auth |
+| `BOTS_CONFIG` | _(none)_ | JSON array of pre-configured system bots (optional) |
+
+> **Note:** Gateway connection settings (URL, auth token) are per-bot and configured through the UI, not via environment variables.
 
 ## Project Structure
 
 ```
 packages/
-├── client/                  # React frontend
+├── client/                        # React frontend
 │   └── src/
-│       ├── components/      # UI components
-│       ├── hooks/           # Custom React hooks
-│       ├── stores/          # Zustand state management
-│       ├── services/        # Socket.IO service
-│       └── types/           # TypeScript types
-├── server/                  # Node.js backend
+│       ├── components/
+│       │   ├── ChatView/          # Main chat area
+│       │   ├── MessageBubble/     # Message rendering + action overlay
+│       │   ├── ThreadPanel/       # Thread side panel
+│       │   ├── Sidebar/           # Room list, contacts, settings, search, folders
+│       │   ├── BotRegistration/   # Bot registration UI
+│       │   ├── BotMarketplace/    # Browse available bots
+│       │   ├── BotShareModal/     # Share bot with users
+│       │   ├── ForwardToolbar/    # Message forwarding UI
+│       │   ├── SearchBar/         # Global search
+│       │   ├── PinnedBar/        # Pinned messages bar
+│       │   ├── MemberPanel/       # Room member list
+│       │   ├── CreateRoomModal/   # Create group room
+│       │   ├── LoginScreen/       # Auth UI
+│       │   ├── InvitationList/    # Pending invitations
+│       │   ├── FriendProfile/     # Friend details
+│       │   ├── FilePreviewModal/  # File/image preview
+│       │   ├── CommandBar/        # Command input
+│       │   └── UserAvatar/        # Avatar component
+│       ├── hooks/
+│       │   ├── useSocket.ts       # Socket.IO event handling
+│       │   └── useT.ts           # i18n translation hook
+│       ├── locales/               # zh + en translations
+│       ├── stores/appStore.ts     # Zustand global state
+│       ├── services/
+│       │   ├── socket.ts          # Socket.IO client
+│       │   ├── auth.ts            # Auth API calls
+│       │   ├── upload.ts          # File upload + compression
+│       │   └── skill-api.ts       # Skill deployment API
+│       └── types/                 # TypeScript types
+│
+├── server/                        # Node.js backend
 │   └── src/
-│       ├── db/              # SQLite schema
-│       ├── routes/          # REST API
-│       ├── services/        # Business logic
-│       │   ├── bot-bridge.ts      # OpenClaw Bot Bridge (4 modes)
-│       │   ├── openclaw-client.ts # Gateway WS client
-│       │   └── ssh-tunnel.ts      # Auto SSH tunnel manager
-│       └── socket/          # WebSocket handlers
+│       ├── db/schema.ts           # SQLite schema + migrations
+│       ├── routes/
+│       │   ├── api.ts             # REST API (rooms, messages, users)
+│       │   ├── auth.ts            # Register / login / token verify
+│       │   ├── upload.ts          # File upload endpoint
+│       │   └── push.ts           # Webhook push endpoint
+│       ├── services/
+│       │   ├── bot-bridge.ts      # OpenClaw bot ↔ chat bridge
+│       │   ├── bot-registry.ts    # Multi-bot registration & lifecycle
+│       │   ├── bot-share.ts       # Bot sharing between users
+│       │   ├── openclaw-client.ts # Gateway WS client (ed25519 + pair protocol)
+│       │   ├── ssh-tunnel.ts      # Auto SSH tunnel manager
+│       │   ├── auth.ts            # JWT auth logic
+│       │   ├── user.ts            # User management
+│       │   ├── room.ts            # Room CRUD
+│       │   ├── message.ts         # Message CRUD
+│       │   ├── thread.ts          # Thread management
+│       │   ├── pin.ts             # Message pinning
+│       │   ├── friendship.ts      # Friend system
+│       │   ├── invitation.ts      # Invitation system
+│       │   ├── skill-deploy.ts    # Skill deployment to bots
+│       │   ├── speech-to-text.ts  # Azure STT
+│       │   ├── text-to-speech.ts  # Azure TTS
+│       │   ├── platform-context.ts # Bot platform context
+│       │   ├── io.ts              # Shared Socket.IO instance
+│       │   └── command.ts         # Slash command definitions
+│       ├── socket/handlers.ts     # Socket.IO event handlers
+│       └── types.ts               # Shared TypeScript types
+│
 docs/
-├── PRD.md                   # Product requirements
-└── ARCHITECTURE.md          # Technical architecture
+├── PRD.md                         # Product requirements
+├── ARCHITECTURE.md                # Technical architecture
+├── clawchat-contacts-plan.md      # Contacts feature plan
+├── clawchat-v2-plan.md            # V2 roadmap
+├── rfc-bot-deregister.md          # Bot deregister RFC
+└── rfc-bot-skill-sharing.md       # Skill sharing RFC
 ```
+
+## Architecture
+
+```
+┌──────────────┐    Socket.IO     ┌─────────────────┐     WS (ed25519)     ┌──────────────────┐
+│   Browser    │ ◄──────────────► │  ClawChat       │ ◄──────────────────► │ OpenClaw Gateway │
+│   (React)    │                  │  Server          │                      │ (per bot)        │
+└──────────────┘                  │                  │                      └──────────────────┘
+                                  │  Bot Registry    │──── manages N bots
+                                  │  SQLite DB       │──── users, rooms, messages, bots, friends
+                                  │  File Storage    │──── data/uploads/
+                                  └─────────────────┘
+```
+
+Each registered bot maintains its own WebSocket connection to an OpenClaw Gateway with persistent ed25519 device identity. The Bot Registry manages lifecycle (connect, pause, resume, deregister) and the Bot Bridge routes messages between chat rooms and bot sessions.
 
 ## Documentation
 
