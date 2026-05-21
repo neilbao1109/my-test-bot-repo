@@ -203,7 +203,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     return { rooms: [...s.rooms, room] };
   }),
   updateRoom: (room) => set((s) => ({
-    rooms: s.rooms.map((r) => r.id === room.id ? room : r),
+    rooms: s.rooms.map((r) => r.id === room.id ? { ...r, ...room } : r),
   })),
   removeRoom: (roomId) => set((s) => {
     const newRooms = s.rooms.filter((r) => r.id !== roomId);
