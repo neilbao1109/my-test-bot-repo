@@ -568,7 +568,7 @@ export default function CommandBar({ roomId, threadId, onExport }: CommandBarPro
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19V5m0 0l-7 7m7-7l7 7" />
             </svg>
           </button>
-        ) : sttEnabled && (
+        ) : sttEnabled ? (
           <button
             onClick={startRecording}
             disabled={uploading || isArchived}
@@ -577,6 +577,15 @@ export default function CommandBar({ roomId, threadId, onExport }: CommandBarPro
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4M12 15a3 3 0 003-3V5a3 3 0 00-6 0v7a3 3 0 003 3z" />
+            </svg>
+          </button>
+        ) : (
+          <button
+            disabled
+            className="p-2.5 text-dark-muted opacity-30 rounded-xl flex-shrink-0 cursor-default"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19V5m0 0l-7 7m7-7l7 7" />
             </svg>
           </button>
         )}
