@@ -197,9 +197,8 @@ export default function MessageActionOverlay({
             </button>
           )}
 
+          <div className="h-px bg-dark-border mx-2 my-1" />
           {isOwnMessage && (
-            <>
-              <div className="h-px bg-dark-border mx-2 my-1" />
               <button
                 onClick={() => handleAction('edit')}
                 className="w-full flex items-center gap-3 px-3 py-3 md:py-2.5 text-dark-muted hover:text-dark-text hover:bg-dark-hover rounded-xl transition text-sm"
@@ -207,6 +206,7 @@ export default function MessageActionOverlay({
                 <span className="text-base w-5 text-center">✏️</span>
                 <span>{t('message.edit')}</span>
               </button>
+          )}
               <button
                 onClick={() => handleAction('delete')}
                 className="w-full flex items-center gap-3 px-3 py-3 md:py-2.5 text-red-400 hover:bg-dark-hover rounded-xl transition text-sm"
@@ -214,8 +214,6 @@ export default function MessageActionOverlay({
                 <span className="text-base w-5 text-center">🗑️</span>
                 <span>{t('message.delete')}</span>
               </button>
-            </>
-          )}
         </div>
       </div>
     </div>,
