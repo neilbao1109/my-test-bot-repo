@@ -70,7 +70,7 @@ const en: Record<LocaleKeys, string> = {
   'chat.members': 'Members',
   'chat.loading': 'Loading...',
   'chat.beginningOfConversation': 'Beginning of conversation',
-  'chat.startConversation': 'Start a conversation! Type a message or use {command} for commands.',
+  'chat.startConversation': 'Start a conversation!',
   'chat.thinking': '{names} {verb} thinking...',
   'chat.typing': '{names} {verb} typing...',
   'chat.is': 'is',

@@ -68,7 +68,7 @@ const zh = {
   'chat.members': '成员',
   'chat.loading': '加载中...',
   'chat.beginningOfConversation': '会话起始',
-  'chat.startConversation': '开始聊天吧！输入消息或使用 {command} 查看命令。',
+  'chat.startConversation': '开始聊天吧！',
   'chat.thinking': '{names} 正在思考...',
   'chat.typing': '{names} 正在输入...',
   'chat.is': '正在',
