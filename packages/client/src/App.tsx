@@ -74,6 +74,10 @@ export default function App() {
       if ((result as any).pendingInvitationCount !== undefined) {
         useAppStore.getState().setPendingInvitationCount((result as any).pendingInvitationCount);
       }
+      // Set capabilities from auth response
+      if ((result as any).capabilities) {
+        useAppStore.getState().setCapabilities((result as any).capabilities);
+      }
       // Store room members from auth response (includes members for DM display)
       for (const room of result.rooms) {
         if ((room as any).members) {

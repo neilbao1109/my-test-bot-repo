@@ -126,10 +126,7 @@ export function setupSocketHandlers(io: Server) {
 
       const pendingInvitationCount = getInvitationCount(user.id);
 
-      // Send capabilities to client
-      socket.emit('capabilities', { stt: isSttAvailable(), tts: isTtsAvailable() });
-
-      callback({ user, pendingInvitationCount, rooms: rooms.map(r => {
+      callback({ user, pendingInvitationCount, capabilities: { stt: isSttAvailable(), tts: isTtsAvailable() }, rooms: rooms.map(r => {
         const lastMsg = getLastMessage(r.id);
         const members = getRoomMembers(r.id);
         const sender = lastMsg && lastMsg.userId !== 'system' ? members.find(m => m.id === lastMsg.userId) : null;
