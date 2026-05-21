@@ -168,9 +168,9 @@ export function setupSocketHandlers(io: Server) {
     // --- Rooms ---
     socket.on('room:join', (data: { roomId: string }) => {
       socket.join(data.roomId);
-      const messages = getMessages(data.roomId, { limit: 50 });
+      const messages = getMessages(data.roomId, { limit: 20 });
       const members = getRoomMembers(data.roomId);
-      const hasMore = messages.length === 50;
+      const hasMore = messages.length === 20;
       socket.emit('room:history', { roomId: data.roomId, messages, members, hasMore });
     });
 
@@ -738,7 +738,7 @@ export function setupSocketHandlers(io: Server) {
 
     socket.on('message:history', (data: { roomId: string; before: string; limit?: number }, callback) => {
       if (!socket.userId) return;
-      const limit = data.limit || 50;
+      const limit = data.limit || 20;
       const messages = getMessages(data.roomId, { limit, before: data.before });
       const hasMore = messages.length === limit;
       callback({ messages, hasMore });

@@ -109,7 +109,7 @@ export default function ChatView() {
     const prevScrollHeight = el?.scrollHeight || 0;
 
     try {
-      const result = await socketService.loadHistory(activeRoomId, oldestCreatedAt, 50);
+      const result = await socketService.loadHistory(activeRoomId, oldestCreatedAt, 20);
       prependMessages(activeRoomId, result.messages);
       setHasMore(activeRoomId, result.hasMore);
 
