@@ -3,7 +3,6 @@ import { socketService } from '../services/socket';
 import { useAppStore } from '../stores/appStore';
 import { getToken } from '../services/auth';
 import type { Message, Room, User, Thread, PinnedMessage } from '../types';
-import { setCachedMessages, appendCachedMessage, updateCachedMessage, deleteCachedMessage, setCachedRooms } from '../services/cache';
 
 export function useSocket() {
   const user = useAppStore((s) => s.user);
@@ -27,14 +26,12 @@ export function useSocket() {
           // Same data, just update members
           store.setRoomMembers(data.roomId, data.members);
           store.setHasMore(data.roomId, data.hasMore ?? false);
-          setCachedMessages(data.roomId, data.messages, data.members);
           return;
         }
       }
       store.setMessages(data.roomId, data.messages);
       store.setRoomMembers(data.roomId, data.members);
       store.setHasMore(data.roomId, data.hasMore ?? false);
-      setCachedMessages(data.roomId, data.messages, data.members);
       // Load pinned messages for this room
       socketService.getPinnedMessages(data.roomId).then((pins) => {
         store.setPinnedMessages(data.roomId, pins);
@@ -49,7 +46,6 @@ export function useSocket() {
         }
       } else {
         store.addMessage(message);
-        appendCachedMessage(message.roomId, message);
         // Update room's lastMessage for sidebar preview
         const state = useAppStore.getState();
         const room = state.rooms.find(r => r.id === message.roomId);
@@ -73,14 +69,12 @@ export function useSocket() {
 
     socket.on('message:updated', (message: Message) => {
       store.updateMessage(message);
-      updateCachedMessage(message.roomId, message);
     });
 
     socket.on('message:deleted', (data: { messageId: string }) => {
       const activeRoomId = useAppStore.getState().activeRoomId;
       if (activeRoomId) {
         store.markMessageDeleted(data.messageId, activeRoomId);
-        deleteCachedMessage(activeRoomId, data.messageId);
       }
     });
 

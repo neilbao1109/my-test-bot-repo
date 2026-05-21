@@ -3,7 +3,6 @@ import { socketService } from './services/socket';
 import { useSocket } from './hooks/useSocket';
 import { useAppStore } from './stores/appStore';
 import { getToken, getMe, clearToken, saveToken } from './services/auth';
-import { setCachedRooms, getCachedRooms } from './services/cache';
 import LoginScreen from './components/LoginScreen';
 import Sidebar from './components/Sidebar';
 import ChatView from './components/ChatView';
@@ -49,12 +48,6 @@ export default function App() {
       getMe(savedToken)
         .then((u) => {
           setToken(savedToken);
-          // Show cached rooms instantly while connecting
-          getCachedRooms().then(cached => {
-            if (cached && cached.length > 0) {
-              setRooms(cached);
-            }
-          });
           connectWithToken(savedToken, u);
         })
         .catch(() => {
@@ -77,7 +70,6 @@ export default function App() {
       }
       setUser(result.user);
       setRooms(result.rooms);
-      setCachedRooms(result.rooms);
       // Set pending invitation count from auth
       if ((result as any).pendingInvitationCount !== undefined) {
         useAppStore.getState().setPendingInvitationCount((result as any).pendingInvitationCount);

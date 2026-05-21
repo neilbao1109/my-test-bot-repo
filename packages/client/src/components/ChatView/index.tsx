@@ -3,7 +3,6 @@ import clsx from 'clsx';
 import { useT } from '../../hooks/useT';
 import { useAppStore } from '../../stores/appStore';
 import { socketService } from '../../services/socket';
-import { getCachedMessages } from '../../services/cache';
 import { uploadFile } from '../../services/upload';
 import MessageBubble from '../MessageBubble';
 import CommandBar from '../CommandBar';
@@ -138,18 +137,6 @@ export default function ChatView() {
   // Join room on selection
   useEffect(() => {
     if (activeRoomId) {
-      // Load cached messages first for instant render
-      getCachedMessages(activeRoomId).then(cached => {
-        if (cached && cached.messages.length > 0) {
-          const store = useAppStore.getState();
-          // Only use cache if we don't already have messages loaded for this room
-          if (!store.messages[activeRoomId]?.length) {
-            store.setMessages(activeRoomId, cached.messages);
-            store.setRoomMembers(activeRoomId, cached.members);
-          }
-        }
-      });
-      // Always fetch from server (will overwrite cache data)
       socketService.joinRoom(activeRoomId);
     }
     prevRoomRef.current = activeRoomId;
