@@ -32,8 +32,9 @@ export class BotBridge {
   private activeStreams = new Map<string, ActiveStream>();
   private subscribedSessions = new Set<string>();
   private activeResponseSessions = new Set<string>();
-  private contextInjectedSessions = new Set<string>(); // tracks which sessions got platform context
+  private contextInjectedSessions = new Set<string>(); // tracks which sessions got platform context + chat history
   private lastChatSendTime = new Map<string, number>(); // sessionKey → timestamp of last chat.send
+  private knownSessionIds = new Map<string, string>(); // sessionKey → last known sessionId (for reset detection)
   private connectionMode: ConnectionMode;
   private mgmtSessionKey: string | null = null;
 
@@ -399,20 +400,44 @@ export class BotBridge {
     return null;
   }
 
-  private async getSessionForRoom(roomId: string): Promise<string> {
+  private async getSessionForRoom(roomId: string): Promise<{ sessionKey: string; isNew: boolean }> {
     if (this.roomSessions.has(roomId)) {
-      return this.roomSessions.get(roomId)!;
+      const sessionKey = this.roomSessions.get(roomId)!;
+      // Check if the session has been reset by OpenClaw (daily reset, /new, etc.)
+      try {
+        const gw = await this.ensureClient();
+        const info = await gw.rpc('sessions.get', { key: sessionKey });
+        const currentSessionId = info?.sessionId || info?.id;
+        const knownId = this.knownSessionIds.get(sessionKey);
+        if (currentSessionId && knownId && currentSessionId !== knownId) {
+          // Session was reset — clear context injection flag so history gets re-injected
+          console.log(`[BotBridge:${this.config.id}] Session reset detected: ${sessionKey} (${knownId} -> ${currentSessionId})`);
+          this.contextInjectedSessions.delete(sessionKey);
+          this.knownSessionIds.set(sessionKey, currentSessionId);
+        } else if (currentSessionId && !knownId) {
+          this.knownSessionIds.set(sessionKey, currentSessionId);
+        }
+      } catch {
+        // Non-critical — if we can't check, proceed without reset detection
+      }
+      return { sessionKey, isNew: false };
     }
 
     const gw = await this.ensureClient();
     const label = `ClawChat room: ${roomId} [bot:${this.config.id}]`;
 
     let sessionKey: string | undefined;
+    let isNew = false;
     try {
       const list = await gw.rpc('sessions.list', { label });
       const sessions = list?.sessions || list || [];
       if (Array.isArray(sessions) && sessions.length > 0) {
         sessionKey = sessions[0].sessionKey || sessions[0].key || sessions[0].id;
+        // Track the sessionId for future reset detection
+        const sessionId = sessions[0].sessionId;
+        if (sessionKey && sessionId) {
+          this.knownSessionIds.set(sessionKey, sessionId);
+        }
       }
     } catch (err: any) {
       console.warn(`[BotBridge:${this.config.id}] sessions.list failed: ${err.message}`);
@@ -425,6 +450,12 @@ export class BotBridge {
       });
       sessionKey = result.sessionKey || result.key || result.id;
       if (!sessionKey) throw new Error('No sessionKey in sessions.create response');
+      isNew = true;
+      // Track the new sessionId
+      const sessionId = result.sessionId;
+      if (sessionId) {
+        this.knownSessionIds.set(sessionKey, sessionId);
+      }
     }
 
     this.roomSessions.set(roomId, sessionKey);
@@ -439,7 +470,7 @@ export class BotBridge {
       }
     }
 
-    return sessionKey;
+    return { sessionKey, isNew };
   }
 
   /** Stream bot response */
@@ -454,7 +485,8 @@ export class BotBridge {
 
     let sessionKey: string;
     try {
-      sessionKey = await this.getSessionForRoom(context.roomId);
+      const result = await this.getSessionForRoom(context.roomId);
+      sessionKey = result.sessionKey;
     } catch (err: any) {
       console.error(`[BotBridge:${this.config.id}] getSessionForRoom failed:`, err.message);
       yield '⚠️ Failed to create session';
@@ -471,13 +503,33 @@ export class BotBridge {
     try {
       let sendResult: any;
       try {
-        // Inject platform context on first message of each session
+        // Inject platform context and chat history on first message of each session
         let messageBody = `[clawchat:room_id=${context.roomId}]\n${content}`;
         if (!this.contextInjectedSessions.has(sessionKey)) {
           const platformCtx = getPlatformContext();
           if (platformCtx) {
             messageBody = `[PLATFORM_CONTEXT]\n${platformCtx}\n[/PLATFORM_CONTEXT]\n\n${messageBody}`;
           }
+
+          // Inject chat history for context recovery
+          // This fires on the first message of each bot-bridge lifetime per session,
+          // covering: new sessions, bot-bridge restarts, and session resets.
+          // For daily-reset scenarios where bot-bridge stays running, we also clear
+          // contextInjectedSessions periodically (see clearContextCache).
+          try {
+            const { buildChatHistoryContext } = await import('./message.js');
+            const { getRoomMembers } = await import('./room.js');
+            const members = getRoomMembers(context.roomId);
+            const userMap = new Map(members.map(m => [m.id, m.username]));
+            const { context: historyCtx, totalCount } = buildChatHistoryContext(context.roomId, userMap, 30);
+            if (historyCtx) {
+              messageBody = `[CHAT_HISTORY]\nThe following is the recent chat history of this room (${totalCount} messages total). Use it to maintain conversation continuity.\n\n${historyCtx}\n[/CHAT_HISTORY]\n\n${messageBody}`;
+              console.log(`[BotBridge:${this.config.id}] Injected chat history: ${totalCount} total, recent batch for room ${context.roomId}`);
+            }
+          } catch (err: any) {
+            console.warn(`[BotBridge:${this.config.id}] Chat history injection failed:`, err.message);
+          }
+
           this.contextInjectedSessions.add(sessionKey);
         }
 
@@ -612,7 +664,9 @@ export class BotBridge {
   async restoreAllRoomSessions(roomIds: string[]): Promise<void> {
     for (const roomId of roomIds) {
       try {
-        await this.getSessionForRoom(roomId);
+        const { sessionKey } = await this.getSessionForRoom(roomId);
+        // Suppress unused variable warning — we only care about the side effect
+        void sessionKey;
       } catch (err: any) {
         console.warn(`[BotBridge:${this.config.id}] restore session for room ${roomId} failed: ${err.message}`);
       }

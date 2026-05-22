@@ -226,6 +226,59 @@ export function getLastMessageByUser(roomId: string, userId: string): Message | 
   return row ? rowToMessage(row) : null;
 }
 
+/**
+ * Build a formatted chat history string for injecting into a new AI session.
+ * Returns recent messages with usernames and timestamps, suitable for context recovery.
+ * @param roomId - The room to fetch history for
+ * @param userMap - Map of userId -> display name
+ * @param limit - Max messages to include (default 30)
+ */
+export function buildChatHistoryContext(
+  roomId: string,
+  userMap: Map<string, string>,
+  limit = 30
+): { context: string; totalCount: number } {
+  const db = getDb();
+
+  // Get total message count for this room
+  const countRow = db.prepare(
+    'SELECT COUNT(*) as total FROM messages WHERE room_id = ? AND is_deleted = 0 AND thread_id IS NULL'
+  ).get(roomId) as any;
+  const totalCount = countRow?.total || 0;
+
+  if (totalCount === 0) return { context: '', totalCount: 0 };
+
+  // Fetch recent messages (descending, then reverse for chronological order)
+  const rows = db.prepare(`
+    SELECT * FROM messages
+    WHERE room_id = ? AND is_deleted = 0 AND thread_id IS NULL
+    ORDER BY created_at DESC
+    LIMIT ?
+  `).all(roomId, limit) as any[];
+
+  const messages = rows.reverse().map(rowToMessage);
+
+  const lines: string[] = [];
+  for (const msg of messages) {
+    const name = userMap.get(msg.userId) || msg.userId;
+    // Format timestamp as compact local-ish time (ISO without ms)
+    const ts = msg.createdAt.replace('T', ' ').replace(/\.\d+Z$/, '');
+    const prefix = `[${ts}] ${name}`;
+    if (msg.type === 'system') {
+      lines.push(`[${ts}] [system] ${msg.content}`);
+    } else {
+      lines.push(`${prefix}: ${msg.content}`);
+    }
+  }
+
+  let header = '';
+  if (totalCount > limit) {
+    header = `(This room has ${totalCount} total messages. Showing the most recent ${messages.length}.)\n\n`;
+  }
+
+  return { context: header + lines.join('\n'), totalCount };
+}
+
 export function getLastMessage(roomId: string): Message | null {
   const db = getDb();
   const row = db.prepare(
