@@ -229,14 +229,19 @@ export function getLastMessageByUser(roomId: string, userId: string): Message | 
 /**
  * Build a formatted chat history string for injecting into a new AI session.
  * Returns recent messages with usernames and timestamps, suitable for context recovery.
+ * Applies per-message truncation and total budget to prevent context blowup.
  * @param roomId - The room to fetch history for
  * @param userMap - Map of userId -> display name
  * @param limit - Max messages to include (default 30)
+ * @param maxCharsPerMessage - Truncate individual messages beyond this length (default 500)
+ * @param maxTotalChars - Stop adding messages once total exceeds this budget (default 8000)
  */
 export function buildChatHistoryContext(
   roomId: string,
   userMap: Map<string, string>,
-  limit = 30
+  limit = 30,
+  maxCharsPerMessage = 500,
+  maxTotalChars = 8000
 ): { context: string; totalCount: number } {
   const db = getDb();
 
@@ -259,21 +264,40 @@ export function buildChatHistoryContext(
   const messages = rows.reverse().map(rowToMessage);
 
   const lines: string[] = [];
+  let totalChars = 0;
+  let includedCount = 0;
+
   for (const msg of messages) {
     const name = userMap.get(msg.userId) || msg.userId;
-    // Format timestamp as compact local-ish time (ISO without ms)
     const ts = msg.createdAt.replace('T', ' ').replace(/\.\d+Z$/, '');
-    const prefix = `[${ts}] ${name}`;
-    if (msg.type === 'system') {
-      lines.push(`[${ts}] [system] ${msg.content}`);
-    } else {
-      lines.push(`${prefix}: ${msg.content}`);
+
+    // Truncate long message content
+    let content = msg.content;
+    if (content.length > maxCharsPerMessage) {
+      content = content.slice(0, maxCharsPerMessage) + '... [truncated]';
     }
+
+    let line: string;
+    if (msg.type === 'system') {
+      line = `[${ts}] [system] ${content}`;
+    } else {
+      line = `[${ts}] ${name}: ${content}`;
+    }
+
+    // Check total budget (always include at least 3 messages for minimum context)
+    if (totalChars + line.length > maxTotalChars && includedCount >= 3) {
+      lines.push(`... (${messages.length - includedCount} earlier messages omitted due to length)`);
+      break;
+    }
+
+    lines.push(line);
+    totalChars += line.length;
+    includedCount++;
   }
 
   let header = '';
   if (totalCount > limit) {
-    header = `(This room has ${totalCount} total messages. Showing the most recent ${messages.length}.)\n\n`;
+    header = `(This room has ${totalCount} total messages. Showing the most recent ${includedCount}.)\n\n`;
   }
 
   return { context: header + lines.join('\n'), totalCount };
