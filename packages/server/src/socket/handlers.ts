@@ -5,7 +5,7 @@ import { createRoom, getRooms, getRoomMembers, addMemberToRoom, removeMemberFrom
 import { getDb } from '../db/schema.js';
 import { createThread, getThread, getThreadByMessage, getThreadsForRoom } from '../services/thread.js';
 import { parseCommand, executeCommand } from '../services/command.js';
-import { initBotRegistry, getRespondingBots, isBotUser, getAllBots, getBot, getAvailableBots, streamBotResponse as registryStreamBotResponse, registerBot, updateBot, deleteBot, testBotConnection, pairConnect, pairStatus, tokenPairConnect, pauseBot, resumeBot, deregisterBot, findDeregisteredBot, restoreBot, getBotDbStatus, isOwnerOfBot, checkBotIdAvailable, type TriggerType } from '../services/bot-registry.js';
+import { initBotRegistry, getRespondingBots, isBotUser, getAllBots, getBot, getAvailableBots, streamBotResponse as registryStreamBotResponse, registerBot, updateBot, deleteBot, testBotConnection, pairConnect, pairStatus, tokenPairConnect, pauseBot, resumeBot, deregisterBot, findDeregisteredBot, restoreBot, getBotDbStatus, isOwnerOfBot, checkBotIdAvailable, getBridge, type TriggerType } from '../services/bot-registry.js';
 import { shareBot, acceptBotShare, revokeBotShare, getBotShares, getPublicBots, addPublicBotToUser } from '../services/bot-share.js';
 import { pinMessage, unpinMessage, getPinnedMessages } from '../services/pin.js';
 import { createInvitation, acceptInvitation, rejectInvitation, getPendingInvitations, getInvitationCount } from '../services/invitation.js';
@@ -470,6 +470,18 @@ export function setupSocketHandlers(io: Server) {
         isOwner: isOwnerOfBot(b.id, socket.userId!),
       }));
       callback({ bots: botsWithStatus });
+    });
+
+    socket.on('bot:skills', async (data: { botId: string }, callback: Function) => {
+      if (!socket.userId) return;
+      try {
+        const bridge = getBridge(data.botId);
+        if (!bridge) return callback({ error: 'Bot not found' });
+        const result = await bridge.getSkills();
+        callback({ skills: result?.skills || [] });
+      } catch (err: any) {
+        callback({ error: err.message });
+      }
     });
 
     // bot:unshare - remove a shared bot from current user

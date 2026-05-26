@@ -491,6 +491,9 @@ function BotSkillsPage({ bot, onBack }: { bot: any; onBack: () => void }) {
   const [error, setError] = useState('');
   const [removeTarget, setRemoveTarget] = useState<string | null>(null);
   const [removing, setRemoving] = useState(false);
+  const [agentSkills, setAgentSkills] = useState<any[]>([]);
+  const [agentSkillsLoading, setAgentSkillsLoading] = useState(true);
+  const [agentSkillsError, setAgentSkillsError] = useState('');
   const t = useT();
 
   const loadSkills = async () => {
@@ -504,8 +507,28 @@ function BotSkillsPage({ bot, onBack }: { bot: any; onBack: () => void }) {
     }
   };
 
+  const loadAgentSkills = async () => {
+    setAgentSkillsLoading(true);
+    setAgentSkillsError('');
+    try {
+      const result = await socketService.getBotSkills(bot.id);
+      if (result.error) {
+        setAgentSkillsError(result.error);
+        setAgentSkills([]);
+      } else {
+        setAgentSkills(result.skills || []);
+      }
+    } catch {
+      setAgentSkillsError(t('settings.agentSkillsError'));
+      setAgentSkills([]);
+    } finally {
+      setAgentSkillsLoading(false);
+    }
+  };
+
   useEffect(() => {
     loadSkills();
+    loadAgentSkills();
     // Listen for real-time updates
     const socket = socketService.getSocket();
     const handler = (data: any) => {
@@ -563,6 +586,50 @@ function BotSkillsPage({ bot, onBack }: { bot: any; onBack: () => void }) {
     <div className="flex flex-col h-full">
       <SubPageHeader title={`${t('settings.skills')} — ${bot.username || bot.name}`} onBack={onBack} />
       <div className="flex-1 overflow-y-auto px-4 py-4">
+        {/* Agent Skills from Gateway */}
+        <div className="mb-4">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-xs font-semibold text-dark-muted uppercase tracking-wide">{t('settings.agentSkills')}</span>
+            <button
+              onClick={loadAgentSkills}
+              className="text-[10px] text-primary-400 hover:text-primary-300 transition"
+            >
+              {t('settings.agentSkillsRefresh')}
+            </button>
+          </div>
+          {agentSkillsLoading ? (
+            <p className="text-xs text-dark-muted">{t('settings.skillsLoading')}</p>
+          ) : agentSkillsError ? (
+            <p className="text-xs text-red-400">{agentSkillsError}</p>
+          ) : agentSkills.length === 0 ? (
+            <p className="text-xs text-dark-muted">{t('settings.noAgentSkills')}</p>
+          ) : (
+            <div className="space-y-1">
+              {agentSkills.map((skill: any) => (
+                <div
+                  key={skill.name}
+                  className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-dark-hover transition"
+                >
+                  <span className="text-xs">{skill.eligible === false ? '🔴' : '🟢'}</span>
+                  <div className="min-w-0 flex-1">
+                    <span className="text-sm text-dark-text font-medium truncate block">{skill.name}</span>
+                    {skill.description && (
+                      <span className="text-[10px] text-dark-muted truncate block">{skill.description}</span>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div className="border-t border-dark-border my-4" />
+
+        {/* Deployed Skills */}
+        <div className="flex items-center justify-between mb-2">
+          <span className="text-xs font-semibold text-dark-muted uppercase tracking-wide">{t('settings.deployedSkills')}</span>
+        </div>
+
         <button
           onClick={() => setShowDeploy(true)}
           className="w-full py-2.5 rounded-lg bg-primary-600/20 text-primary-400 text-sm font-medium hover:bg-primary-600/30 transition mb-4"

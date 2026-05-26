@@ -639,6 +639,12 @@ export class BotBridge {
     }
   }
 
+  async getSkills(): Promise<any> {
+    const gw = await this.ensureClient();
+    const result = await gw.rpc('skills.status', {});
+    return result;
+  }
+
   async getStatus(): Promise<BotStatus> {
     try {
       const gw = await this.ensureClient();
@@ -852,6 +858,12 @@ export async function* streamBotResponse(content: string, context: BotContext): 
     return;
   }
   yield* bridge.streamResponse(content, context);
+}
+
+export async function getBotSkills(botId: string): Promise<any> {
+  const bridge = getBridge(botId);
+  if (!bridge) return { skills: [] };
+  return bridge.getSkills();
 }
 
 export async function getBotStatus(): Promise<BotStatus> {

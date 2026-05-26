@@ -209,6 +209,12 @@ class SocketService {
     });
   }
 
+  getBotSkills(botId: string): Promise<{ skills: any[]; error?: string }> {
+    return new Promise((resolve) => {
+      this.socket?.emit('bot:skills', { botId }, resolve);
+    });
+  }
+
   listUsers(): Promise<{ users: User[] }> {
     return new Promise((resolve) => {
       this.socket?.emit('user:list', {}, resolve);
