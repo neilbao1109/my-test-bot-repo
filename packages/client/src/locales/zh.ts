@@ -105,6 +105,7 @@ const zh = {
   'command.uploading': '上传中... {progress}%',
   'command.recordVoice': '录制语音消息',
   'command.sendVoice': '发送语音消息',
+  'command.skills': '技能',
 
   // CreateRoomModal
   'createRoom.newBotChat': '新建 Bot 聊天',

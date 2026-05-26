@@ -140,6 +140,11 @@ interface AppState {
   showSettings: boolean;
   theme: 'dark' | 'light';
   imageQuality: ImageQuality;
+
+  // Bot skills cache
+  botSkillsCache: Record<string, { skills: any[]; fetchedAt: number }>;
+  setBotSkillsCache: (botId: string, skills: any[]) => void;
+
   toggleSidebar: () => void;
   toggleThread: () => void;
   toggleMembers: () => void;
@@ -552,6 +557,10 @@ export const useAppStore = create<AppState>((set, get) => ({
   showSettings: false,
   theme: (localStorage.getItem('clawchat-theme') as 'dark' | 'light') || 'dark',
   imageQuality: (localStorage.getItem('clawchat-image-quality') as ImageQuality) || 'medium',
+  botSkillsCache: {},
+  setBotSkillsCache: (botId, skills) => set((s) => ({
+    botSkillsCache: { ...s.botSkillsCache, [botId]: { skills, fetchedAt: Date.now() } },
+  })),
   toggleSidebar: () => set((s) => {
     const next = !s.showSidebar;
     localStorage.setItem('clawchat-sidebar', next ? 'expanded' : 'collapsed');

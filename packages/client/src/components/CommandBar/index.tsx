@@ -5,6 +5,8 @@ import { socketService } from '../../services/socket';
 import { uploadFile } from '../../services/upload';
 
 const COMMANDS: { name: string; descKey: string }[] = []; // disabled
+const EMPTY_SKILLS: any[] = [];
+const SKILLS_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 
 interface CommandBarProps {
   roomId: string;
@@ -24,6 +26,10 @@ export default function CommandBar({ roomId, threadId, onExport }: CommandBarPro
   const [isListening, setIsListening] = useState(false);
   const [showPlusMenu, setShowPlusMenu] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
+  const [showSkills, setShowSkills] = useState(false);
+  const [skillQuery, setSkillQuery] = useState('');
+  const [skillIdx, setSkillIdx] = useState(0);
+  const skillsFetchingRef = useRef(false);
   const [recordingTime, setRecordingTime] = useState(0);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -40,7 +46,7 @@ export default function CommandBar({ roomId, threadId, onExport }: CommandBarPro
   const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
   const speechSupported = !!SpeechRecognition;
 
-  const { rooms, roomMembers, activeRoomId, replyContext, clearReplyContext, removeReplyContext, setContextSelectionMode, mobileView, user } = useAppStore();
+  const { rooms, roomMembers, activeRoomId, replyContext, clearReplyContext, removeReplyContext, setContextSelectionMode, mobileView, user, botSkillsCache, setBotSkillsCache } = useAppStore();
   const { stt: sttEnabled } = useAppStore(s => s.capabilities);
   const members = activeRoomId ? roomMembers[activeRoomId] || [] : [];
   const currentRoom = rooms.find(r => r.id === roomId);
@@ -50,6 +56,15 @@ export default function CommandBar({ roomId, threadId, onExport }: CommandBarPro
   const filteredMentions = mentionQuery
     ? mentionableMembers.filter(m => m.username.toLowerCase().includes(mentionQuery.toLowerCase()))
     : mentionableMembers;
+
+  // Bot skills for slash autocomplete
+  const botMember = currentRoom?.type === 'bot' ? members.find(m => m.isBot) : null;
+  const botId = botMember?.id || '';
+  const cachedEntry = botId ? botSkillsCache[botId] : undefined;
+  const cachedSkills = cachedEntry?.skills ?? EMPTY_SKILLS;
+  const filteredSkills = showSkills
+    ? cachedSkills.filter((s: any) => s.eligible !== false && (!skillQuery || s.name.toLowerCase().includes(skillQuery.toLowerCase())))
+    : EMPTY_SKILLS;
 
   const suggestions = input.startsWith('/')
     ? COMMANDS.filter((c) => `/${c.name}`.startsWith(input.split(' ')[0]))
@@ -84,6 +99,31 @@ export default function CommandBar({ roomId, threadId, onExport }: CommandBarPro
   }, [input, roomId, threadId, replyContext]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
+    // Skill slash autocomplete
+    if (showSkills && filteredSkills.length > 0) {
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        setSkillIdx((i) => Math.min(i + 1, filteredSkills.length - 1));
+        return;
+      }
+      if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        setSkillIdx((i) => Math.max(i - 1, 0));
+        return;
+      }
+      if (e.key === 'Tab' || e.key === 'Enter') {
+        e.preventDefault();
+        const skill = filteredSkills[skillIdx];
+        if (skill) setInput('/' + skill.name + ' ');
+        setShowSkills(false);
+        return;
+      }
+      if (e.key === 'Escape') {
+        setShowSkills(false);
+        return;
+      }
+    }
+
     // Mention autocomplete
     if (showMentions && filteredMentions.length > 0) {
       if (e.key === 'ArrowDown') {
@@ -145,6 +185,23 @@ export default function CommandBar({ roomId, threadId, onExport }: CommandBarPro
   const handleInput = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const val = e.target.value;
     setInput(val);
+
+    // Detect /skill
+    if (currentRoom?.type === 'bot' && val.startsWith('/') && !val.includes(' ')) {
+      const query = val.slice(1);
+      setSkillQuery(query);
+      setShowSkills(true);
+      setSkillIdx(0);
+      // Fetch skills if not cached or stale
+      if (botId && !skillsFetchingRef.current && (!cachedEntry || Date.now() - cachedEntry.fetchedAt > SKILLS_CACHE_TTL)) {
+        skillsFetchingRef.current = true;
+        socketService.getBotSkills(botId).then(res => {
+          if (res.skills) setBotSkillsCache(botId, res.skills);
+        }).finally(() => { skillsFetchingRef.current = false; });
+      }
+    } else {
+      if (showSkills) setShowSkills(false);
+    }
 
     // Detect @mention
     const cursorPos = e.target.selectionStart || 0;
@@ -358,6 +415,28 @@ export default function CommandBar({ roomId, threadId, onExport }: CommandBarPro
 
   return (
     <div className="relative flex-shrink-0">
+      {/* Skill slash autocomplete */}
+      {showSkills && filteredSkills.length > 0 && (
+        <div className="absolute bottom-full left-0 right-0 mb-1 bg-dark-surface border border-dark-border rounded-lg shadow-xl overflow-hidden z-10 max-h-60 overflow-y-auto">
+          {filteredSkills.map((skill: any, i: number) => (
+            <button
+              key={skill.name}
+              onClick={() => {
+                setInput('/' + skill.name + ' ');
+                setShowSkills(false);
+                inputRef.current?.focus();
+              }}
+              className={`w-full text-left px-4 py-2.5 flex items-center gap-3 transition ${
+                i === skillIdx ? 'bg-primary-600/20 text-primary-400' : 'text-dark-text hover:bg-dark-hover'
+              }`}
+            >
+              <span className="text-sm font-mono text-primary-400">/{skill.name}</span>
+              {skill.description && <span className="text-xs text-dark-muted truncate">{skill.description}</span>}
+            </button>
+          ))}
+        </div>
+      )}
+
       {/* Mention autocomplete */}
       {showMentions && filteredMentions.length > 0 && (
         <div className="absolute bottom-full left-0 right-0 mb-1 bg-dark-surface border border-dark-border rounded-lg shadow-xl overflow-hidden z-10">

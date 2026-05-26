@@ -107,6 +107,7 @@ const en: Record<LocaleKeys, string> = {
   'command.uploading': 'Uploading... {progress}%',
   'command.recordVoice': 'Record voice message',
   'command.sendVoice': 'Send voice message',
+  'command.skills': 'Skills',
 
   // CreateRoomModal
   'createRoom.newBotChat': 'New Bot Chat',
