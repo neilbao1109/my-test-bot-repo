@@ -322,29 +322,39 @@ export const useAppStore = create<AppState>((set, get) => ({
       const { [messageId]: _, ...rest } = s.streamingMessages;
       const newState: Partial<AppState> = { streamingMessages: rest };
       if (finalMessage) {
-        const roomMessages = s.messages[finalMessage.roomId] || [];
-        if (!roomMessages.some((m) => m.id === finalMessage.id)) {
-          newState.messages = {
-            ...s.messages,
-            [finalMessage.roomId]: [...roomMessages, finalMessage],
-          };
+        if (finalMessage.threadId) {
+          // Thread message: add to threadMessages if the thread is active
+          if (s.activeThread && finalMessage.threadId === s.activeThread.id) {
+            if (!s.threadMessages.some((m) => m.id === finalMessage.id)) {
+              newState.threadMessages = [...s.threadMessages, finalMessage];
+            }
+          }
+        } else {
+          // Main room message: add to room messages and update lastMessage
+          const roomMessages = s.messages[finalMessage.roomId] || [];
+          if (!roomMessages.some((m) => m.id === finalMessage.id)) {
+            newState.messages = {
+              ...s.messages,
+              [finalMessage.roomId]: [...roomMessages, finalMessage],
+            };
+          }
+          // Update room's lastMessage for sidebar preview
+          const members = s.roomMembers[finalMessage.roomId] || [];
+          const sender = members.find(m => m.id === finalMessage.userId);
+          newState.rooms = (newState.rooms || s.rooms).map(r =>
+            r.id === finalMessage.roomId
+              ? {
+                  ...r,
+                  lastMessage: {
+                    content: finalMessage.content,
+                    type: finalMessage.type,
+                    senderName: sender?.username || 'Unknown',
+                    createdAt: finalMessage.createdAt,
+                  },
+                }
+              : r
+          );
         }
-        // Update room's lastMessage for sidebar preview
-        const members = s.roomMembers[finalMessage.roomId] || [];
-        const sender = members.find(m => m.id === finalMessage.userId);
-        newState.rooms = (newState.rooms || s.rooms).map(r =>
-          r.id === finalMessage.roomId
-            ? {
-                ...r,
-                lastMessage: {
-                  content: finalMessage.content,
-                  type: finalMessage.type,
-                  senderName: sender?.username || 'Unknown',
-                  createdAt: finalMessage.createdAt,
-                },
-              }
-            : r
-        );
       }
       return newState as any;
     }),
