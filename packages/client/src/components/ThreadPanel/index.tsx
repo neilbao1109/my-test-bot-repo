@@ -127,7 +127,7 @@ export default function ThreadPanel() {
         {/* Parent message */}
         {parentMessage && (
           <div className="border-b border-dark-border bg-dark-bg/50">
-            <MessageBubble message={parentMessage} />
+            <MessageBubble message={parentMessage} hideThreadIndicator />
           </div>
         )}
         {threadMessages.length === 0 && !threadStreamingMsgs.length && (

@@ -55,6 +55,7 @@ interface MessageBubbleProps {
   streamContent?: string;
   highlight?: string | null;
   isSearchActive?: boolean;
+  hideThreadIndicator?: boolean;
 }
 
 const QUICK_REACTIONS = ['👍', '❤️', '😂', '🎉', '🤔', '👀'];
@@ -127,7 +128,7 @@ function VoiceBubble({ attachment }: { attachment: FileAttachment }) {
   );
 }
 
-export default function MessageBubble({ message, isStreaming, streamContent, highlight, isSearchActive }: MessageBubbleProps) {
+export default function MessageBubble({ message, isStreaming, streamContent, highlight, isSearchActive, hideThreadIndicator }: MessageBubbleProps) {
   const { user, roomMembers, activeRoomId, threadInfo, setReplyContext, addReplyContext, removeReplyContext, contextSelectionMode: ctxSelectMode, replyContext, messages: allMessages } = useAppStore();
   const isPinned = useAppStore((s) => activeRoomId ? (s.pinnedMessages[activeRoomId] || []).some((p) => p.messageId === message.id) : false);
   const selectionMode = useAppStore((s) => s.selectionMode);
@@ -553,7 +554,7 @@ export default function MessageBubble({ message, isStreaming, streamContent, hig
         )}
 
         {/* Thread info / reply count */}
-        {msgThreadInfo && msgThreadInfo.replyCount > 0 && (
+        {!hideThreadIndicator && msgThreadInfo && msgThreadInfo.replyCount > 0 && (
           <button
             onClick={handleStartThread}
             className="mt-1 text-xs text-primary-400 hover:underline flex items-center gap-1"
