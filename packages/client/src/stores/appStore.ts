@@ -45,10 +45,14 @@ interface AppState {
   activeThread: Thread | null;
   threadMessages: Message[];
   threadInfo: Record<string, ThreadInfo>;
+  roomThreads: Record<string, Thread[]>;
+  showThreadList: boolean;
   setActiveThread: (thread: Thread | null) => void;
   setThreadMessages: (messages: Message[]) => void;
   addThreadMessage: (message: Message) => void;
   updateThreadInfo: (parentMessageId: string, info: ThreadInfo) => void;
+  setRoomThreads: (roomId: string, threads: Thread[]) => void;
+  setShowThreadList: (show: boolean) => void;
 
   // Pagination
   hasMore: Record<string, boolean>;
@@ -349,6 +353,8 @@ export const useAppStore = create<AppState>((set, get) => ({
   activeThread: null,
   threadMessages: [],
   threadInfo: {},
+  roomThreads: {},
+  showThreadList: false,
   setActiveThread: (thread) => set({ activeThread: thread, showThread: !!thread }),
   setThreadMessages: (messages) => set({ threadMessages: messages }),
   addThreadMessage: (message) =>
@@ -360,6 +366,11 @@ export const useAppStore = create<AppState>((set, get) => ({
     set((s) => ({
       threadInfo: { ...s.threadInfo, [parentMessageId]: info },
     })),
+  setRoomThreads: (roomId, threads) =>
+    set((s) => ({
+      roomThreads: { ...s.roomThreads, [roomId]: threads },
+    })),
+  setShowThreadList: (show) => set({ showThreadList: show }),
 
   // Pagination
   hasMore: {},

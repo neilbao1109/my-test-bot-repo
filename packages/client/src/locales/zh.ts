@@ -66,6 +66,7 @@ const zh = {
   'chat.membersOnline': '{members} 位成员，{online} 人在线',
   'chat.searchRoom': '在此房间搜索',
   'chat.members': '成员',
+  'chat.threads': '话题列表',
   'chat.loading': '加载中...',
   'chat.beginningOfConversation': '会话起始',
   'chat.startConversation': '开始聊天吧！',
@@ -327,6 +328,9 @@ const zh = {
   'thread.dropFiles': '拖放文件上传',
   'thread.empty': '还没有回复，开始对话吧！',
   'thread.backTitle': '返回聊天',
+  'thread.noThreads': '暂无话题',
+  'thread.repliesCount': '{count} 条回复',
+  'thread.lastReply': '最后回复',
   'thread.botThinking': 'ClawBot 正在思考...',
 
   // SearchPanel

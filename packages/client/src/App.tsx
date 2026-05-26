@@ -8,6 +8,7 @@ import Sidebar from './components/Sidebar';
 import ChatView from './components/ChatView';
 import ThreadPanel from './components/ThreadPanel';
 import MemberPanel from './components/MemberPanel';
+import ThreadListPanel from './components/ThreadListPanel';
 import CreateRoomModal from './components/CreateRoomModal';
 import BotRegistration from './components/BotRegistration';
 import BotMarketplace from './components/BotMarketplace';
@@ -130,6 +131,7 @@ export default function App() {
         </div>
         <div style={{ display: isMobile && mobileView !== 'chat' ? 'none' : undefined }} className={isMobile ? 'w-full h-full flex' : 'contents'}>
           <MainContent />
+          <ThreadListPanel />
           <MemberPanel />
         </div>
       </div>

@@ -184,6 +184,12 @@ class SocketService {
     });
   }
 
+  getThreadParents(messageIds: string[]): Promise<{ messages: Message[] }> {
+    return new Promise((resolve) => {
+      this.socket?.emit('thread:parents', { messageIds }, (res: any) => resolve(res || { messages: [] }));
+    });
+  }
+
   // Bots
   addBotToRoom(roomId: string, botId: string): Promise<{ success?: boolean; error?: string }> {
     return new Promise((resolve) => {

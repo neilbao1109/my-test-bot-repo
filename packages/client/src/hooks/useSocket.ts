@@ -40,6 +40,7 @@ export function useSocket() {
             lastReplyAt: t.lastReplyAt,
           });
         }
+        store.setRoomThreads(data.roomId, data.threads);
       }
       // Load pinned messages for this room
       socketService.getPinnedMessages(data.roomId).then((pins) => {

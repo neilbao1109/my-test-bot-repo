@@ -1059,6 +1059,17 @@ export function setupSocketHandlers(io: Server) {
       callback(messages);
     });
 
+    socket.on('thread:parents', (data: { messageIds: string[] }, callback) => {
+      if (!data.messageIds || data.messageIds.length === 0) {
+        if (callback) callback({ messages: [] });
+        return;
+      }
+      const messages = data.messageIds
+        .map(id => getMessageById(id))
+        .filter((m): m is NonNullable<typeof m> => m !== null);
+      if (callback) callback({ messages });
+    });
+
     // --- Search ---
     socket.on('message:search', (data: { query: string; roomId?: string; global?: boolean; limit?: number }, callback) => {
       if (!socket.userId || !data.query?.trim()) {

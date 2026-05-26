@@ -68,6 +68,7 @@ const en: Record<LocaleKeys, string> = {
   'chat.membersOnline': '{members} members, {online} online',
   'chat.searchRoom': 'Search in this room',
   'chat.members': 'Members',
+  'chat.threads': 'Threads',
   'chat.loading': 'Loading...',
   'chat.beginningOfConversation': 'Beginning of conversation',
   'chat.startConversation': 'Start a conversation!',
@@ -327,6 +328,9 @@ const en: Record<LocaleKeys, string> = {
   'thread.dropFiles': 'Drop files to upload',
   'thread.empty': 'No replies yet. Start the conversation!',
   'thread.backTitle': 'Back to chat',
+  'thread.noThreads': 'No threads yet',
+  'thread.repliesCount': '{count} replies',
+  'thread.lastReply': 'Last reply',
   'thread.botThinking': 'ClawBot is thinking...',
 
   // SearchPanel
