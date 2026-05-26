@@ -106,7 +106,7 @@ export default function ThreadPanel() {
           <div className="flex items-center gap-2">
             <h2 className="font-semibold text-dark-text text-sm">{t('thread.title')}</h2>
             <span className="text-xs text-dark-muted">
-              {activeThread.replyCount} {activeThread.replyCount === 1 ? t('thread.reply_one', { count: activeThread.replyCount }) : t('thread.reply_other', { count: activeThread.replyCount })}
+              {activeThread.replyCount === 1 ? t('thread.reply_one', { count: activeThread.replyCount }) : t('thread.reply_other', { count: activeThread.replyCount })}
             </span>
           </div>
           {parentPreview && (
