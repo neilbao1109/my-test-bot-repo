@@ -61,7 +61,7 @@ function exportMessages(roomMessages: any[], roomName: string, members: any[]) {
 export default function ChatView() {
   const {
     activeRoomId, messages, rooms, streamingMessages,
-    typingUsers, showSidebar, toggleSidebar, toggleMembers,
+    typingUsers, showSidebar, toggleSidebar,
     user, roomMembers, onlineUsers,
     hasMore, loadingHistory, setLoadingHistory, setHasMore, prependMessages, backToList,
     isContextMode, setContextMode, setMessages,
@@ -274,20 +274,8 @@ export default function ChatView() {
           </svg>
         </button>
 
-        {/* Members button */}
-        <button
-          onClick={toggleMembers}
-          className="flex items-center gap-1.5 text-dark-muted hover:text-dark-text px-2 py-1 rounded-lg hover:bg-dark-hover transition"
-          title={t('chat.members')}
-        >
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z" />
-          </svg>
-          <span className="text-xs">{members.length}</span>
-        </button>
-
         {/* Room menu */}
-        <RoomMenu room={activeRoom} userId={user?.id} />
+        <RoomMenu room={activeRoom} userId={user?.id} memberCount={members.length} />
       </div>
 
       {/* Pinned messages bar */}
@@ -490,11 +478,12 @@ function RoomNameHeader({ room, userId }: { room: Room; userId?: string }) {
 
 // ── Room menu with delete ──
 
-function RoomMenu({ room, userId }: { room: Room; userId?: string }) {
+function RoomMenu({ room, userId, memberCount }: { room: Room; userId?: string; memberCount: number }) {
   const [open, setOpen] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const t = useT();
+  const toggleMembers = useAppStore((s) => s.toggleMembers);
   const canDelete = !room.createdBy || room.createdBy === userId;
 
   useEffect(() => {
@@ -515,8 +504,6 @@ function RoomMenu({ room, userId }: { room: Room; userId?: string }) {
     setOpen(false);
   };
 
-  if (!canDelete) return null;
-
   return (
     <>
       <div className="relative" ref={menuRef}>
@@ -533,6 +520,18 @@ function RoomMenu({ room, userId }: { room: Room; userId?: string }) {
         </button>
         {open && (
           <div className="absolute right-0 top-full mt-1 bg-dark-surface border border-dark-border rounded-lg shadow-lg py-1 z-50 min-w-[140px]">
+            {/* Members */}
+            <button
+              onClick={() => { toggleMembers(); setOpen(false); }}
+              className="w-full text-left px-3 py-2 text-sm text-dark-text hover:bg-dark-hover transition flex items-center gap-2"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z" />
+              </svg>
+              {t('chat.members')} ({memberCount})
+            </button>
+            {/* Delete Room */}
+            {canDelete && (
             <button
               onClick={() => { setConfirmDelete(true); setOpen(false); }}
               className="w-full text-left px-3 py-2 text-sm text-red-400 hover:bg-dark-hover transition flex items-center gap-2"
@@ -542,6 +541,7 @@ function RoomMenu({ room, userId }: { room: Room; userId?: string }) {
               </svg>
               Delete Room
             </button>
+            )}
           </div>
         )}
       </div>
