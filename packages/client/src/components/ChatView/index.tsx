@@ -247,7 +247,6 @@ export default function ChatView() {
             </svg>
           </button>
         )}
-        <span className="text-lg">{activeRoom.type === 'dm' ? '💬' : activeRoom.type === 'bot' ? '🤖' : '👥'}</span>
         <div className="flex-1 min-w-0">
           <RoomNameHeader room={activeRoom} userId={user?.id} />
           <p className="text-xs text-dark-muted">
