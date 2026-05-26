@@ -494,6 +494,7 @@ function BotSkillsPage({ bot, onBack }: { bot: any; onBack: () => void }) {
   const [agentSkills, setAgentSkills] = useState<any[]>([]);
   const [agentSkillsLoading, setAgentSkillsLoading] = useState(true);
   const [agentSkillsError, setAgentSkillsError] = useState('');
+  const [expandedSkill, setExpandedSkill] = useState<string | null>(null);
   const t = useT();
 
   const loadSkills = async () => {
@@ -617,13 +618,38 @@ function BotSkillsPage({ bot, onBack }: { bot: any; onBack: () => void }) {
                       </div>
                       <div className="space-y-0.5">
                         {eligible.map((skill: any) => (
-                          <div key={skill.name} className="flex items-center gap-2 px-3 py-1.5 rounded-lg hover:bg-dark-hover transition">
-                            <div className="min-w-0 flex-1">
-                              <span className="text-sm text-dark-text font-medium truncate block">{skill.name}</span>
-                              {skill.description && (
-                                <span className="text-[10px] text-dark-muted truncate block">{skill.description}</span>
-                              )}
+                          <div key={skill.name}>
+                            <div
+                              className="flex items-center gap-2 px-3 py-1.5 rounded-lg hover:bg-dark-hover transition cursor-pointer"
+                              onClick={() => setExpandedSkill(expandedSkill === skill.name ? null : skill.name)}
+                            >
+                              <div className="min-w-0 flex-1">
+                                <span className="text-sm text-dark-text font-medium truncate block">{skill.name}</span>
+                                {expandedSkill !== skill.name && skill.description && (
+                                  <span className="text-[10px] text-dark-muted truncate block">{skill.description}</span>
+                                )}
+                              </div>
+                              <span className="text-[10px] text-dark-muted flex-shrink-0">{expandedSkill === skill.name ? '▾' : '▸'}</span>
                             </div>
+                            {expandedSkill === skill.name && (
+                              <div className="mx-3 mb-1 px-3 py-2 rounded-lg bg-dark-bg/50 border border-dark-border/50 space-y-1.5">
+                                {skill.description && (
+                                  <p className="text-xs text-dark-text leading-relaxed">{skill.description}</p>
+                                )}
+                                {skill.source && (
+                                  <div className="flex items-center gap-1.5">
+                                    <span className="text-[10px] text-dark-muted">{t('settings.skillSource')}:</span>
+                                    <span className="text-[10px] text-dark-text">{skill.source}</span>
+                                  </div>
+                                )}
+                                {skill.location && (
+                                  <div className="flex items-center gap-1.5 min-w-0">
+                                    <span className="text-[10px] text-dark-muted flex-shrink-0">{t('settings.skillLocation')}:</span>
+                                    <span className="text-[10px] text-dark-text truncate">{skill.location}</span>
+                                  </div>
+                                )}
+                              </div>
+                            )}
                           </div>
                         ))}
                       </div>
@@ -637,16 +663,43 @@ function BotSkillsPage({ bot, onBack }: { bot: any; onBack: () => void }) {
                       </div>
                       <div className="space-y-0.5 opacity-60">
                         {blocked.map((skill: any) => (
-                          <div key={skill.name} className="flex items-center gap-2 px-3 py-1.5 rounded-lg hover:bg-dark-hover transition">
-                            <div className="min-w-0 flex-1">
-                              <span className="text-sm text-dark-text font-medium truncate block">{skill.name}</span>
-                              {skill.description && (
-                                <span className="text-[10px] text-dark-muted truncate block">{skill.description}</span>
-                              )}
-                              {skill.missingRequirements?.length > 0 && (
-                                <span className="text-[10px] text-red-400 truncate block">{skill.missingRequirements.join(', ')}</span>
-                              )}
+                          <div key={skill.name}>
+                            <div
+                              className="flex items-center gap-2 px-3 py-1.5 rounded-lg hover:bg-dark-hover transition cursor-pointer"
+                              onClick={() => setExpandedSkill(expandedSkill === skill.name ? null : skill.name)}
+                            >
+                              <div className="min-w-0 flex-1">
+                                <span className="text-sm text-dark-text font-medium truncate block">{skill.name}</span>
+                                {expandedSkill !== skill.name && skill.description && (
+                                  <span className="text-[10px] text-dark-muted truncate block">{skill.description}</span>
+                                )}
+                              </div>
+                              <span className="text-[10px] text-dark-muted flex-shrink-0">{expandedSkill === skill.name ? '▾' : '▸'}</span>
                             </div>
+                            {expandedSkill === skill.name && (
+                              <div className="mx-3 mb-1 px-3 py-2 rounded-lg bg-dark-bg/50 border border-dark-border/50 space-y-1.5">
+                                {skill.description && (
+                                  <p className="text-xs text-dark-text leading-relaxed">{skill.description}</p>
+                                )}
+                                {skill.source && (
+                                  <div className="flex items-center gap-1.5">
+                                    <span className="text-[10px] text-dark-muted">{t('settings.skillSource')}:</span>
+                                    <span className="text-[10px] text-dark-text">{skill.source}</span>
+                                  </div>
+                                )}
+                                {skill.location && (
+                                  <div className="flex items-center gap-1.5 min-w-0">
+                                    <span className="text-[10px] text-dark-muted flex-shrink-0">{t('settings.skillLocation')}:</span>
+                                    <span className="text-[10px] text-dark-text truncate">{skill.location}</span>
+                                  </div>
+                                )}
+                                {skill.missingRequirements?.length > 0 && (
+                                  <div className="flex items-center gap-1.5">
+                                    <span className="text-[10px] text-red-400">{skill.missingRequirements.join(', ')}</span>
+                                  </div>
+                                )}
+                              </div>
+                            )}
                           </div>
                         ))}
                       </div>

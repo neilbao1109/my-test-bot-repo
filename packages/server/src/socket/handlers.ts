@@ -484,6 +484,7 @@ export function setupSocketHandlers(io: Server) {
         console.log(`[bot:skills] Bridge found, calling getSkills...`);
         const result = await bridge.getSkills();
         console.log(`[bot:skills] Got result, skills count: ${result?.skills?.length ?? 'N/A'}`);
+        if (result?.skills?.[0]) console.log(`[bot:skills] Sample skill fields: ${JSON.stringify(Object.keys(result.skills[0]))}`);  console.log(`[bot:skills] Sample skill: ${JSON.stringify(result.skills[0])}`);
         callback({ skills: result?.skills || [] });
       } catch (err: any) {
         console.log(`[bot:skills] Error: ${err.message}`);

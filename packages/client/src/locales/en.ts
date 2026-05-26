@@ -284,6 +284,8 @@ const en: Record<LocaleKeys, string> = {
   'settings.noAgentSkills': 'No agent skills',
   'settings.skillsEligible': 'Active',
   'settings.skillsBlocked': 'Blocked',
+  'settings.skillSource': 'Source',
+  'settings.skillLocation': 'Location',
   'settings.deployedSkills': 'Deployed Skills',
   'settings.skillNamePlaceholder': 'Skill name (e.g. my-skill)',
   'settings.skillContentPlaceholder': 'Paste SKILL.md content here...',

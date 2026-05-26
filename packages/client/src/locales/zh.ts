@@ -282,6 +282,8 @@ const zh = {
   'settings.noAgentSkills': '无 Agent 技能',
   'settings.skillsEligible': '可用',
   'settings.skillsBlocked': '不可用',
+  'settings.skillSource': '来源',
+  'settings.skillLocation': '位置',
   'settings.deployedSkills': '已部署技能',
   'settings.skillNamePlaceholder': 'Skill 名称（如 my-skill）',
   'settings.skillContentPlaceholder': '粘贴 SKILL.md 内容...',
