@@ -224,7 +224,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   }),
   setActiveRoom: (roomId) => {
     localStorage.setItem('clawchat-active-room', roomId);
-    set({ activeRoomId: roomId });
+    set({ activeRoomId: roomId, activeThread: null, showThread: false, showThreadList: false });
   },
 
   // Messages
