@@ -16,7 +16,7 @@ export function useSocket() {
     // Use getState() for actions to avoid subscribing to entire store
     const store = useAppStore.getState();
 
-    socket.on('room:history', (data: { roomId: string; messages: Message[]; members: User[]; hasMore?: boolean }) => {
+    socket.on('room:history', (data: { roomId: string; messages: Message[]; members: User[]; hasMore?: boolean; threads?: Thread[] }) => {
       // Skip update if we already have messages cached and the latest message matches
       const existing = useAppStore.getState().messages[data.roomId];
       if (existing && existing.length > 0 && data.messages.length > 0) {
@@ -32,6 +32,15 @@ export function useSocket() {
       store.setMessages(data.roomId, data.messages);
       store.setRoomMembers(data.roomId, data.members);
       store.setHasMore(data.roomId, data.hasMore ?? false);
+      // Populate thread info for messages with threads
+      if (data.threads) {
+        for (const t of data.threads) {
+          store.updateThreadInfo(t.parentMessageId, {
+            replyCount: t.replyCount,
+            lastReplyAt: t.lastReplyAt,
+          });
+        }
+      }
       // Load pinned messages for this room
       socketService.getPinnedMessages(data.roomId).then((pins) => {
         store.setPinnedMessages(data.roomId, pins);

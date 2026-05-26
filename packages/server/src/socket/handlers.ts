@@ -3,7 +3,7 @@ import path from 'path';
 import { createMessage, getMessages, getLastMessage, getLastMessageByUser, getMessagesSince, getMessageById, getMessagesAroundId, editMessage, deleteMessage, addReaction, searchMessages, getReplyChain } from '../services/message.js';
 import { createRoom, getRooms, getRoomMembers, addMemberToRoom, removeMemberFromRoom, addBotToRoom, removeBotFromRoom, renameRoom, deleteRoom, searchUsers, getRoom } from '../services/room.js';
 import { getDb } from '../db/schema.js';
-import { createThread, getThread, getThreadByMessage } from '../services/thread.js';
+import { createThread, getThread, getThreadByMessage, getThreadsForRoom } from '../services/thread.js';
 import { parseCommand, executeCommand } from '../services/command.js';
 import { initBotRegistry, getRespondingBots, isBotUser, getAllBots, getBot, getAvailableBots, streamBotResponse as registryStreamBotResponse, registerBot, updateBot, deleteBot, testBotConnection, pairConnect, pairStatus, tokenPairConnect, pauseBot, resumeBot, deregisterBot, findDeregisteredBot, restoreBot, getBotDbStatus, isOwnerOfBot, checkBotIdAvailable, type TriggerType } from '../services/bot-registry.js';
 import { shareBot, acceptBotShare, revokeBotShare, getBotShares, getPublicBots, addPublicBotToUser } from '../services/bot-share.js';
@@ -170,8 +170,9 @@ export function setupSocketHandlers(io: Server) {
       socket.join(data.roomId);
       const messages = getMessages(data.roomId, { limit: 20 });
       const members = getRoomMembers(data.roomId);
+      const threads = getThreadsForRoom(data.roomId);
       const hasMore = messages.length === 20;
-      socket.emit('room:history', { roomId: data.roomId, messages, members, hasMore });
+      socket.emit('room:history', { roomId: data.roomId, messages, members, hasMore, threads });
     });
 
     socket.on('room:leave', (data: { roomId: string }, callback?) => {
