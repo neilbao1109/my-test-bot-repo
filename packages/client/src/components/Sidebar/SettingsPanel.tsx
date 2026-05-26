@@ -604,22 +604,57 @@ function BotSkillsPage({ bot, onBack }: { bot: any; onBack: () => void }) {
           ) : agentSkills.length === 0 ? (
             <p className="text-xs text-dark-muted">{t('settings.noAgentSkills')}</p>
           ) : (
-            <div className="space-y-1">
-              {agentSkills.map((skill: any) => (
-                <div
-                  key={skill.name}
-                  className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-dark-hover transition"
-                >
-                  <span className="text-xs">{skill.eligible === false ? '🔴' : '🟢'}</span>
-                  <div className="min-w-0 flex-1">
-                    <span className="text-sm text-dark-text font-medium truncate block">{skill.name}</span>
-                    {skill.description && (
-                      <span className="text-[10px] text-dark-muted truncate block">{skill.description}</span>
-                    )}
-                  </div>
+            (() => {
+              const eligible = agentSkills.filter((s: any) => s.eligible !== false);
+              const blocked = agentSkills.filter((s: any) => s.eligible === false);
+              return (
+                <div className="space-y-3">
+                  {eligible.length > 0 && (
+                    <div>
+                      <div className="flex items-center gap-1.5 mb-1 px-1">
+                        <span className="text-[10px]">🟢</span>
+                        <span className="text-[10px] text-dark-muted font-medium">{t('settings.skillsEligible')} ({eligible.length})</span>
+                      </div>
+                      <div className="space-y-0.5">
+                        {eligible.map((skill: any) => (
+                          <div key={skill.name} className="flex items-center gap-2 px-3 py-1.5 rounded-lg hover:bg-dark-hover transition">
+                            <div className="min-w-0 flex-1">
+                              <span className="text-sm text-dark-text font-medium truncate block">{skill.name}</span>
+                              {skill.description && (
+                                <span className="text-[10px] text-dark-muted truncate block">{skill.description}</span>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {blocked.length > 0 && (
+                    <div>
+                      <div className="flex items-center gap-1.5 mb-1 px-1">
+                        <span className="text-[10px]">🔴</span>
+                        <span className="text-[10px] text-dark-muted font-medium">{t('settings.skillsBlocked')} ({blocked.length})</span>
+                      </div>
+                      <div className="space-y-0.5 opacity-60">
+                        {blocked.map((skill: any) => (
+                          <div key={skill.name} className="flex items-center gap-2 px-3 py-1.5 rounded-lg hover:bg-dark-hover transition">
+                            <div className="min-w-0 flex-1">
+                              <span className="text-sm text-dark-text font-medium truncate block">{skill.name}</span>
+                              {skill.description && (
+                                <span className="text-[10px] text-dark-muted truncate block">{skill.description}</span>
+                              )}
+                              {skill.missingRequirements?.length > 0 && (
+                                <span className="text-[10px] text-red-400 truncate block">{skill.missingRequirements.join(', ')}</span>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
-              ))}
-            </div>
+              );
+            })()
           )}
         </div>
 

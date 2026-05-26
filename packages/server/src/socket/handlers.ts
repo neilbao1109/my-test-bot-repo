@@ -474,12 +474,19 @@ export function setupSocketHandlers(io: Server) {
 
     socket.on('bot:skills', async (data: { botId: string }, callback: Function) => {
       if (!socket.userId) return;
+      console.log(`[bot:skills] Request for botId=${data.botId}`);
       try {
         const bridge = getBridge(data.botId);
-        if (!bridge) return callback({ error: 'Bot not found' });
+        if (!bridge) {
+          console.log(`[bot:skills] No bridge found for ${data.botId}`);
+          return callback({ error: 'Bot not found' });
+        }
+        console.log(`[bot:skills] Bridge found, calling getSkills...`);
         const result = await bridge.getSkills();
+        console.log(`[bot:skills] Got result, skills count: ${result?.skills?.length ?? 'N/A'}`);
         callback({ skills: result?.skills || [] });
       } catch (err: any) {
+        console.log(`[bot:skills] Error: ${err.message}`);
         callback({ error: err.message });
       }
     });

@@ -281,6 +281,8 @@ const en: Record<LocaleKeys, string> = {
   'settings.agentSkillsRefresh': 'Refresh',
   'settings.agentSkillsError': 'Unable to fetch (Bot not connected)',
   'settings.noAgentSkills': 'No agent skills',
+  'settings.skillsEligible': 'Active',
+  'settings.skillsBlocked': 'Blocked',
   'settings.deployedSkills': 'Deployed Skills',
   'settings.skillNamePlaceholder': 'Skill name (e.g. my-skill)',
   'settings.skillContentPlaceholder': 'Paste SKILL.md content here...',
