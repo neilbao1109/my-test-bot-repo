@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import clsx from 'clsx';
 import { useT } from '../../hooks/useT';
 import ReactMarkdown from 'react-markdown';
@@ -128,7 +128,7 @@ function VoiceBubble({ attachment }: { attachment: FileAttachment }) {
   );
 }
 
-function MessageBubbleInner({ message, isStreaming, streamContent, highlight, isSearchActive, hideThreadIndicator }: MessageBubbleProps) {
+export default function MessageBubble({ message, isStreaming, streamContent, highlight, isSearchActive, hideThreadIndicator }: MessageBubbleProps) {
   const { user, roomMembers, activeRoomId, threadInfo, setReplyContext, addReplyContext, removeReplyContext, contextSelectionMode: ctxSelectMode, replyContext, messages: allMessages } = useAppStore();
   const isPinned = useAppStore((s) => activeRoomId ? (s.pinnedMessages[activeRoomId] || []).some((p) => p.messageId === message.id) : false);
   const selectionMode = useAppStore((s) => s.selectionMode);
@@ -691,6 +691,3 @@ function MessageBubbleInner({ message, isStreaming, streamContent, highlight, is
     </div>
   );
 }
-
-const MessageBubble = React.memo(MessageBubbleInner);
-export default MessageBubble;
