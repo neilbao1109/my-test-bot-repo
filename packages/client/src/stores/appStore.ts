@@ -37,11 +37,9 @@ interface AppState {
 
   // Streaming
   streamingMessages: Record<string, StreamingMessage>;
-  recentlyStreamedIds: Set<string>;
   startStreaming: (messageId: string, roomId: string, threadId: string | null, botId?: string) => void;
   appendStreamChunk: (messageId: string, chunk: string) => void;
   finishStreaming: (messageId: string, finalMessage?: Message) => void;
-  clearRecentlyStreamed: (messageId: string) => void;
 
   // Threads
   activeThread: Thread | null;
@@ -202,7 +200,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   logout: () => {
     clearToken();
     socketService.disconnect();
-    set({ user: null, rooms: [], activeRoomId: null, messages: {}, roomMembers: {}, threadInfo: {}, streamingMessages: {}, recentlyStreamedIds: new Set<string>(), typingUsers: {}, onlineUsers: new Set<string>() });
+    set({ user: null, rooms: [], activeRoomId: null, messages: {}, roomMembers: {}, threadInfo: {}, streamingMessages: {}, typingUsers: {}, onlineUsers: new Set<string>() });
   },
 
   // Rooms
@@ -306,7 +304,6 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   // Streaming
   streamingMessages: {},
-  recentlyStreamedIds: new Set<string>(),
   startStreaming: (messageId, roomId, threadId, botId) =>
     set((s) => ({
       streamingMessages: {
@@ -325,18 +322,10 @@ export const useAppStore = create<AppState>((set, get) => ({
         },
       };
     }),
-  clearRecentlyStreamed: (messageId) =>
-    set((s) => {
-      const next = new Set(s.recentlyStreamedIds);
-      next.delete(messageId);
-      return { recentlyStreamedIds: next };
-    }),
   finishStreaming: (messageId, finalMessage) =>
     set((s) => {
       const { [messageId]: _, ...rest } = s.streamingMessages;
-      const nextStreamed = new Set(s.recentlyStreamedIds);
-      nextStreamed.add(messageId);
-      const newState: Partial<AppState> = { streamingMessages: rest, recentlyStreamedIds: nextStreamed };
+      const newState: Partial<AppState> = { streamingMessages: rest };
       if (finalMessage) {
         if (finalMessage.threadId) {
           // Thread message: add to threadMessages if the thread is active

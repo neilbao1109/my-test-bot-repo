@@ -144,10 +144,10 @@ export default function MessageBubble({ message, isStreaming, streamContent, hig
   const [copied, setCopied] = useState(false);
   const [speaking, setSpeaking] = useState(false);
   const [previewAttachment, setPreviewAttachment] = useState<FileAttachment | null>(null);
-  const wasStreaming = useAppStore((s) => s.recentlyStreamedIds.has(message.id));
-  const clearRecentlyStreamed = useAppStore((s) => s.clearRecentlyStreamed);
-  // History messages default collapsed; just-finished-streaming messages stay expanded
-  const [isCollapsed, setIsCollapsed] = useState(!isStreaming && !wasStreaming);
+  const wasStreaming = useRef(isStreaming);
+  if (isStreaming) wasStreaming.current = true;
+  // History messages default collapsed; streaming messages stay expanded
+  const [isCollapsed, setIsCollapsed] = useState(!isStreaming);
   const [needsCollapse, setNeedsCollapse] = useState(false);
   const contentRef = useRef<HTMLDivElement>(null);
   const t = useT();
@@ -164,12 +164,12 @@ export default function MessageBubble({ message, isStreaming, streamContent, hig
   const displayContent = isStreaming ? (streamContent || '') : message.content;
   const msgThreadInfo = threadInfo[message.id];
 
-  // Clear recently-streamed flag after mount (one-time)
+  // When streaming ends, keep expanded (don't flash-collapse)
   useEffect(() => {
-    if (wasStreaming) {
-      clearRecentlyStreamed(message.id);
+    if (wasStreaming.current && !isStreaming) {
+      setIsCollapsed(false);
     }
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [isStreaming]);
 
   // Measure content height to decide if collapsing is needed
   const measureContent = useCallback(() => {
