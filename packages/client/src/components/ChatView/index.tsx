@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, useCallback, useMemo } from 'react';
+import { Virtuoso, VirtuosoHandle } from 'react-virtuoso';
 import clsx from 'clsx';
 import { useT } from '../../hooks/useT';
 import { useAppStore } from '../../stores/appStore';
@@ -71,9 +72,9 @@ export default function ChatView() {
   const setScrollToMessageId = useAppStore(s => s.setScrollToMessageId);
   const t = useT();
   const [flashMessageId, setFlashMessageId] = useState<string | null>(null);
-  const bottomRef = useRef<HTMLDivElement>(null);
-  const messageListRef = useRef<HTMLDivElement>(null);
+  const virtuosoRef = useRef<VirtuosoHandle>(null);
   const messageRefs = useRef<Record<string, HTMLDivElement | null>>({});
+  const followOutputRef = useRef(true);
   const [dragOver, setDragOver] = useState(false);
 
   const activeRoom = rooms.find((r) => r.id === activeRoomId);
@@ -104,55 +105,29 @@ export default function ChatView() {
     const oldestCreatedAt = roomMsgs[0].createdAt;
     setLoadingHistory(activeRoomId, true);
 
-    const el = messageListRef.current;
-    const prevScrollHeight = el?.scrollHeight || 0;
-
     try {
       const result = await socketService.loadHistory(activeRoomId, oldestCreatedAt, 20);
       prependMessages(activeRoomId, result.messages);
       setHasMore(activeRoomId, result.hasMore);
-
-      requestAnimationFrame(() => {
-        if (el) {
-          el.scrollTop = el.scrollHeight - prevScrollHeight;
-        }
-      });
     } finally {
       setLoadingHistory(activeRoomId, false);
     }
   }, [activeRoomId, messages, loadingHistory, hasMore]);
 
-  const handleScroll = useCallback(() => {
-    const el = messageListRef.current;
-    if (!el || !activeRoomId) return;
-    if (el.scrollTop < 100) {
-      loadMoreMessages();
-    }
-  }, [activeRoomId, loadMoreMessages]);
-
-  // Track room switches for instant vs smooth scroll
-  const prevRoomRef = useRef<string | null>(null);
-  const isRoomSwitch = prevRoomRef.current !== activeRoomId;
-
   // Join room on selection
   useEffect(() => {
     if (activeRoomId) {
       socketService.joinRoom(activeRoomId);
+      followOutputRef.current = true;
     }
-    prevRoomRef.current = activeRoomId;
   }, [activeRoomId]);
-
-  // Auto-scroll: instant on room switch, smooth on new messages
-  useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: isRoomSwitch ? 'instant' : 'smooth' });
-  }, [roomMessages, roomStreamingMsgs]);
 
   // Mobile keyboard: scroll to bottom when viewport resizes
   useEffect(() => {
     const vv = window.visualViewport;
     if (!vv) return;
     const onResize = () => {
-      bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+      virtuosoRef.current?.scrollToIndex({ index: 'LAST', behavior: 'smooth' });
     };
     vv.addEventListener('resize', onResize);
     return () => vv.removeEventListener('resize', onResize);
@@ -161,9 +136,10 @@ export default function ChatView() {
   // Scroll to message from search (load context if not in view)
   useEffect(() => {
     if (!scrollToMessageId || !activeRoomId) return;
-    const el = messageRefs.current[scrollToMessageId];
-    if (el) {
-      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    // Try to find index in current messages
+    const idx = roomMessages.findIndex(m => m.id === scrollToMessageId);
+    if (idx >= 0) {
+      virtuosoRef.current?.scrollToIndex({ index: idx, align: 'center', behavior: 'smooth' });
       setFlashMessageId(scrollToMessageId);
       setScrollToMessageId(null);
       setTimeout(() => setFlashMessageId(null), 2000);
@@ -176,13 +152,12 @@ export default function ChatView() {
         setScrollToMessageId(null);
         return;
       }
-      // Replace room messages with the context window
       const { setMessages, setHasMore } = useAppStore.getState();
       setMessages(activeRoomId, result.messages);
       setHasMore(activeRoomId, result.hasOlder);
       // scrollToMessageId stays set — next render will find the element and scroll
     });
-  }, [scrollToMessageId, messages, activeRoomId]);
+  }, [scrollToMessageId, roomMessages, activeRoomId]);
 
   const handleDrop = useCallback(async (e: React.DragEvent) => {
     e.preventDefault();
@@ -282,95 +257,114 @@ export default function ChatView() {
       <ForwardToolbar />
 
       {/* Messages */}
-      <div ref={messageListRef} onScroll={handleScroll} className="flex-1 overflow-y-auto py-4 min-h-0 overscroll-contain">
-        {activeRoomId && loadingHistory[activeRoomId] && (
-          <div className="text-center py-2">
-            <span className="text-xs text-dark-muted animate-pulse">{t('chat.loading')}</span>
-          </div>
-        )}
-
-        {activeRoomId && !hasMore[activeRoomId] && roomMessages.length > 0 && (
-          <div className="text-center py-2">
-            <span className="text-xs text-dark-muted">{t('chat.beginningOfConversation')}</span>
-          </div>
-        )}
-
-        {roomMessages.length === 0 && (
-          <div className="text-center py-12">
-            <div className="text-4xl mb-3">🤖</div>
-            <p className="text-dark-muted text-sm">
-              {t('chat.startConversation', { command: '/help' })}
-            </p>
-          </div>
-        )}
-
-        {roomMessages.map((msg) => {
-          const isCtxSelected = contextSelectionMode && replyContext.some(m => m.id === msg.id);
-          return (
-            <div
-              key={msg.id}
-              ref={(el) => { messageRefs.current[msg.id] = el; }}
-              className={flashMessageId === msg.id ? 'animate-flash-highlight' : undefined}
-            >
-              <MessageBubble
-                message={msg}
-                highlight={undefined}
-                isSearchActive={false}
-              />
+      <Virtuoso
+        ref={virtuosoRef}
+        className="flex-1 min-h-0 overscroll-contain"
+        data={roomMessages}
+        computeItemKey={(_, msg) => msg.id}
+        followOutput={(isAtBottom) => {
+          if (isAtBottom || followOutputRef.current) {
+            followOutputRef.current = true;
+            return 'smooth';
+          }
+          return false;
+        }}
+        atBottomStateChange={(atBottom) => {
+          followOutputRef.current = atBottom;
+        }}
+        startReached={() => {
+          if (activeRoomId && !loadingHistory[activeRoomId] && hasMore[activeRoomId]) {
+            loadMoreMessages();
+          }
+        }}
+        increaseViewportBy={200}
+        components={{
+          Header: () => (
+            <div className="py-2">
+              {activeRoomId && loadingHistory[activeRoomId] && (
+                <div className="text-center py-2">
+                  <span className="text-xs text-dark-muted animate-pulse">{t('chat.loading')}</span>
+                </div>
+              )}
+              {activeRoomId && !hasMore[activeRoomId] && roomMessages.length > 0 && (
+                <div className="text-center py-2">
+                  <span className="text-xs text-dark-muted">{t('chat.beginningOfConversation')}</span>
+                </div>
+              )}
             </div>
-          );
-        })}
+          ),
+          Footer: () => (
+            <div className="py-2">
+              {/* Streaming messages */}
+              {roomStreamingMsgs.map((stream) => {
+                const streamBotId = stream.botId || members.find(m => m.isBot)?.id || 'bot-clawchat';
+                return (
+                  <MessageBubble
+                    key={stream.messageId}
+                    message={{
+                      id: stream.messageId,
+                      roomId: stream.roomId,
+                      threadId: stream.threadId,
+                      userId: streamBotId,
+                      content: stream.content,
+                      type: 'text',
+                      replyTo: null,
+                      reactions: {},
+                      isEdited: false,
+                      isDeleted: false,
+                      createdAt: new Date().toISOString(),
+                      updatedAt: new Date().toISOString(),
+                    }}
+                    isStreaming={true}
+                    streamContent={stream.content}
+                  />
+                );
+              })}
 
-        {/* Streaming messages */}
-        {roomStreamingMsgs.map((stream) => {
-          // Determine bot userId from the stream (botId field or fallback)
-          const streamBotId = stream.botId || members.find(m => m.isBot)?.id || 'bot-clawchat';
-          return (
-          <MessageBubble
-            key={stream.messageId}
-            message={{
-              id: stream.messageId,
-              roomId: stream.roomId,
-              threadId: stream.threadId,
-              userId: streamBotId,
-              content: stream.content,
-              type: 'text',
-              replyTo: null,
-              reactions: {},
-              isEdited: false,
-              isDeleted: false,
-              createdAt: new Date().toISOString(),
-              updatedAt: new Date().toISOString(),
-            }}
-            isStreaming={true}
-            streamContent={stream.content}
-          />
-          );
-        })}
-
-        {/* Typing indicator with avatars */}
-        {roomTyping.length > 0 && (
-          <div className="px-4 py-1.5 flex items-center gap-2">
-            <div className="flex -space-x-1">
-              {roomTyping.slice(0, 3).map((u) => (
-                <UserAvatar
-                  key={u.userId}
-                  username={u.username}
-                  isBot={u.userId === 'bot-clawchat'}
-                  size="sm"
-                />
-              ))}
+              {/* Typing indicator */}
+              {roomTyping.length > 0 && (
+                <div className="px-4 py-1.5 flex items-center gap-2">
+                  <div className="flex -space-x-1">
+                    {roomTyping.slice(0, 3).map((u) => (
+                      <UserAvatar
+                        key={u.userId}
+                        username={u.username}
+                        isBot={u.userId === 'bot-clawchat'}
+                        size="sm"
+                      />
+                    ))}
+                  </div>
+                  <span className="text-xs text-dark-muted animate-pulse">
+                    {roomTyping.some((u) => members.find(m => m.id === u.userId)?.isBot)
+                      ? `${roomTyping.filter(u => members.find(m => m.id === u.userId)?.isBot).map(u => u.username).join(', ')} ${roomTyping.filter(u => members.find(m => m.id === u.userId)?.isBot).length === 1 ? 'is' : 'are'} thinking...`
+                      : `${roomTyping.map((u) => u.username).join(', ')} ${roomTyping.length === 1 ? 'is' : 'are'} typing...`}
+                  </span>
+                </div>
+              )}
             </div>
-            <span className="text-xs text-dark-muted animate-pulse">
-              {roomTyping.some((u) => members.find(m => m.id === u.userId)?.isBot)
-                ? `${roomTyping.filter(u => members.find(m => m.id === u.userId)?.isBot).map(u => u.username).join(', ')} ${roomTyping.filter(u => members.find(m => m.id === u.userId)?.isBot).length === 1 ? 'is' : 'are'} thinking...`
-                : `${roomTyping.map((u) => u.username).join(', ')} ${roomTyping.length === 1 ? 'is' : 'are'} typing...`}
-            </span>
+          ),
+          EmptyPlaceholder: () => (
+            <div className="text-center py-12">
+              <div className="text-4xl mb-3">🤖</div>
+              <p className="text-dark-muted text-sm">
+                {t('chat.startConversation', { command: '/help' })}
+              </p>
+            </div>
+          ),
+        }}
+        itemContent={(index, msg) => (
+          <div
+            ref={(el) => { messageRefs.current[msg.id] = el; }}
+            className={flashMessageId === msg.id ? 'animate-flash-highlight' : undefined}
+          >
+            <MessageBubble
+              message={msg}
+              highlight={undefined}
+              isSearchActive={false}
+            />
           </div>
         )}
-
-        <div ref={bottomRef} />
-      </div>
+      />
 
       {/* Context selection floating bar */}
       {contextSelectionMode && (
