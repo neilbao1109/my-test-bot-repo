@@ -144,9 +144,7 @@ export default function MessageBubble({ message, isStreaming, streamContent, hig
   const [copied, setCopied] = useState(false);
   const [speaking, setSpeaking] = useState(false);
   const [previewAttachment, setPreviewAttachment] = useState<FileAttachment | null>(null);
-  // Messages received within the last 5 seconds are considered "just arrived" (streaming just ended)
-  const isRecentMessage = Date.now() - new Date(message.createdAt).getTime() < 5000;
-  const [isCollapsed, setIsCollapsed] = useState(!isRecentMessage);
+  const [isCollapsed, setIsCollapsed] = useState(true);
   const [needsCollapse, setNeedsCollapse] = useState(false);
   const contentRef = useRef<HTMLDivElement>(null);
   const t = useT();
