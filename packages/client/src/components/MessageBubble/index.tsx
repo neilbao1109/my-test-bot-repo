@@ -13,7 +13,6 @@ import { formatFileSize } from '../../utils/format';
 import UserAvatar from '../UserAvatar';
 import FilePreviewModal from '../FilePreviewModal';
 import MessageActionOverlay from './MessageActionOverlay';
-import { recentlyStreamedIds } from '../../utils/streamingState';
 
 function CodeBlockPre({ text, children }: { text: string; children: React.ReactNode }) {
   const [copied, setCopied] = useState(false);
@@ -145,10 +144,9 @@ export default function MessageBubble({ message, isStreaming, streamContent, hig
   const [copied, setCopied] = useState(false);
   const [speaking, setSpeaking] = useState(false);
   const [previewAttachment, setPreviewAttachment] = useState<FileAttachment | null>(null);
-    // Messages that just finished streaming start expanded; all others start collapsed
-  const wasStreamed = recentlyStreamedIds.has(message.id);
-  if (wasStreamed) recentlyStreamedIds.delete(message.id);
-  const [isCollapsed, setIsCollapsed] = useState(!wasStreamed);
+  // Messages received within the last 5 seconds are considered "just arrived" (streaming just ended)
+  const isRecentMessage = Date.now() - new Date(message.createdAt).getTime() < 5000;
+  const [isCollapsed, setIsCollapsed] = useState(!isRecentMessage);
   const [needsCollapse, setNeedsCollapse] = useState(false);
   const contentRef = useRef<HTMLDivElement>(null);
   const t = useT();

@@ -5,7 +5,6 @@ import { socketService } from '../services/socket';
 import type { ImageQuality } from '../services/upload';
 import { setDefaultImageQuality } from '../services/upload';
 import type { SupportedLocale } from '../locales';
-import { recentlyStreamedIds } from '../utils/streamingState';
 
 interface ThreadInfo {
   replyCount: number;
@@ -328,8 +327,6 @@ export const useAppStore = create<AppState>((set, get) => ({
       const { [messageId]: _, ...rest } = s.streamingMessages;
       const newState: Partial<AppState> = { streamingMessages: rest };
       if (finalMessage) {
-        // Mark this message as recently streamed so MessageBubble skips initial collapse
-        recentlyStreamedIds.add(finalMessage.id);
         if (finalMessage.threadId) {
           // Thread message: add to threadMessages if the thread is active
           if (s.activeThread && finalMessage.threadId === s.activeThread.id) {
