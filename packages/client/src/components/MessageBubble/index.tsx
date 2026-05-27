@@ -144,7 +144,10 @@ export default function MessageBubble({ message, isStreaming, streamContent, hig
   const [copied, setCopied] = useState(false);
   const [speaking, setSpeaking] = useState(false);
   const [previewAttachment, setPreviewAttachment] = useState<FileAttachment | null>(null);
-  const [isCollapsed, setIsCollapsed] = useState(true);
+  const wasStreaming = useRef(isStreaming);
+  if (isStreaming) wasStreaming.current = true;
+  // History messages default collapsed; streaming messages stay expanded
+  const [isCollapsed, setIsCollapsed] = useState(!isStreaming);
   const [needsCollapse, setNeedsCollapse] = useState(false);
   const contentRef = useRef<HTMLDivElement>(null);
   const t = useT();
@@ -160,6 +163,13 @@ export default function MessageBubble({ message, isStreaming, streamContent, hig
   const isBot = sender?.isBot || false;
   const displayContent = isStreaming ? (streamContent || '') : message.content;
   const msgThreadInfo = threadInfo[message.id];
+
+  // When streaming ends, keep expanded (don't flash-collapse)
+  useEffect(() => {
+    if (wasStreaming.current && !isStreaming) {
+      setIsCollapsed(false);
+    }
+  }, [isStreaming]);
 
   // Measure content height to decide if collapsing is needed
   const measureContent = useCallback(() => {
@@ -464,7 +474,7 @@ export default function MessageBubble({ message, isStreaming, streamContent, hig
               ref={contentRef}
               className={clsx(
                 'prose prose-invert prose-base max-w-none break-words overflow-hidden transition-[max-height] duration-300 ease-in-out',
-                needsCollapse && isCollapsed && !isStreaming && 'max-h-[300px]'
+                needsCollapse && isCollapsed && 'max-h-[300px]'
               )}
             >
               <ReactMarkdown
@@ -508,7 +518,7 @@ export default function MessageBubble({ message, isStreaming, streamContent, hig
                 <span className="inline-block w-2 h-4 bg-primary-400 animate-pulse ml-0.5" />
               )}
             </div>
-            {needsCollapse && !isStreaming && (
+            {needsCollapse && (
               <>
                 {isCollapsed && (
                   <div className="absolute bottom-0 left-0 right-0 h-16 bg-gradient-to-t from-dark-surface to-transparent pointer-events-none" />
