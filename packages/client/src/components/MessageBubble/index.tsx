@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import clsx from 'clsx';
 import { useT } from '../../hooks/useT';
 import ReactMarkdown from 'react-markdown';
@@ -144,14 +144,9 @@ export default function MessageBubble({ message, isStreaming, streamContent, hig
   const [copied, setCopied] = useState(false);
   const [speaking, setSpeaking] = useState(false);
   const [previewAttachment, setPreviewAttachment] = useState<FileAttachment | null>(null);
-  const [isCollapsed, setIsCollapsed] = useState(true);
-  const [needsCollapse, setNeedsCollapse] = useState(false);
-  const contentRef = useRef<HTMLDivElement>(null);
   const t = useT();
   const editRef = useRef<HTMLTextAreaElement>(null);
   const reactionRef = useRef<HTMLDivElement>(null);
-
-  const COLLAPSE_HEIGHT = 300;
 
 
   const members = activeRoomId ? roomMembers[activeRoomId] || [] : [];
@@ -160,18 +155,6 @@ export default function MessageBubble({ message, isStreaming, streamContent, hig
   const isBot = sender?.isBot || false;
   const displayContent = isStreaming ? (streamContent || '') : message.content;
   const msgThreadInfo = threadInfo[message.id];
-
-  // Measure content height to decide if collapsing is needed
-  const measureContent = useCallback(() => {
-    if (contentRef.current && !isStreaming) {
-      const h = contentRef.current.scrollHeight;
-      setNeedsCollapse(h > COLLAPSE_HEIGHT);
-    }
-  }, [isStreaming]);
-
-  useEffect(() => {
-    measureContent();
-  }, [displayContent, measureContent]);
 
   useEffect(() => {
     if (isEditing && editRef.current) {
@@ -459,67 +442,46 @@ export default function MessageBubble({ message, isStreaming, streamContent, hig
             );
           })()
         ) : (
-          <div className="relative">
-            <div
-              ref={contentRef}
-              className={clsx(
-                'prose prose-invert prose-base max-w-none break-words overflow-hidden transition-[max-height] duration-300 ease-in-out',
-                needsCollapse && isCollapsed && !isStreaming && 'max-h-[300px]'
-              )}
-            >
-              <ReactMarkdown
-                remarkPlugins={[remarkGfmSafe]}
-                rehypePlugins={[rehypeHighlight, rehypeAutolink]}
-                components={{
-                  pre: ({ children }) => {
-                    const textContent = (() => {
-                      const extractText = (node: any): string => {
-                        if (typeof node === 'string') return node;
-                        if (!node) return '';
-                        if (node.props?.children) {
-                          return Array.isArray(node.props.children)
-                            ? node.props.children.map(extractText).join('')
-                            : extractText(node.props.children);
-                        }
-                        return '';
-                      };
-                      return extractText({ props: { children } });
-                    })();
+          <div className="prose prose-invert prose-base max-w-none break-words overflow-hidden">
+            <ReactMarkdown
+              remarkPlugins={[remarkGfmSafe]}
+              rehypePlugins={[rehypeHighlight, rehypeAutolink]}
+              components={{
+                pre: ({ children }) => {
+                  const textContent = (() => {
+                    const extractText = (node: any): string => {
+                      if (typeof node === 'string') return node;
+                      if (!node) return '';
+                      if (node.props?.children) {
+                        return Array.isArray(node.props.children)
+                          ? node.props.children.map(extractText).join('')
+                          : extractText(node.props.children);
+                      }
+                      return '';
+                    };
+                    return extractText({ props: { children } });
+                  })();
 
-                    return <CodeBlockPre text={textContent}>{children}</CodeBlockPre>;
-                  },
-                  code: ({ className, children, ...props }) => {
-                    const isInline = !className;
-                    if (isInline) {
-                      return <code className="bg-dark-bg px-1.5 py-0.5 rounded text-primary-300 text-xs" {...props}>{children}</code>;
-                    }
-                    return <code className={className} {...props}>{children}</code>;
-                  },
-                  table: ({ children, ...props }) => (
-                    <div className="table-wrapper">
-                      <table {...props}>{children}</table>
-                    </div>
-                  ),
-                }}
-              >
-                {displayContent}
-              </ReactMarkdown>
-              {isStreaming && (
-                <span className="inline-block w-2 h-4 bg-primary-400 animate-pulse ml-0.5" />
-              )}
-            </div>
-            {needsCollapse && !isStreaming && (
-              <>
-                {isCollapsed && (
-                  <div className="absolute bottom-0 left-0 right-0 h-16 bg-gradient-to-t from-dark-surface to-transparent pointer-events-none" />
-                )}
-                <button
-                  onClick={(e) => { e.stopPropagation(); setIsCollapsed(!isCollapsed); }}
-                  className="relative z-10 mt-1 text-xs text-primary-400 hover:text-primary-300 transition flex items-center gap-1"
-                >
-                  {isCollapsed ? '▼ Show more' : '▲ Show less'}
-                </button>
-              </>
+                  return <CodeBlockPre text={textContent}>{children}</CodeBlockPre>;
+                },
+                code: ({ className, children, ...props }) => {
+                  const isInline = !className;
+                  if (isInline) {
+                    return <code className="bg-dark-bg px-1.5 py-0.5 rounded text-primary-300 text-xs" {...props}>{children}</code>;
+                  }
+                  return <code className={className} {...props}>{children}</code>;
+                },
+                table: ({ children, ...props }) => (
+                  <div className="table-wrapper">
+                    <table {...props}>{children}</table>
+                  </div>
+                ),
+              }}
+            >
+              {displayContent}
+            </ReactMarkdown>
+            {isStreaming && (
+              <span className="inline-block w-2 h-4 bg-primary-400 animate-pulse ml-0.5" />
             )}
           </div>
         )}
