@@ -13,7 +13,7 @@ export function isTtsAvailable(): boolean {
   return !!(process.env.AZURE_SPEECH_KEY && process.env.AZURE_SPEECH_REGION);
 }
 const TTS_TEMP_DIR = '/tmp/clawchat-tts';
-const MAX_TTS_CHARS = 500;
+const MAX_TTS_CHARS = 5000;
 
 /**
  * Strip markdown formatting for cleaner TTS output.

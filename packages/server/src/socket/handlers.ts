@@ -484,8 +484,15 @@ export function setupSocketHandlers(io: Server) {
         console.log(`[bot:skills] Bridge found, calling getSkills...`);
         const result = await bridge.getSkills();
         console.log(`[bot:skills] Got result, skills count: ${result?.skills?.length ?? 'N/A'}`);
-        if (result?.skills?.[0]) console.log(`[bot:skills] Sample skill fields: ${JSON.stringify(Object.keys(result.skills[0]))}`);  console.log(`[bot:skills] Sample skill: ${JSON.stringify(result.skills[0])}`);
-        callback({ skills: result?.skills || [] });
+        if (result?.skills?.[0]) {
+          console.log(`[bot:skills] Sample skill fields: ${JSON.stringify(Object.keys(result.skills[0]))}`);
+          console.log(`[bot:skills] Sample skill: ${JSON.stringify(result.skills[0])}`);
+          const sources: Record<string, number> = {};
+          result.skills.forEach((s: any) => { sources[s.source || 'unknown'] = (sources[s.source || 'unknown'] || 0) + 1; });
+          console.log(`[bot:skills] By source: ${JSON.stringify(sources)}`);
+          const workspace = result.skills.filter((s: any) => s.source && s.source.includes('workspace'));
+          console.log(`[bot:skills] Workspace skills (${workspace.length}): ${workspace.map((s: any) => s.name).join(', ')}`);
+        }        callback({ skills: result?.skills || [] });
       } catch (err: any) {
         console.log(`[bot:skills] Error: ${err.message}`);
         callback({ error: err.message });
