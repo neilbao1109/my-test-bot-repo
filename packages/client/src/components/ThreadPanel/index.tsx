@@ -89,7 +89,7 @@ export default function ThreadPanel() {
       )}
 
       {/* Header */}
-      <div className="flex items-center gap-3 px-4 py-3 border-b border-dark-border bg-dark-surface flex-shrink-0" style={{ paddingTop: 'max(0.75rem, env(safe-area-inset-top, 0px))' }}>
+      <div className="flex items-center gap-3 px-4 py-3 border-b border-dark-border bg-dark-surface flex-shrink-0">
         {/* Back button */}
         <button
           onClick={() => setActiveThread(null)}
