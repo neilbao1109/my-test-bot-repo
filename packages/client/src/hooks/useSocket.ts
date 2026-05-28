@@ -96,13 +96,19 @@ export function useSocket() {
     });
 
     socket.on('bot:stream:start', (data: { messageId: string; roomId: string; threadId: string | null; botId?: string }) => {
+      console.log('[Stream] START', data.messageId, 'room:', data.roomId);
       store.startStreaming(data.messageId, data.roomId, data.threadId, data.botId);
     });
 
     socket.on('bot:stream', (data: { messageId: string; chunk: string; done: boolean; finalMessage?: Message }) => {
       if (data.done) {
+        console.log('[Stream] DONE', data.messageId, 'hasFinal:', !!data.finalMessage);
         store.finishStreaming(data.messageId, data.finalMessage);
       } else {
+        const existing = store.streamingMessages[data.messageId];
+        if (!existing) {
+          console.warn('[Stream] CHUNK for unknown stream', data.messageId, '— was start missed?');
+        }
         store.appendStreamChunk(data.messageId, data.chunk);
       }
     });
@@ -233,18 +239,33 @@ export function useSocket() {
 
     // Re-auth and rejoin room on reconnect
     const handleReconnect = () => {
+      console.log('[Socket] Reconnected, re-authing...');
       const token = getToken();
       if (token) {
         socketService.auth(token).then((result) => {
           if (!result.error) {
             const state = useAppStore.getState();
             if (state.activeRoomId) {
+              console.log('[Socket] Rejoining room:', state.activeRoomId);
               socketService.joinRoom(state.activeRoomId);
             }
+            // Check if there are orphaned streaming messages (stream started before disconnect)
+            const orphaned = Object.keys(state.streamingMessages);
+            if (orphaned.length > 0) {
+              console.warn('[Socket] Orphaned streams after reconnect:', orphaned, '— clearing');
+              orphaned.forEach(id => state.finishStreaming(id));
+            }
+          } else {
+            console.error('[Socket] Re-auth failed after reconnect:', result.error);
           }
         });
       }
     };
+
+    socket.on('disconnect', (reason: string) => {
+      console.warn('[Socket] Disconnected:', reason);
+    });
+
     socket.io.on('reconnect', handleReconnect);
 
     return () => {
@@ -255,6 +276,7 @@ export function useSocket() {
       socket.off('message:reaction');
       socket.off('bot:stream:start');
       socket.off('bot:stream');
+      socket.off('disconnect');
       socket.off('typing:update');
       socket.off('user:online');
       socket.off('presence:snapshot');
