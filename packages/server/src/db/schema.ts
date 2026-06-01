@@ -404,6 +404,29 @@ function initSchema(db: Database.Database) {
     console.log('[Migration] v9: skill_deployments table created');
   }
 
+  if (version < 10) {
+    db.transaction(() => {
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS file_uploads (
+          id TEXT PRIMARY KEY,
+          hash TEXT NOT NULL,
+          original_name TEXT NOT NULL,
+          mime_type TEXT NOT NULL,
+          size INTEGER NOT NULL,
+          uploaded_by TEXT NOT NULL REFERENCES users(id),
+          room_id TEXT REFERENCES rooms(id) ON DELETE SET NULL,
+          message_id TEXT REFERENCES messages(id) ON DELETE SET NULL,
+          created_at TEXT NOT NULL DEFAULT (datetime('now'))
+        );
+        CREATE INDEX IF NOT EXISTS idx_file_uploads_user ON file_uploads(uploaded_by, created_at);
+        CREATE INDEX IF NOT EXISTS idx_file_uploads_room ON file_uploads(room_id, created_at);
+        CREATE INDEX IF NOT EXISTS idx_file_uploads_hash ON file_uploads(hash);
+      `);
+      db.exec('PRAGMA user_version = 10');
+    })();
+    console.log('[Migration] v10: file_uploads table created');
+  }
+
   // Ensure system user exists (for system messages)
   db.prepare(`
     INSERT OR IGNORE INTO users (id, username, avatar_url, is_bot, is_online)

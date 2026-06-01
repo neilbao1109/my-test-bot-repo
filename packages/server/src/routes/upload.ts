@@ -3,7 +3,10 @@ import multer from 'multer';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import fs from 'fs';
+import os from 'os';
 import { randomUUID } from 'crypto';
+import { putFile } from '../services/file-store.js';
+import { insertFileUpload } from '../services/file-upload-db.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const uploadsDir = path.join(__dirname, '../../data/uploads');
@@ -20,13 +23,14 @@ const ALLOWED_PATHS = [
 ];
 
 /**
- * Copy a local file into the uploads directory and return attachment metadata.
- * Only allows files from ALLOWED_PATHS for security.
+ * Ingest a local file into CAS storage.
+ * Replaces the old copyFileToUploads — now goes through SeaweedFS S3.
  */
-export function copyFileToUploads(filePath: string): {
-  id: string; filename: string; originalName: string;
-  mimeType: string; size: number; url: string;
-} | null {
+export async function ingestLocalFile(
+  filePath: string,
+  uploadedBy: string,
+  roomId?: string
+): Promise<{ id: string; hash: string; originalName: string; mimeType: string; size: number; url: string } | null> {
   const resolved = path.resolve(filePath);
   if (!ALLOWED_PATHS.some(p => resolved.startsWith(p))) {
     console.warn(`[upload] Blocked file outside allowed paths: ${resolved}`);
@@ -35,16 +39,13 @@ export function copyFileToUploads(filePath: string): {
   if (!fs.existsSync(resolved)) return null;
 
   const stat = fs.statSync(resolved);
-  if (stat.size > 20 * 1024 * 1024) {
+  if (stat.size > 50 * 1024 * 1024) {
     console.warn(`[upload] File too large: ${resolved} (${stat.size} bytes)`);
     return null;
   }
 
-  const ext = path.extname(resolved);
-  const destName = `${randomUUID()}${ext}`;
-  fs.copyFileSync(resolved, path.join(uploadsDir, destName));
-
-  const mimeTypes: Record<string, string> = {
+  const ext = path.extname(resolved).toLowerCase();
+  const MIME: Record<string, string> = {
     '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg',
     '.gif': 'image/gif', '.webp': 'image/webp', '.svg': 'image/svg+xml',
     '.pdf': 'application/pdf', '.mp4': 'video/mp4', '.mp3': 'audio/mpeg',
@@ -52,56 +53,74 @@ export function copyFileToUploads(filePath: string): {
     '.json': 'application/json', '.zip': 'application/zip',
     '.html': 'text/html', '.css': 'text/css', '.js': 'application/javascript',
   };
+  const mimeType = MIME[ext] || 'application/octet-stream';
 
-  return {
-    id: randomUUID(),
-    filename: destName,
-    originalName: path.basename(resolved),
-    mimeType: mimeTypes[ext.toLowerCase()] || 'application/octet-stream',
-    size: stat.size,
-    url: `/api/uploads/${destName}`,
-  };
+  const { hash, size } = await putFile(resolved, mimeType);
+  const id = randomUUID();
+
+  insertFileUpload({ id, hash, originalName: path.basename(resolved), mimeType, size, uploadedBy, roomId });
+
+  return { id, hash, originalName: path.basename(resolved), mimeType, size, url: `/api/files/${hash}` };
 }
 
+// multer writes to system tmp directory (not data/uploads)
 const storage = multer.diskStorage({
-  destination: (_req, _file, cb) => cb(null, uploadsDir),
+  destination: (_req, _file, cb) => cb(null, os.tmpdir()),
   filename: (_req, file, cb) => {
     const ext = path.extname(file.originalname);
-    cb(null, `${randomUUID()}${ext}`);
+    cb(null, `clawchat-upload-${randomUUID()}${ext}`);
   },
 });
 
 const upload = multer({
   storage,
-  limits: { fileSize: 20 * 1024 * 1024 },
+  limits: { fileSize: 50 * 1024 * 1024 },
 });
 
 const router = Router();
 
-router.post('/upload', upload.single('file'), (req, res) => {
+// --- New upload route (CAS) ---
+router.post('/upload', upload.single('file'), async (req, res) => {
   const file = req.file;
   if (!file) {
     res.status(400).json({ error: 'No file provided' });
     return;
   }
 
-  // multer decodes filenames as latin1 by default; re-decode as UTF-8
-  const originalName = Buffer.from(file.originalname, 'latin1').toString('utf-8');
+  // Auth check: require logged-in user
+  const userId = (req as any).userId;
+  if (!userId) {
+    try { fs.unlinkSync(file.path); } catch {}
+    res.status(401).json({ error: 'Authentication required' });
+    return;
+  }
 
-  const result = {
-    id: randomUUID(),
-    filename: file.filename,
-    originalName,
-    mimeType: file.mimetype,
-    size: file.size,
-    url: `/api/uploads/${file.filename}`,
-  };
+  try {
+    const { hash, size, deduplicated } = await putFile(file.path, file.mimetype);
+    fs.unlinkSync(file.path); // Clean up temp file
 
-  res.json(result);
+    const originalName = Buffer.from(file.originalname, 'latin1').toString('utf-8');
+    const id = randomUUID();
+
+    insertFileUpload({
+      id,
+      hash,
+      originalName,
+      mimeType: file.mimetype,
+      size,
+      uploadedBy: userId,
+    });
+
+    res.json({ id, hash, originalName, mimeType: file.mimetype, size, url: `/api/files/${hash}`, deduplicated });
+  } catch (err: any) {
+    console.error('[upload] CAS upload failed:', err);
+    try { fs.unlinkSync(file.path); } catch {}
+    res.status(500).json({ error: 'Upload failed' });
+  }
 });
 
-router.use('/uploads', (req, res, next) => {
-  // Serve uploaded files statically
+// --- Legacy file serving (backward compat) ---
+router.use('/uploads', (req, res) => {
   const filePath = path.join(uploadsDir, path.basename(req.path));
   if (fs.existsSync(filePath)) {
     res.sendFile(filePath);

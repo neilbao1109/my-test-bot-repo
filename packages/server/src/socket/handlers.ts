@@ -13,7 +13,9 @@ import { transcribeAudio, isSttAvailable } from '../services/speech-to-text.js';
 import { textToSpeech, isTtsAvailable } from '../services/text-to-speech.js';
 import fs from 'fs';
 import { sendFriendRequest, acceptFriendRequest, rejectFriendRequest, removeFriend, getFriends, getFriendRequests, searchUsersByEmail, areFriends } from '../services/friendship.js';
-import { copyFileToUploads } from '../routes/upload.js';
+import { ingestLocalFile } from '../routes/upload.js';
+import { downloadToTemp } from '../services/file-store.js';
+import { updateFileUploadContext } from '../services/file-upload-db.js';
 import { getUser, setOnline, getOnlineUsers, getAllUsers } from '../services/user.js';
 import { verifyToken } from '../services/auth.js';
 import { v4 as uuid } from 'uuid';
@@ -831,6 +833,16 @@ export function setupSocketHandlers(io: Server) {
       });
       io.to(data.roomId).emit('message:new', message);
 
+      // Update file_uploads context for file messages
+      if (data.type === 'file') {
+        try {
+          const att = JSON.parse(data.content);
+          if (att.id && att.hash) {
+            updateFileUploadContext(att.id, data.roomId, message.id);
+          }
+        } catch {}
+      }
+
       // Update thread reply count if in a thread
       if (data.threadId) {
         updateThreadReplyCount(data.threadId, io, data.roomId);
@@ -846,9 +858,14 @@ export function setupSocketHandlers(io: Server) {
       if (data.type === 'file') {
         try {
           const attachment = JSON.parse(data.content);
-          if (attachment.mimeType && attachment.mimeType.startsWith('audio/') && attachment.filename) {
+          if (attachment.mimeType && attachment.mimeType.startsWith('audio/')) {
             isVoiceMessage = true;
-            const audioPath = path.join(process.cwd(), 'data', 'uploads', attachment.filename);
+            let audioPath: string;
+            if (attachment.hash) {
+              audioPath = await downloadToTemp(attachment.hash);
+            } else {
+              audioPath = path.join(process.cwd(), 'data', 'uploads', attachment.filename);
+            }
             const sttStart = Date.now();
             const transcription = await transcribeAudio(audioPath);
             console.log(`[STT] Transcription took ${Date.now() - sttStart}ms`);
@@ -975,7 +992,7 @@ export function setupSocketHandlers(io: Server) {
           // Send file messages for each MEDIA line
           for (const match of mediaMatches) {
             const filePath = match[1].trim();
-            const attachment = copyFileToUploads(filePath);
+            const attachment = await ingestLocalFile(filePath, bot.id, data.roomId);
             if (attachment) {
               const fileMsg = createMessage({
                 roomId: data.roomId,
@@ -985,6 +1002,7 @@ export function setupSocketHandlers(io: Server) {
                 threadId: data.threadId,
               });
               io.to(data.roomId).emit('message:new', fileMsg);
+              updateFileUploadContext(attachment.id, data.roomId, fileMsg.id);
             }
           }
 
@@ -1022,7 +1040,7 @@ export function setupSocketHandlers(io: Server) {
                 const ttsPath = await textToSpeech(cleanContent);
                 console.log(`[TTS] Generation took ${Date.now() - ttsStart}ms`);
                 if (ttsPath) {
-                  const attachment = copyFileToUploads(ttsPath);
+                  const attachment = await ingestLocalFile(ttsPath, bot.id, data.roomId);
                   if (attachment) {
                     const voiceReply = createMessage({
                       roomId: data.roomId,
@@ -1032,6 +1050,7 @@ export function setupSocketHandlers(io: Server) {
                       threadId: data.threadId,
                     });
                     io.to(data.roomId).emit('message:new', voiceReply);
+                    updateFileUploadContext(attachment.id, data.roomId, voiceReply.id);
                   }
                   // Clean up temp TTS file
                   try { fs.unlinkSync(ttsPath); } catch {}

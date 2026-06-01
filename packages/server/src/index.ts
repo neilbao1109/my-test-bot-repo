@@ -12,6 +12,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import apiRouter from './routes/api.js';
 import uploadRouter from './routes/upload.js';
+import filesRouter from './routes/files.js';
 import authRouter from './routes/auth.js';
 import pushRouter from './routes/push.js';
 import { setupSocketHandlers, signalShutdown, drainBotStreams } from './socket/handlers.js';
@@ -34,6 +35,7 @@ app.use(express.json());
 app.use('/api', authRouter);
 app.use('/api', apiRouter);
 app.use('/api', uploadRouter);
+app.use('/api', filesRouter);
 app.use('/api', pushRouter);
 
 // Serve static client files in production

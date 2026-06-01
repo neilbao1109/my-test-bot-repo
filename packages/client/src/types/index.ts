@@ -63,12 +63,14 @@ export interface StreamingMessage {
 
 export interface FileAttachment {
   id: string;
-  filename: string;
+  hash?: string;           // CAS hash (new files)
+  filename?: string;        // Legacy field
   originalName: string;
   mimeType: string;
   size: number;
   url: string;
   duration?: number; // audio duration in seconds
+  deduplicated?: boolean;   // Whether upload was deduplicated
 }
 
 export interface PinnedMessage {
