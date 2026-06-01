@@ -39,9 +39,12 @@ A self-hosted web chat app for talking with AI bots, powered by [OpenClaw](https
 - **Text-to-speech** — bot messages read aloud via Azure Speech Service
 
 ### 📎 Files
-- **File & image upload** — drag-and-drop or click to upload
+- **Content-Addressable Storage (CAS)** — files stored by SHA-256 hash, automatic deduplication
+- **SeaweedFS S3 backend** — S3-compatible object storage, swappable to AWS S3 / R2 / MinIO
+- **File & image upload** — drag-and-drop or click to upload (up to 50MB)
 - **Client-side image compression** — 4 quality tiers (original / high / medium / low)
 - **File preview** — inline image preview and file download
+- **Immutable caching** — CAS objects are content-addressed, enabling permanent CDN/browser caching
 
 ### 🌐 Internationalization
 - **Chinese & English** — full i18n coverage with `zh` and `en` locales
@@ -66,7 +69,7 @@ A self-hosted web chat app for talking with AI bots, powered by [OpenClaw](https
 | Backend | Node.js + Express + TypeScript |
 | Database | SQLite (better-sqlite3) |
 | Auth | JWT (jsonwebtoken + bcrypt) |
-| File Upload | Multer |
+| File Upload | Multer + SeaweedFS S3 (CAS) |
 | AI Backend | OpenClaw Gateway (WebSocket, ed25519 device auth) |
 | Voice | Azure Speech Service (STT + TTS) |
 | Markdown | react-markdown + remark-gfm + rehype-highlight |
@@ -130,6 +133,11 @@ If you don't have an OpenClaw Gateway, you can still use the app for group messa
 | `AZURE_SPEECH_REGION` | _(none)_ | Azure Speech Service region |
 | `CLAWCHAT_PUSH_SECRET` | _(none)_ | Optional secret for push webhook auth |
 | `BOTS_CONFIG` | _(none)_ | JSON array of pre-configured system bots (optional) |
+| `S3_ENDPOINT` | `http://127.0.0.1:8333` | SeaweedFS S3 endpoint |
+| `S3_BUCKET` | `clawchat-cas` | S3 bucket for CAS file storage |
+| `S3_ACCESS_KEY` | `clawchat_access` | S3 access key |
+| `S3_SECRET_KEY` | _(none)_ | S3 secret key |
+| `S3_REGION` | `us-east-1` | S3 region (SeaweedFS ignores this) |
 
 > **Note:** Gateway connection settings (URL, auth token) are per-bot and configured through the UI, not via environment variables.
 
@@ -176,7 +184,8 @@ packages/
 │       ├── routes/
 │       │   ├── api.ts             # REST API (rooms, messages, users)
 │       │   ├── auth.ts            # Register / login / token verify
-│       │   ├── upload.ts          # File upload endpoint
+│       │   ├── upload.ts          # File upload endpoint (CAS)
+│       │   ├── files.ts           # CAS file download proxy
 │       │   └── push.ts           # Webhook push endpoint
 │       ├── services/
 │       │   ├── bot-bridge.ts      # OpenClaw bot ↔ chat bridge
@@ -198,6 +207,8 @@ packages/
 │       │   ├── platform-context.ts # Bot platform context
 │       │   ├── io.ts              # Shared Socket.IO instance
 │       │   └── command.ts         # Slash command definitions
+│       │   ├── file-store.ts      # CAS file storage (S3 client)
+│       │   ├── file-upload-db.ts  # File upload index (SQLite)
 │       ├── socket/handlers.ts     # Socket.IO event handlers
 │       └── types.ts               # Shared TypeScript types
 │
@@ -207,7 +218,9 @@ docs/
 ├── clawchat-contacts-plan.md      # Contacts feature plan
 ├── clawchat-v2-plan.md            # V2 roadmap
 ├── rfc-bot-deregister.md          # Bot deregister RFC
-└── rfc-bot-skill-sharing.md       # Skill sharing RFC
+├── rfc-bot-skill-sharing.md       # Skill sharing RFC
+└── design/
+    └── seaweedfs-cas-file-storage.md  # CAS file storage design doc
 ```
 
 ## Architecture
@@ -219,11 +232,44 @@ docs/
 └──────────────┘                  │                  │                      └──────────────────┘
                                   │  Bot Registry    │──── manages N bots
                                   │  SQLite DB       │──── users, rooms, messages, bots, friends
-                                  │  File Storage    │──── data/uploads/
+                                  │  File Storage    │──── SeaweedFS S3 (CAS)
+                                  └─────────────────┘
+                                          │
+                                          ▼
+                                  ┌─────────────────┐
+                                  │  SeaweedFS       │
+                                  │  S3 Gateway      │──── 127.0.0.1:8333
+                                  │  (CAS objects)   │──── /data/seaweedfs
                                   └─────────────────┘
 ```
 
 Each registered bot maintains its own WebSocket connection to an OpenClaw Gateway with persistent ed25519 device identity. The Bot Registry manages lifecycle (connect, pause, resume, deregister) and the Bot Bridge routes messages between chat rooms and bot sessions.
+
+File storage uses **Content-Addressable Storage (CAS)** backed by SeaweedFS in S3-compatible mode. Files are addressed by SHA-256 hash, providing automatic deduplication and immutable caching. The S3 backend is swappable — change the `S3_ENDPOINT` to point to AWS S3, Cloudflare R2, or MinIO with zero code changes.
+
+### SeaweedFS Setup
+
+```bash
+# Install SeaweedFS binary
+curl -L https://github.com/seaweedfs/seaweedfs/releases/download/4.30/linux_amd64.tar.gz | tar xz
+sudo mv weed /usr/local/bin/
+
+# Create data directory
+sudo mkdir -p /data/seaweedfs
+
+# Start (development)
+weed server -dir=/data/seaweedfs -filer -s3 -ip=127.0.0.1 -s3.port=8333
+
+# Or use systemd (production)
+sudo systemctl enable --now weed-server
+```
+
+After starting, configure S3 credentials:
+
+```bash
+weed shell -master=127.0.0.1:9333 <<< \
+  's3.configure -apply -user clawchat -actions Read,Write,List,Tagging,Admin -access_key clawchat_access -secret_key <your_secret>'
+```
 
 ## Documentation
 
