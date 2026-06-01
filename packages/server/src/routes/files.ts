@@ -14,12 +14,19 @@ router.get('/files/:hash', async (req, res) => {
 
   try {
     const { body, contentType, size } = await getFile(hash);
-    res.set({
+
+    // Content-Disposition: use ?name= query param if provided
+    const filename = req.query.name as string | undefined;
+    const headers: Record<string, string> = {
       'Content-Type': contentType,
       'Content-Length': String(size),
       'ETag': `"${hash}"`,
       'Cache-Control': 'public, max-age=31536000, immutable',
-    });
+    };
+    if (filename) {
+      headers['Content-Disposition'] = `inline; filename="${encodeURIComponent(filename)}"; filename*=UTF-8''${encodeURIComponent(filename)}`;
+    }
+    res.set(headers);
     (body as any).pipe(res);
   } catch (err: any) {
     if (err?.name === 'NoSuchKey' || err?.$metadata?.httpStatusCode === 404) {

@@ -8,6 +8,12 @@ import rehypeAutolink from '../../utils/rehypeAutolink';
 import type { FileAttachment } from '../../types';
 import { formatFileSize } from '../../utils/format';
 
+/** Build download URL with ?name= for proper Content-Disposition */
+function downloadUrl(attachment: FileAttachment): string {
+  if (!attachment.url.startsWith('/api/files/')) return attachment.url;
+  return `${attachment.url}?name=${encodeURIComponent(attachment.originalName)}`;
+}
+
 interface FilePreviewModalProps {
   attachment: FileAttachment;
   onClose: () => void;
@@ -81,7 +87,7 @@ export default function FilePreviewModal({ attachment, onClose }: FilePreviewMod
           </div>
           <div className="flex items-center gap-3 flex-shrink-0 ml-3">
             <a
-              href={attachment.url}
+              href={downloadUrl(attachment)}
               download={attachment.originalName}
               className="text-xs text-primary-400 hover:text-primary-300 transition"
             >
@@ -157,7 +163,7 @@ export default function FilePreviewModal({ attachment, onClose }: FilePreviewMod
               <span className="text-5xl mb-4">📁</span>
               <p className="text-sm">{t('filePreview.unsupported')}</p>
               <a
-                href={attachment.url}
+                href={downloadUrl(attachment)}
                 download={attachment.originalName}
                 className="mt-4 text-sm text-primary-400 hover:text-primary-300 transition"
               >
