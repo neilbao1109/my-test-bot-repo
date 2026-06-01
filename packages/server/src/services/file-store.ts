@@ -7,8 +7,8 @@ const s3 = new S3Client({
   endpoint: process.env.S3_ENDPOINT || 'http://127.0.0.1:8333',
   region: process.env.S3_REGION || 'us-east-1',
   credentials: {
-    accessKeyId: process.env.S3_ACCESS_KEY || 'any',
-    secretAccessKey: process.env.S3_SECRET_KEY || 'any',
+    accessKeyId: process.env.S3_ACCESS_KEY || 'clawchat_access',
+    secretAccessKey: process.env.S3_SECRET_KEY || 'clawchat_secret_2026',
   },
   forcePathStyle: true,
 });
