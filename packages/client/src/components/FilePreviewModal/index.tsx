@@ -8,10 +8,10 @@ import rehypeAutolink from '../../utils/rehypeAutolink';
 import type { FileAttachment } from '../../types';
 import { formatFileSize } from '../../utils/format';
 
-/** Build download URL with ?name= for proper Content-Disposition */
+/** Build download URL with ?name= and &download=1 for proper Content-Disposition */
 function downloadUrl(attachment: FileAttachment): string {
   if (!attachment.url.startsWith('/api/files/')) return attachment.url;
-  return `${attachment.url}?name=${encodeURIComponent(attachment.originalName)}`;
+  return `${attachment.url}?name=${encodeURIComponent(attachment.originalName)}&download=1`;
 }
 
 interface FilePreviewModalProps {
