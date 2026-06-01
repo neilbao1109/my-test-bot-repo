@@ -7,6 +7,7 @@ import os from 'os';
 import { randomUUID } from 'crypto';
 import { putFile } from '../services/file-store.js';
 import { insertFileUpload } from '../services/file-upload-db.js';
+import { verifyToken } from '../services/auth.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const uploadsDir = path.join(__dirname, '../../data/uploads');
@@ -79,8 +80,17 @@ const upload = multer({
 
 const router = Router();
 
-// --- New upload route (CAS) ---
-router.post('/upload', upload.single('file'), async (req, res) => {
+// --- Auth middleware for upload ---
+router.post('/upload', (req, _res, next) => {
+  const auth = req.headers.authorization;
+  if (auth?.startsWith('Bearer ')) {
+    const payload = verifyToken(auth.slice(7));
+    if (payload) {
+      (req as any).userId = payload.userId;
+    }
+  }
+  next();
+}, upload.single('file'), async (req, res) => {
   const file = req.file;
   if (!file) {
     res.status(400).json({ error: 'No file provided' });

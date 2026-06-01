@@ -1,4 +1,5 @@
 import type { FileAttachment } from '../types';
+import { getToken } from './auth';
 
 export type ImageQuality = 'original' | 'high' | 'medium' | 'low';
 
@@ -97,6 +98,12 @@ export async function uploadFile(
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest();
     xhr.open('POST', '/api/upload');
+
+    // Attach auth token
+    const token = getToken();
+    if (token) {
+      xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+    }
 
     if (onProgress) {
       xhr.upload.addEventListener('progress', (e) => {
