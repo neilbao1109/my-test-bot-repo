@@ -254,7 +254,7 @@ export default function FilePreviewModal({ attachment, onClose }: FilePreviewMod
         </div>
       </div>
       {/* Zoom controls — bottom center */}
-      <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-10 flex items-center gap-1 bg-black/60 rounded-full px-2 py-1" style={{ paddingBottom: 'max(env(safe-area-inset-bottom), 4px)' }}>
+      <div className="absolute left-1/2 -translate-x-1/2 z-10 flex items-center gap-1 bg-black/60 rounded-full px-2 py-1" style={{ bottom: 'calc(max(env(safe-area-inset-bottom), 8px) + 16px)' }}>
         <button
           className="text-white/80 hover:text-white w-9 h-9 flex items-center justify-center text-lg transition"
           onClick={(e) => { e.stopPropagation(); setScale(prev => { const n = Math.max(0.5, prev * 0.8); if (n <= 1) setTranslate({ x: 0, y: 0 }); return n; }); }}
