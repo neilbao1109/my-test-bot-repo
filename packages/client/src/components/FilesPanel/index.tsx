@@ -112,7 +112,7 @@ export default function FilesPanel() {
 
   return (
     <>
-      <div className="w-80 border-l border-dark-border bg-dark-surface flex flex-col h-full shrink-0">
+      <div className="fixed inset-0 z-30 w-full bg-dark-surface flex flex-col h-full md:static md:inset-auto md:z-auto md:w-80 md:border-l md:border-dark-border md:shrink-0" style={{ paddingTop: 'env(safe-area-inset-top, 0px)', paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}>
         {/* Header */}
         <div className="flex items-center justify-between px-4 py-3 border-b border-dark-border">
           <h3 className="text-sm font-semibold text-dark-text">{t('chat.sharedFiles')}</h3>
