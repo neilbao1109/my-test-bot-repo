@@ -3,6 +3,7 @@ import clsx from 'clsx';
 import { useT } from '../../hooks/useT';
 import ReactMarkdown from 'react-markdown';
 import remarkGfmSafe from '../../utils/remarkGfmSafe';
+import remarkBreaks from 'remark-breaks';
 import rehypeHighlight from 'rehype-highlight';
 import rehypeAutolink from '../../utils/rehypeAutolink';
 import { formatDistanceToNow } from 'date-fns';
@@ -468,7 +469,7 @@ export default function MessageBubble({ message, isStreaming, streamContent, hig
               )}
             >
               <ReactMarkdown
-                remarkPlugins={[remarkGfmSafe]}
+                remarkPlugins={[remarkGfmSafe, remarkBreaks]}
                 rehypePlugins={[rehypeHighlight, rehypeAutolink]}
                 components={{
                   pre: ({ children }) => {
