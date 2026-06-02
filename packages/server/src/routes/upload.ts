@@ -21,6 +21,8 @@ const ALLOWED_PATHS = [
   path.resolve(process.env.HOME || '/home/azureuser', '.openclaw/workspace'),
   path.resolve(process.env.HOME || '/home/azureuser', '.openclaw/canvas'),
   '/tmp/clawchat-tts',
+  os.tmpdir(),   // allow all temp files (bot-generated content)
+  '/tmp',        // explicit fallback in case tmpdir differs
 ];
 
 /**
