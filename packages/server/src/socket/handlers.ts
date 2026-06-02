@@ -985,8 +985,10 @@ export function setupSocketHandlers(io: Server) {
           }
 
           // Parse MEDIA:<path> lines from bot response
+          console.log(`[MEDIA_DEBUG] fullContent length=${fullContent.length} firstChars=${JSON.stringify(fullContent.slice(0, 300))}`);
           const mediaRegex = /^MEDIA:(.+)$/gm;
           const mediaMatches = [...fullContent.matchAll(mediaRegex)];
+          console.log(`[MEDIA_DEBUG] mediaMatches count=${mediaMatches.length} matches=${JSON.stringify(mediaMatches.map(m => m[0]))}`);
           const cleanContent = fullContent.replace(/^MEDIA:.+\n?/gm, '').trim();
 
           // Send file messages for each MEDIA line
@@ -1018,12 +1020,12 @@ export function setupSocketHandlers(io: Server) {
             messageId: botMessageId,
             chunk: '',
             done: true,
-            finalMessage: botMsg || createMessage({
+            finalMessage: botMsg || (mediaMatches.length === 0 ? createMessage({
               roomId: data.roomId,
               userId: bot.id,
               content: fullContent,
               threadId: data.threadId,
-            }),
+            }) : undefined),
           });
 
           if (data.threadId) {

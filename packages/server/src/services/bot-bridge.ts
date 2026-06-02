@@ -173,11 +173,14 @@ export class BotBridge {
         if (data && stream === 'assistant' && typeof data.delta === 'string' && data.delta.length > 0) {
           activeStream.chunks.push(data.delta);
           for (const listener of activeStream.listeners) listener(data.delta, false);
-        } else if (data && stream === 'lifecycle' && data.endedAt) {
-          activeStream.done = true;
-          this.completedRunIds.add(gwRunId);
-          setTimeout(() => this.completedRunIds.delete(gwRunId), 30000);
-          for (const listener of activeStream.listeners) listener('', true);
+        } else if (stream === 'lifecycle') {
+          console.log(`[BotBridge:${this.config.id}] lifecycle event: data=${JSON.stringify(data)}`);
+          if (data?.endedAt) {
+            activeStream.done = true;
+            this.completedRunIds.add(gwRunId);
+            setTimeout(() => this.completedRunIds.delete(gwRunId), 30000);
+            for (const listener of activeStream.listeners) listener('', true);
+          }
         }
         return;
       }
