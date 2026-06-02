@@ -143,7 +143,9 @@ export default function ChatView() {
   }, [activeRoomId]);
 
   // Auto-scroll: instant on room switch, smooth on new messages
+  // Skip auto-scroll when we're trying to scroll to a specific message
   useEffect(() => {
+    if (useAppStore.getState().scrollToMessageId) return;
     bottomRef.current?.scrollIntoView({ behavior: isRoomSwitch ? 'instant' : 'smooth' });
   }, [roomMessages, roomStreamingMsgs]);
 
