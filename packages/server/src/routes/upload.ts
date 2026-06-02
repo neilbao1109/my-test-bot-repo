@@ -166,17 +166,17 @@ router.get('/rooms/:roomId/files', (req, res) => {
   const total = countFilesByRoom(roomId, mimePrefix);
 
   res.json({
-    files: files.map(f => ({
+    files: files.map((f: any) => ({
       id: f.id,
       hash: f.hash,
-      originalName: f.originalName,
-      mimeType: f.mimeType,
+      originalName: f.original_name || f.originalName,
+      mimeType: f.mime_type || f.mimeType,
       size: f.size,
-      uploadedBy: f.uploadedBy,
+      uploadedBy: f.uploaded_by || f.uploadedBy,
       uploaderName: f.uploaderName || 'Unknown',
       isBot: !!f.isBot,
       url: `/api/files/${f.hash}`,
-      createdAt: (f as any).created_at,
+      createdAt: f.created_at || f.createdAt,
     })),
     total,
     hasMore: offset + files.length < total,
