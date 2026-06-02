@@ -78,23 +78,24 @@ export default function FilePreviewModal({ attachment, onClose }: FilePreviewMod
       className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/90"
       onClick={handleBackdropClick}
     >
-      {/* Floating top bar */}
-      <div className="absolute top-0 left-0 right-0 z-10 flex items-center justify-between px-4 py-3 bg-gradient-to-b from-black/60 to-transparent">
+      {/* Floating top bar — safe area aware */}
+      <div className="absolute top-0 left-0 right-0 z-10 flex items-center justify-between px-4 pb-3 bg-gradient-to-b from-black/70 to-transparent" style={{ paddingTop: 'max(env(safe-area-inset-top), 12px)' }}>
         <div className="flex items-center gap-2 min-w-0">
           <span className="text-sm text-white/90 font-medium truncate">{attachment.originalName}</span>
           <span className="text-xs text-white/50 flex-shrink-0">{formatFileSize(attachment.size)}</span>
         </div>
-        <div className="flex items-center gap-4 flex-shrink-0">
+        <div className="flex items-center gap-2 flex-shrink-0">
           <a
             href={downloadUrl(attachment)}
             download={attachment.originalName}
-            className="text-sm text-white/80 hover:text-white transition"
+            className="text-sm text-white/80 hover:text-white transition px-3 py-2"
+            onClick={(e) => e.stopPropagation()}
           >
             {t('filePreview.download')}
           </a>
           <button
-            onClick={onClose}
-            className="text-white/80 hover:text-white text-2xl leading-none transition w-8 h-8 flex items-center justify-center"
+            onClick={(e) => { e.stopPropagation(); onClose(); }}
+            className="text-white/80 hover:text-white text-2xl leading-none transition w-10 h-10 flex items-center justify-center"
           >
             ✕
           </button>
