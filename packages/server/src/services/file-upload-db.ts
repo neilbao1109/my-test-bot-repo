@@ -25,6 +25,39 @@ export function updateFileUploadContext(id: string, roomId: string, messageId: s
   `).run(roomId, messageId, id);
 }
 
+export function listFilesByRoom(roomId: string, opts?: {
+  mimePrefix?: string;
+  limit?: number;
+  offset?: number;
+}): Array<FileUploadRecord & { uploaderName: string; isBot: boolean }> {
+  let sql = `SELECT f.*, u.username AS uploaderName, u.is_bot AS isBot
+    FROM file_uploads f
+    LEFT JOIN users u ON f.uploaded_by = u.id
+    WHERE f.room_id = ?`;
+  const params: any[] = [roomId];
+
+  if (opts?.mimePrefix) {
+    sql += ' AND f.mime_type LIKE ?';
+    params.push(`${opts.mimePrefix}%`);
+  }
+
+  sql += ' ORDER BY f.created_at DESC';
+  sql += ` LIMIT ? OFFSET ?`;
+  params.push(opts?.limit || 30, opts?.offset || 0);
+
+  return getDb().prepare(sql).all(...params) as Array<FileUploadRecord & { uploaderName: string; isBot: boolean }>;
+}
+
+export function countFilesByRoom(roomId: string, mimePrefix?: string): number {
+  let sql = 'SELECT COUNT(*) AS cnt FROM file_uploads WHERE room_id = ?';
+  const params: any[] = [roomId];
+  if (mimePrefix) {
+    sql += ' AND mime_type LIKE ?';
+    params.push(`${mimePrefix}%`);
+  }
+  return (getDb().prepare(sql).get(...params) as any).cnt;
+}
+
 export function listFilesByUser(userId: string, opts?: {
   roomId?: string;
   mimePrefix?: string;

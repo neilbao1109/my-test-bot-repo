@@ -85,6 +85,12 @@ const zh = {
   'chat.clickToRename': '点击重命名',
   'chat.roomOptions': '房间选项',
   'chat.unnamed': '未命名房间',
+  'chat.sharedFiles': '共享文件',
+  'files.all': '全部',
+  'files.images': '图片',
+  'files.documents': '文档',
+  'files.other': '其他',
+  'files.empty': '暂无共享文件',
 
   // CommandBar
   'command.help': '显示可用命令',

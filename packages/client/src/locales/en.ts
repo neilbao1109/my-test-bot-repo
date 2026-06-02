@@ -87,6 +87,12 @@ const en: Record<LocaleKeys, string> = {
   'chat.clickToRename': 'Click to rename',
   'chat.roomOptions': 'Room options',
   'chat.unnamed': 'Unnamed Room',
+  'chat.sharedFiles': 'Shared Files',
+  'files.all': 'All',
+  'files.images': 'Images',
+  'files.documents': 'Documents',
+  'files.other': 'Other',
+  'files.empty': 'No files shared yet',
 
   // CommandBar
   'command.help': 'Show available commands',

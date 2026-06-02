@@ -6,7 +6,7 @@ import fs from 'fs';
 import os from 'os';
 import { randomUUID } from 'crypto';
 import { putFile } from '../services/file-store.js';
-import { insertFileUpload } from '../services/file-upload-db.js';
+import { insertFileUpload, listFilesByRoom, countFilesByRoom } from '../services/file-upload-db.js';
 import { verifyToken } from '../services/auth.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -129,6 +129,58 @@ router.post('/upload', (req, _res, next) => {
     try { fs.unlinkSync(file.path); } catch {}
     res.status(500).json({ error: 'Upload failed' });
   }
+});
+
+// --- Room files listing ---
+router.get('/rooms/:roomId/files', (req, res) => {
+  const auth = req.headers.authorization;
+  if (!auth?.startsWith('Bearer ')) {
+    res.status(401).json({ error: 'Authentication required' });
+    return;
+  }
+  const payload = verifyToken(auth.slice(7));
+  if (!payload) {
+    res.status(401).json({ error: 'Invalid token' });
+    return;
+  }
+
+  const { roomId } = req.params;
+  const typeParam = req.query.type as string | undefined;
+  const limit = Math.min(parseInt(req.query.limit as string) || 30, 100);
+  const offset = parseInt(req.query.offset as string) || 0;
+
+  const mimeMap: Record<string, string> = {
+    image: 'image/',
+    video: 'video/',
+    audio: 'audio/',
+    document: 'application/',
+  };
+
+  // 'other' type needs special handling - everything not image/video/audio/application
+  let mimePrefix: string | undefined;
+  if (typeParam && typeParam !== 'other') {
+    mimePrefix = mimeMap[typeParam];
+  }
+
+  const files = listFilesByRoom(roomId, { mimePrefix, limit, offset });
+  const total = countFilesByRoom(roomId, mimePrefix);
+
+  res.json({
+    files: files.map(f => ({
+      id: f.id,
+      hash: f.hash,
+      originalName: f.originalName,
+      mimeType: f.mimeType,
+      size: f.size,
+      uploadedBy: f.uploadedBy,
+      uploaderName: f.uploaderName || 'Unknown',
+      isBot: !!f.isBot,
+      url: `/api/files/${f.hash}`,
+      createdAt: (f as any).created_at,
+    })),
+    total,
+    hasMore: offset + files.length < total,
+  });
 });
 
 // --- Legacy file serving (backward compat) ---

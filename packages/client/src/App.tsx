@@ -13,6 +13,7 @@ import CreateRoomModal from './components/CreateRoomModal';
 import BotRegistration from './components/BotRegistration';
 import BotMarketplace from './components/BotMarketplace';
 import FriendProfile from './components/FriendProfile';
+import FilesPanel from './components/FilesPanel';
 import type { User } from './types';
 
 function MainContent() {
@@ -131,6 +132,7 @@ export default function App() {
         </div>
         <div style={{ display: isMobile && mobileView !== 'chat' ? 'none' : undefined }} className={isMobile ? 'w-full h-full flex' : 'contents'}>
           <MainContent />
+          <FilesPanel />
           <ThreadListPanel />
           <MemberPanel />
         </div>

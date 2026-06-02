@@ -145,6 +145,10 @@ interface AppState {
   botSkillsCache: Record<string, { skills: any[]; fetchedAt: number }>;
   setBotSkillsCache: (botId: string, skills: any[]) => void;
 
+  // Files panel
+  showFilesPanel: boolean;
+  setShowFilesPanel: (show: boolean) => void;
+
   toggleSidebar: () => void;
   toggleThread: () => void;
   toggleMembers: () => void;
@@ -561,6 +565,8 @@ export const useAppStore = create<AppState>((set, get) => ({
   setBotSkillsCache: (botId, skills) => set((s) => ({
     botSkillsCache: { ...s.botSkillsCache, [botId]: { skills, fetchedAt: Date.now() } },
   })),
+  showFilesPanel: false,
+  setShowFilesPanel: (show) => set({ showFilesPanel: show }),
   toggleSidebar: () => set((s) => {
     const next = !s.showSidebar;
     localStorage.setItem('clawchat-sidebar', next ? 'expanded' : 'collapsed');
