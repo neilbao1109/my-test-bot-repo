@@ -50,6 +50,7 @@ export default defineConfig(({ mode }) => {
           // Only cache app shell assets, NOT API or socket requests
           globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
           navigateFallback: 'index.html',
+          navigateFallbackDenylist: [/^\/api\//],
           runtimeCaching: [
             {
               urlPattern: /^\/api\//,

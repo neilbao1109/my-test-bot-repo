@@ -14,11 +14,18 @@ router.get('/files/:hash', async (req, res) => {
 
   try {
     const { body, contentType, size } = await getFile(hash);
+
+    // ?name= sets Content-Disposition filename; ?download=1 forces attachment (save dialog)
+    const filename = req.query.name as string | undefined;
+    const isDownload = req.query.download === '1';
     res.set({
       'Content-Type': contentType,
       'Content-Length': String(size),
       'ETag': `"${hash}"`,
       'Cache-Control': 'public, max-age=31536000, immutable',
+      ...(filename ? {
+        'Content-Disposition': `${isDownload ? 'attachment' : 'inline'}; filename="${encodeURIComponent(filename)}"; filename*=UTF-8''${encodeURIComponent(filename)}`,
+      } : {}),
     });
     (body as any).pipe(res);
   } catch (err: any) {
