@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useT } from '../../hooks/useT';
 import { createPortal } from 'react-dom';
 import ReactMarkdown from 'react-markdown';
@@ -85,21 +85,158 @@ export default function FilePreviewModal({ attachment, onClose }: FilePreviewMod
     return () => { document.body.style.overflow = ''; };
   }, []);
 
+  // Image zoom state
+  const [scale, setScale] = useState(1);
+  const [translate, setTranslate] = useState({ x: 0, y: 0 });
+  const [isDragging, setIsDragging] = useState(false);
+  const dragStart = useRef({ x: 0, y: 0 });
+  const translateStart = useRef({ x: 0, y: 0 });
+  const lastTouchDist = useRef<number | null>(null);
+  const lastTapTime = useRef(0);
+  const imgContainerRef = useRef<HTMLDivElement>(null);
+
+  const resetZoom = useCallback(() => {
+    setScale(1);
+    setTranslate({ x: 0, y: 0 });
+  }, []);
+
+  const clampTranslate = useCallback((s: number, tx: number, ty: number) => {
+    if (s <= 1) return { x: 0, y: 0 };
+    const maxX = (s - 1) * window.innerWidth / 2;
+    const maxY = (s - 1) * window.innerHeight / 2;
+    return {
+      x: Math.max(-maxX, Math.min(maxX, tx)),
+      y: Math.max(-maxY, Math.min(maxY, ty)),
+    };
+  }, []);
+
+  // Mouse wheel zoom
+  const handleWheel = useCallback((e: React.WheelEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const delta = e.deltaY > 0 ? 0.9 : 1.1;
+    setScale(prev => {
+      const next = Math.max(0.5, Math.min(10, prev * delta));
+      if (next <= 1) setTranslate({ x: 0, y: 0 });
+      return next;
+    });
+  }, []);
+
+  // Double click to toggle zoom
+  const handleDoubleClick = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (scale > 1.1) {
+      resetZoom();
+    } else {
+      setScale(3);
+    }
+  }, [scale, resetZoom]);
+
+  // Mouse drag to pan
+  const handleMouseDown = useCallback((e: React.MouseEvent) => {
+    if (scale <= 1) return;
+    e.preventDefault();
+    setIsDragging(true);
+    dragStart.current = { x: e.clientX, y: e.clientY };
+    translateStart.current = { ...translate };
+  }, [scale, translate]);
+
+  const handleMouseMove = useCallback((e: React.MouseEvent) => {
+    if (!isDragging) return;
+    const dx = e.clientX - dragStart.current.x;
+    const dy = e.clientY - dragStart.current.y;
+    setTranslate(clampTranslate(scale, translateStart.current.x + dx, translateStart.current.y + dy));
+  }, [isDragging, scale, clampTranslate]);
+
+  const handleMouseUp = useCallback(() => {
+    setIsDragging(false);
+  }, []);
+
+  // Touch: pinch zoom + drag + double tap
+  const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    if (e.touches.length === 2) {
+      e.preventDefault();
+      const dx = e.touches[0].clientX - e.touches[1].clientX;
+      const dy = e.touches[0].clientY - e.touches[1].clientY;
+      lastTouchDist.current = Math.hypot(dx, dy);
+    } else if (e.touches.length === 1) {
+      // Double tap detection
+      const now = Date.now();
+      if (now - lastTapTime.current < 300) {
+        e.preventDefault();
+        if (scale > 1.1) {
+          resetZoom();
+        } else {
+          setScale(3);
+        }
+        lastTapTime.current = 0;
+        return;
+      }
+      lastTapTime.current = now;
+      // Single touch drag
+      if (scale > 1) {
+        dragStart.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+        translateStart.current = { ...translate };
+        setIsDragging(true);
+      }
+    }
+  }, [scale, translate, resetZoom]);
+
+  const handleTouchMove = useCallback((e: React.TouchEvent) => {
+    if (e.touches.length === 2) {
+      e.preventDefault();
+      const dx = e.touches[0].clientX - e.touches[1].clientX;
+      const dy = e.touches[0].clientY - e.touches[1].clientY;
+      const dist = Math.hypot(dx, dy);
+      if (lastTouchDist.current !== null) {
+        const ratio = dist / lastTouchDist.current;
+        setScale(prev => {
+          const next = Math.max(0.5, Math.min(10, prev * ratio));
+          if (next <= 1) setTranslate({ x: 0, y: 0 });
+          return next;
+        });
+      }
+      lastTouchDist.current = dist;
+    } else if (e.touches.length === 1 && isDragging && scale > 1) {
+      const dx = e.touches[0].clientX - dragStart.current.x;
+      const dy = e.touches[0].clientY - dragStart.current.y;
+      setTranslate(clampTranslate(scale, translateStart.current.x + dx, translateStart.current.y + dy));
+    }
+  }, [isDragging, scale, clampTranslate]);
+
+  const handleTouchEnd = useCallback(() => {
+    lastTouchDist.current = null;
+    setIsDragging(false);
+  }, []);
+
+  // Reset zoom when modal closes/opens
+  useEffect(() => { resetZoom(); }, [attachment.url, resetZoom]);
+
   const handleBackdropClick = useCallback((e: React.MouseEvent) => {
-    if (e.target === e.currentTarget) onClose();
-  }, [onClose]);
+    if (e.target === e.currentTarget && scale <= 1) onClose();
+  }, [onClose, scale]);
 
   const modal = isImage ? (
-    // Image: fullscreen lightbox with floating controls
+    // Image: fullscreen lightbox with zoom/pan + floating controls
     <div
+      ref={imgContainerRef}
       className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/90"
       onClick={handleBackdropClick}
+      onWheel={handleWheel}
+      onMouseMove={handleMouseMove}
+      onMouseUp={handleMouseUp}
+      onMouseLeave={handleMouseUp}
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
+      style={{ touchAction: 'none' }}
     >
       {/* Floating top bar — safe area aware */}
       <div className="absolute top-0 left-0 right-0 z-10 flex items-center justify-between px-4 pb-3 bg-gradient-to-b from-black/70 to-transparent" style={{ paddingTop: 'max(env(safe-area-inset-top), 12px)' }}>
         <div className="flex items-center gap-2 min-w-0">
           <span className="text-sm text-white/90 font-medium truncate">{attachment.originalName}</span>
           <span className="text-xs text-white/50 flex-shrink-0">{formatFileSize(attachment.size)}</span>
+          {scale > 1.01 && <span className="text-xs text-white/50 flex-shrink-0">{Math.round(scale * 100)}%</span>}
         </div>
         <div className="flex items-center gap-2 flex-shrink-0">
           <button
@@ -116,10 +253,39 @@ export default function FilePreviewModal({ attachment, onClose }: FilePreviewMod
           </button>
         </div>
       </div>
+      {/* Zoom controls — bottom center */}
+      <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-10 flex items-center gap-1 bg-black/60 rounded-full px-2 py-1" style={{ paddingBottom: 'max(env(safe-area-inset-bottom), 4px)' }}>
+        <button
+          className="text-white/80 hover:text-white w-9 h-9 flex items-center justify-center text-lg transition"
+          onClick={(e) => { e.stopPropagation(); setScale(prev => { const n = Math.max(0.5, prev * 0.8); if (n <= 1) setTranslate({ x: 0, y: 0 }); return n; }); }}
+        >
+          −
+        </button>
+        <button
+          className="text-xs text-white/60 hover:text-white px-2 py-1 transition min-w-[3rem] text-center"
+          onClick={(e) => { e.stopPropagation(); resetZoom(); }}
+        >
+          {Math.round(scale * 100)}%
+        </button>
+        <button
+          className="text-white/80 hover:text-white w-9 h-9 flex items-center justify-center text-lg transition"
+          onClick={(e) => { e.stopPropagation(); setScale(prev => Math.min(10, prev * 1.25)); }}
+        >
+          +
+        </button>
+      </div>
       <img
         src={attachment.url}
         alt={attachment.originalName}
-        className="max-w-full max-h-full object-contain p-4"
+        className="max-w-full max-h-full object-contain p-4 select-none"
+        style={{
+          transform: `translate(${translate.x}px, ${translate.y}px) scale(${scale})`,
+          transition: isDragging ? 'none' : 'transform 0.15s ease-out',
+          cursor: scale > 1 ? (isDragging ? 'grabbing' : 'grab') : 'zoom-in',
+        }}
+        draggable={false}
+        onMouseDown={handleMouseDown}
+        onDoubleClick={handleDoubleClick}
       />
     </div>
   ) : (
