@@ -135,21 +135,15 @@ export default function ChatView() {
   const isRoomSwitch = prevRoomRef.current !== activeRoomId;
 
   // Join room on selection
-  // Join room on selection (skip if we're scrolling to a specific message — context fetch handles it)
   useEffect(() => {
     if (activeRoomId) {
-      const scrollTarget = useAppStore.getState().scrollToMessageId;
-      if (!scrollTarget) {
-        socketService.joinRoom(activeRoomId);
-      }
+      socketService.joinRoom(activeRoomId);
     }
     prevRoomRef.current = activeRoomId;
   }, [activeRoomId]);
 
   // Auto-scroll: instant on room switch, smooth on new messages
-  // Skip auto-scroll when we're trying to scroll to a specific message
   useEffect(() => {
-    if (useAppStore.getState().scrollToMessageId) return;
     bottomRef.current?.scrollIntoView({ behavior: isRoomSwitch ? 'instant' : 'smooth' });
   }, [roomMessages, roomStreamingMsgs]);
 
@@ -167,53 +161,28 @@ export default function ChatView() {
   // Scroll to message from search (load context if not in view)
   useEffect(() => {
     if (!scrollToMessageId || !activeRoomId) return;
-
-    let cancelled = false;
-    const targetId = scrollToMessageId;
-    const roomId = activeRoomId;
-
-    // Retry scrolling until DOM element appears (React may need multiple frames to render)
-    const retryScroll = (attempt: number) => {
-      if (cancelled || attempt > 20) {
-        if (!cancelled) setScrollToMessageId(null);
-        return;
-      }
-      const el = messageRefs.current[targetId];
-      if (el) {
-        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        setFlashMessageId(targetId);
-        setScrollToMessageId(null);
-        // Ensure we've joined the room (skipped during scroll-to)
-        socketService.joinRoom(roomId);
-        setTimeout(() => setFlashMessageId(null), 2000);
-        return;
-      }
-      setTimeout(() => retryScroll(attempt + 1), 50);
-    };
-
-    // Check if target message is already in the loaded messages
-    const currentMessages = useAppStore.getState().messages[roomId] || [];
-    if (currentMessages.some((m: any) => m.id === targetId)) {
-      // Message in store, just wait for DOM render
-      retryScroll(0);
-    } else {
-      // Fetch message context from server
-      socketService.getMessageContext(targetId, roomId).then((result) => {
-        if (cancelled || result.error || !result.messages?.length) {
-          if (!cancelled) setScrollToMessageId(null);
-          return;
-        }
-        const { setMessages, setHasMore, setContextMode } = useAppStore.getState();
-        setMessages(roomId, result.messages);
-        setHasMore(roomId, result.hasOlder);
-        setContextMode(roomId, true);
-        // Messages set, now retry until DOM catches up
-        retryScroll(0);
-      });
+    const el = messageRefs.current[scrollToMessageId];
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      setFlashMessageId(scrollToMessageId);
+      setScrollToMessageId(null);
+      setTimeout(() => setFlashMessageId(null), 2000);
+      return;
     }
-
-    return () => { cancelled = true; };
-  }, [scrollToMessageId, activeRoomId]);
+    // Message not loaded — fetch context from server
+    const targetId = scrollToMessageId;
+    socketService.getMessageContext(targetId, activeRoomId).then((result) => {
+      if (result.error || !result.messages?.length) {
+        setScrollToMessageId(null);
+        return;
+      }
+      // Replace room messages with the context window
+      const { setMessages, setHasMore } = useAppStore.getState();
+      setMessages(activeRoomId, result.messages);
+      setHasMore(activeRoomId, result.hasOlder);
+      // scrollToMessageId stays set — next render will find the element and scroll
+    });
+  }, [scrollToMessageId, messages, activeRoomId]);
 
   const handleDrop = useCallback(async (e: React.DragEvent) => {
     e.preventDefault();

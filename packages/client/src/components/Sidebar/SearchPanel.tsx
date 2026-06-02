@@ -98,9 +98,8 @@ export default function SearchPanel({ onClose }: { onClose: () => void }) {
   };
 
   const handleMessageClick = (msg: Message) => {
-    // Set scroll target BEFORE switching room, so auto-scroll skips
-    useAppStore.getState().setScrollToMessageId(msg.id);
     setActiveRoom(msg.roomId);
+    useAppStore.getState().setScrollToMessageId(msg.id);
     useAppStore.setState({ mobileView: 'chat' });
     useAppStore.getState().setSearchRoomId(null);
     onClose();
