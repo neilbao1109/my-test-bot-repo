@@ -149,21 +149,23 @@ router.get('/rooms/:roomId/files', (req, res) => {
   const limit = Math.min(parseInt(req.query.limit as string) || 30, 100);
   const offset = parseInt(req.query.offset as string) || 0;
 
-  const mimeMap: Record<string, string> = {
-    image: 'image/',
-    video: 'video/',
-    audio: 'audio/',
-    document: 'application/',
-  };
-
-  // 'other' type needs special handling - everything not image/video/audio/application
+  // 'document' includes application/* AND text/*
+  // 'other' excludes image/video/audio/application/text
   let mimePrefix: string | undefined;
-  if (typeParam && typeParam !== 'other') {
-    mimePrefix = mimeMap[typeParam];
-  }
+  let mimePrefixes: string[] | undefined;
+  let mimeExclude: string[] | undefined;
 
-  const files = listFilesByRoom(roomId, { mimePrefix, limit, offset });
-  const total = countFilesByRoom(roomId, mimePrefix);
+  if (typeParam === 'image') {
+    mimePrefix = 'image/';
+  } else if (typeParam === 'document') {
+    mimePrefixes = ['application/', 'text/'];
+  } else if (typeParam === 'other') {
+    mimeExclude = ['image/', 'video/', 'audio/', 'application/', 'text/'];
+  }
+  // 'all' or no type → no filter
+
+  const files = listFilesByRoom(roomId, { mimePrefix, mimePrefixes, mimeExclude, limit, offset });
+  const total = countFilesByRoom(roomId, mimePrefix, mimePrefixes, mimeExclude);
 
   res.json({
     files: files.map((f: any) => ({

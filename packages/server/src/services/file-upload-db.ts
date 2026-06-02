@@ -27,6 +27,8 @@ export function updateFileUploadContext(id: string, roomId: string, messageId: s
 
 export function listFilesByRoom(roomId: string, opts?: {
   mimePrefix?: string;
+  mimePrefixes?: string[];
+  mimeExclude?: string[];
   limit?: number;
   offset?: number;
 }): Array<FileUploadRecord & { uploaderName: string; isBot: boolean }> {
@@ -39,6 +41,14 @@ export function listFilesByRoom(roomId: string, opts?: {
   if (opts?.mimePrefix) {
     sql += ' AND f.mime_type LIKE ?';
     params.push(`${opts.mimePrefix}%`);
+  } else if (opts?.mimePrefixes && opts.mimePrefixes.length > 0) {
+    const clauses = opts.mimePrefixes.map(p => { params.push(`${p}%`); return 'f.mime_type LIKE ?'; });
+    sql += ` AND (${clauses.join(' OR ')})`;
+  } else if (opts?.mimeExclude && opts.mimeExclude.length > 0) {
+    for (const ex of opts.mimeExclude) {
+      sql += ' AND f.mime_type NOT LIKE ?';
+      params.push(`${ex}%`);
+    }
   }
 
   sql += ' ORDER BY f.created_at DESC';
@@ -48,12 +58,20 @@ export function listFilesByRoom(roomId: string, opts?: {
   return getDb().prepare(sql).all(...params) as Array<FileUploadRecord & { uploaderName: string; isBot: boolean }>;
 }
 
-export function countFilesByRoom(roomId: string, mimePrefix?: string): number {
+export function countFilesByRoom(roomId: string, mimePrefix?: string, mimePrefixes?: string[], mimeExclude?: string[]): number {
   let sql = 'SELECT COUNT(*) AS cnt FROM file_uploads WHERE room_id = ?';
   const params: any[] = [roomId];
   if (mimePrefix) {
     sql += ' AND mime_type LIKE ?';
     params.push(`${mimePrefix}%`);
+  } else if (mimePrefixes && mimePrefixes.length > 0) {
+    const clauses = mimePrefixes.map(p => { params.push(`${p}%`); return 'mime_type LIKE ?'; });
+    sql += ` AND (${clauses.join(' OR ')})`;
+  } else if (mimeExclude && mimeExclude.length > 0) {
+    for (const ex of mimeExclude) {
+      sql += ' AND mime_type NOT LIKE ?';
+      params.push(`${ex}%`);
+    }
   }
   return (getDb().prepare(sql).get(...params) as any).cnt;
 }
