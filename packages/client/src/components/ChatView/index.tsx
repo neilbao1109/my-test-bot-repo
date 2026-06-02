@@ -135,9 +135,13 @@ export default function ChatView() {
   const isRoomSwitch = prevRoomRef.current !== activeRoomId;
 
   // Join room on selection
+  // Join room on selection (skip if we're scrolling to a specific message — context fetch handles it)
   useEffect(() => {
     if (activeRoomId) {
-      socketService.joinRoom(activeRoomId);
+      const scrollTarget = useAppStore.getState().scrollToMessageId;
+      if (!scrollTarget) {
+        socketService.joinRoom(activeRoomId);
+      }
     }
     prevRoomRef.current = activeRoomId;
   }, [activeRoomId]);
@@ -161,52 +165,55 @@ export default function ChatView() {
   }, []);
 
   // Scroll to message from search (load context if not in view)
-  const scrollAttemptRef = useRef<{ id: string; fetching: boolean } | null>(null);
   useEffect(() => {
     if (!scrollToMessageId || !activeRoomId) return;
 
-    // Try to find the element in DOM (may need a frame for React to render)
-    const tryScroll = () => {
-      const el = messageRefs.current[scrollToMessageId];
+    let cancelled = false;
+    const targetId = scrollToMessageId;
+    const roomId = activeRoomId;
+
+    // Retry scrolling until DOM element appears (React may need multiple frames to render)
+    const retryScroll = (attempt: number) => {
+      if (cancelled || attempt > 20) {
+        if (!cancelled) setScrollToMessageId(null);
+        return;
+      }
+      const el = messageRefs.current[targetId];
       if (el) {
         el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        setFlashMessageId(scrollToMessageId);
+        setFlashMessageId(targetId);
         setScrollToMessageId(null);
-        scrollAttemptRef.current = null;
+        // Ensure we've joined the room (skipped during scroll-to)
+        socketService.joinRoom(roomId);
         setTimeout(() => setFlashMessageId(null), 2000);
-        return true;
+        return;
       }
-      return false;
+      setTimeout(() => retryScroll(attempt + 1), 50);
     };
 
-    // First try: element might already be rendered
-    if (tryScroll()) return;
-
-    // Wait a frame for DOM to catch up (e.g. after setMessages)
-    requestAnimationFrame(() => {
-      if (tryScroll()) return;
-
-      // If we're already fetching context for this message, wait for messages to update
-      if (scrollAttemptRef.current?.id === scrollToMessageId && scrollAttemptRef.current.fetching) return;
-
-      // Message not loaded — fetch context from server
-      scrollAttemptRef.current = { id: scrollToMessageId, fetching: true };
-      const targetId = scrollToMessageId;
-      socketService.getMessageContext(targetId, activeRoomId).then((result) => {
-        if (result.error || !result.messages?.length) {
-          setScrollToMessageId(null);
-          scrollAttemptRef.current = null;
+    // Check if target message is already in the loaded messages
+    const currentMessages = useAppStore.getState().messages[roomId] || [];
+    if (currentMessages.some((m: any) => m.id === targetId)) {
+      // Message in store, just wait for DOM render
+      retryScroll(0);
+    } else {
+      // Fetch message context from server
+      socketService.getMessageContext(targetId, roomId).then((result) => {
+        if (cancelled || result.error || !result.messages?.length) {
+          if (!cancelled) setScrollToMessageId(null);
           return;
         }
-        // Replace room messages with the context window, mark as context mode
         const { setMessages, setHasMore, setContextMode } = useAppStore.getState();
-        setMessages(activeRoomId, result.messages);
-        setHasMore(activeRoomId, result.hasOlder);
-        setContextMode(activeRoomId, true);
-        // scrollToMessageId stays set — next render cycle will find the element via rAF
+        setMessages(roomId, result.messages);
+        setHasMore(roomId, result.hasOlder);
+        setContextMode(roomId, true);
+        // Messages set, now retry until DOM catches up
+        retryScroll(0);
       });
-    });
-  }, [scrollToMessageId, messages, activeRoomId]);
+    }
+
+    return () => { cancelled = true; };
+  }, [scrollToMessageId, activeRoomId]);
 
   const handleDrop = useCallback(async (e: React.DragEvent) => {
     e.preventDefault();
