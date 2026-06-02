@@ -8,10 +8,27 @@ import rehypeAutolink from '../../utils/rehypeAutolink';
 import type { FileAttachment } from '../../types';
 import { formatFileSize } from '../../utils/format';
 
-/** Build download URL with ?name= and &download=1 for correct filename + save dialog */
-function downloadUrl(att: FileAttachment): string {
-  if (!att.url.startsWith('/api/files/')) return att.url;
-  return `${att.url}?name=${encodeURIComponent(att.originalName)}&download=1`;
+/** Download file via fetch+blob to avoid iOS Safari navigation */
+function triggerDownload(att: FileAttachment) {
+  const url = att.url.startsWith('/api/files/')
+    ? `${att.url}?name=${encodeURIComponent(att.originalName)}&download=1`
+    : att.url;
+  fetch(url)
+    .then(r => r.blob())
+    .then(blob => {
+      const blobUrl = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = blobUrl;
+      a.download = att.originalName;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(blobUrl);
+    })
+    .catch(() => {
+      // Fallback: direct navigation
+      window.open(url, '_blank');
+    });
 }
 
 interface FilePreviewModalProps {
@@ -85,14 +102,12 @@ export default function FilePreviewModal({ attachment, onClose }: FilePreviewMod
           <span className="text-xs text-white/50 flex-shrink-0">{formatFileSize(attachment.size)}</span>
         </div>
         <div className="flex items-center gap-2 flex-shrink-0">
-          <a
-            href={downloadUrl(attachment)}
-            download={attachment.originalName}
+          <button
             className="text-sm text-white/80 hover:text-white transition px-3 py-2"
-            onClick={(e) => e.stopPropagation()}
+            onClick={(e) => { e.stopPropagation(); triggerDownload(attachment); }}
           >
             {t('filePreview.download')}
-          </a>
+          </button>
           <button
             onClick={(e) => { e.stopPropagation(); onClose(); }}
             className="text-white/80 hover:text-white text-2xl leading-none transition w-10 h-10 flex items-center justify-center"
@@ -121,13 +136,12 @@ export default function FilePreviewModal({ attachment, onClose }: FilePreviewMod
             <span className="text-xs text-dark-muted flex-shrink-0">{formatFileSize(attachment.size)}</span>
           </div>
           <div className="flex items-center gap-3 flex-shrink-0 ml-3">
-            <a
-              href={downloadUrl(attachment)}
-              download={attachment.originalName}
+            <button
+              onClick={() => triggerDownload(attachment)}
               className="text-xs text-primary-400 hover:text-primary-300 transition"
             >
               {t('filePreview.download')}
-            </a>
+            </button>
             <button
               onClick={onClose}
               className="text-dark-muted hover:text-dark-text text-lg leading-none transition"
@@ -191,13 +205,12 @@ export default function FilePreviewModal({ attachment, onClose }: FilePreviewMod
             <div className="flex flex-col items-center justify-center py-12 text-dark-muted">
               <span className="text-5xl mb-4">📁</span>
               <p className="text-sm">{t('filePreview.unsupported')}</p>
-              <a
-                href={downloadUrl(attachment)}
-                download={attachment.originalName}
+              <button
+                onClick={() => triggerDownload(attachment)}
                 className="mt-4 text-sm text-primary-400 hover:text-primary-300 transition"
               >
                 {t('filePreview.clickDownload')}
-              </a>
+              </button>
             </div>
           )}
         </div>
