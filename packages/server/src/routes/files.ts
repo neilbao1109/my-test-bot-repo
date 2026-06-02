@@ -14,20 +14,12 @@ router.get('/files/:hash', async (req, res) => {
 
   try {
     const { body, contentType, size } = await getFile(hash);
-
-    // Content-Disposition: ?download=1 forces attachment, otherwise inline
-    const filename = req.query.name as string | undefined;
-    const disposition = req.query.download === '1' ? 'attachment' : 'inline';
-    const headers: Record<string, string> = {
+    res.set({
       'Content-Type': contentType,
       'Content-Length': String(size),
       'ETag': `"${hash}"`,
       'Cache-Control': 'public, max-age=31536000, immutable',
-    };
-    if (filename) {
-      headers['Content-Disposition'] = `${disposition}; filename="${encodeURIComponent(filename)}"; filename*=UTF-8''${encodeURIComponent(filename)}`;
-    }
-    res.set(headers);
+    });
     (body as any).pipe(res);
   } catch (err: any) {
     if (err?.name === 'NoSuchKey' || err?.$metadata?.httpStatusCode === 404) {
