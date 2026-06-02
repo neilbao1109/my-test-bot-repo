@@ -159,28 +159,50 @@ export default function ChatView() {
   }, []);
 
   // Scroll to message from search (load context if not in view)
+  const scrollAttemptRef = useRef<{ id: string; fetching: boolean } | null>(null);
   useEffect(() => {
     if (!scrollToMessageId || !activeRoomId) return;
-    const el = messageRefs.current[scrollToMessageId];
-    if (el) {
-      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      setFlashMessageId(scrollToMessageId);
-      setScrollToMessageId(null);
-      setTimeout(() => setFlashMessageId(null), 2000);
-      return;
-    }
-    // Message not loaded — fetch context from server
-    const targetId = scrollToMessageId;
-    socketService.getMessageContext(targetId, activeRoomId).then((result) => {
-      if (result.error || !result.messages?.length) {
+
+    // Try to find the element in DOM (may need a frame for React to render)
+    const tryScroll = () => {
+      const el = messageRefs.current[scrollToMessageId];
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        setFlashMessageId(scrollToMessageId);
         setScrollToMessageId(null);
-        return;
+        scrollAttemptRef.current = null;
+        setTimeout(() => setFlashMessageId(null), 2000);
+        return true;
       }
-      // Replace room messages with the context window
-      const { setMessages, setHasMore } = useAppStore.getState();
-      setMessages(activeRoomId, result.messages);
-      setHasMore(activeRoomId, result.hasOlder);
-      // scrollToMessageId stays set — next render will find the element and scroll
+      return false;
+    };
+
+    // First try: element might already be rendered
+    if (tryScroll()) return;
+
+    // Wait a frame for DOM to catch up (e.g. after setMessages)
+    requestAnimationFrame(() => {
+      if (tryScroll()) return;
+
+      // If we're already fetching context for this message, wait for messages to update
+      if (scrollAttemptRef.current?.id === scrollToMessageId && scrollAttemptRef.current.fetching) return;
+
+      // Message not loaded — fetch context from server
+      scrollAttemptRef.current = { id: scrollToMessageId, fetching: true };
+      const targetId = scrollToMessageId;
+      socketService.getMessageContext(targetId, activeRoomId).then((result) => {
+        if (result.error || !result.messages?.length) {
+          setScrollToMessageId(null);
+          scrollAttemptRef.current = null;
+          return;
+        }
+        // Replace room messages with the context window, mark as context mode
+        const { setMessages, setHasMore, setContextMode } = useAppStore.getState();
+        setMessages(activeRoomId, result.messages);
+        setHasMore(activeRoomId, result.hasOlder);
+        setContextMode(activeRoomId, true);
+        // scrollToMessageId stays set — next render cycle will find the element via rAF
+      });
     });
   }, [scrollToMessageId, messages, activeRoomId]);
 

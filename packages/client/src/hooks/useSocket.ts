@@ -17,8 +17,16 @@ export function useSocket() {
     const store = useAppStore.getState();
 
     socket.on('room:history', (data: { roomId: string; messages: Message[]; members: User[]; hasMore?: boolean; threads?: Thread[] }) => {
-      // Skip update if we already have messages cached and the latest message matches
+      // If we're scrolling to a specific message via context, don't overwrite with room:history
+      const scrollTarget = useAppStore.getState().scrollToMessageId;
       const existing = useAppStore.getState().messages[data.roomId];
+      if (scrollTarget && existing && existing.some((m: Message) => m.id === scrollTarget)) {
+        // Context messages already loaded for scroll target — skip overwrite, just update members
+        store.setRoomMembers(data.roomId, data.members);
+        store.setHasMore(data.roomId, data.hasMore ?? false);
+        return;
+      }
+      // Skip update if we already have messages cached and the latest message matches
       if (existing && existing.length > 0 && data.messages.length > 0) {
         const existingLatest = existing[existing.length - 1].id;
         const newLatest = data.messages[data.messages.length - 1].id;
