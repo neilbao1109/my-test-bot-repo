@@ -16,6 +16,7 @@ interface ActiveStream {
   listeners: Set<(chunk: string, done: boolean) => void>;
   gwRunId?: string; // Gateway runId for matching agent events
   lastActivity: number; // timestamp of last agent event (including tool calls)
+  mediaUrls: string[]; // media file paths extracted from OpenClaw agent events
 }
 
 type ConnectionMode = 'local' | 'remote-url' | 'ssh-tunnel' | 'mock';
@@ -140,6 +141,15 @@ export class BotBridge {
   private handleAgentEvent(payload: any) {
     const { runId: gwRunId, stream, data, sessionKey } = payload;
     if (!gwRunId) return;
+
+    // Debug: log non-assistant, non-lifecycle events for media discovery
+    if (stream && stream !== 'assistant' && stream !== 'lifecycle' && stream !== 'tool') {
+      console.log(`[BotBridge:MEDIA_DEBUG] agent event stream=${stream} data=${JSON.stringify(data)?.slice(0, 300)}`);
+    }
+    // Debug: log assistant events with non-delta data
+    if (stream === 'assistant' && data && !data.delta) {
+      console.log(`[BotBridge:MEDIA_DEBUG] assistant non-delta: dataKeys=${JSON.stringify(Object.keys(data))} data=${JSON.stringify(data)?.slice(0, 300)}`);
+    }
     // Debug: log every agent event with matching context
     if (this.activeStreams.size > 0) {
       const streamEntries = [...this.activeStreams.entries()].map(([k, v]) => `${k.slice(0,30)}→gwR:${v.gwRunId?.slice(0,20)}`);
@@ -167,6 +177,16 @@ export class BotBridge {
           }
           if (!this.sessionRooms.has(sessionKey)) {
             console.log(`[BotBridge:${this.config.id}] Failed to map: streamKey=${streamKey} roomSessions=${JSON.stringify([...this.roomSessions.entries()].map(([k,v])=>v).slice(0,3))}`);
+          }
+        }
+
+        // Capture mediaUrls from assistant events (OpenClaw strips MEDIA: lines and sends them here)
+        if (data && stream === 'assistant' && Array.isArray(data.mediaUrls) && data.mediaUrls.length > 0) {
+          for (const url of data.mediaUrls) {
+            if (!activeStream.mediaUrls.includes(url)) {
+              activeStream.mediaUrls.push(url);
+              console.log(`[BotBridge:${this.config.id}] Captured mediaUrl: ${url}`);
+            }
           }
         }
 
@@ -204,6 +224,16 @@ export class BotBridge {
   private handleChatEvent(payload: any) {
     const { runId, sessionKey, state, message } = payload;
     if (!runId || !sessionKey) return;
+
+    // Debug: log full message structure for media debugging
+    if (state === 'final' && message) {
+      const contentType = Array.isArray(message.content) ? 'array' : typeof message.content;
+      const contentPreview = Array.isArray(message.content)
+        ? JSON.stringify(message.content.map((p: any) => ({ type: p.type, hasText: !!p.text, hasUrl: !!p.url, hasSource: !!p.source, keys: Object.keys(p) })))
+        : JSON.stringify(message.content)?.slice(0, 200);
+      const extraKeys = Object.keys(message).filter(k => k !== 'content' && k !== 'role');
+      console.log(`[BotBridge:MEDIA_DEBUG] chat final: contentType=${contentType} preview=${contentPreview} extraKeys=${JSON.stringify(extraKeys)} payloadKeys=${JSON.stringify(Object.keys(payload).filter(k => !['runId','sessionKey','state','message'].includes(k)))}`);
+    }
 
     // --- Mapping: learn the agent main session key from ANY chat event ---
     // When a regular chat event arrives with a runId matching our activeStream,
@@ -500,7 +530,7 @@ export class BotBridge {
     this.activeResponseSessions.add(sessionKey);
 
     const streamKey = `${sessionKey}:${crypto.randomBytes(4).toString('hex')}`;
-    const stream: ActiveStream = { chunks: [], done: false, listeners: new Set(), lastActivity: Date.now() };
+    const stream: ActiveStream = { chunks: [], done: false, listeners: new Set(), lastActivity: Date.now(), mediaUrls: [] };
     this.activeStreams.set(streamKey, stream);
 
     try {
@@ -635,6 +665,13 @@ export class BotBridge {
           console.error(`[BotBridge:${this.config.id}] chat.history fallback failed:`, err.message);
         }
         yield '⚠️ AI responded but could not extract the response text';
+      }
+
+      // Yield media URLs as special markers for handlers to process
+      if (stream.mediaUrls.length > 0) {
+        for (const mediaUrl of stream.mediaUrls) {
+          yield `__CLAWCHAT_MEDIA__:${mediaUrl}`;
+        }
       }
     } finally {
       this.activeStreams.delete(streamKey);

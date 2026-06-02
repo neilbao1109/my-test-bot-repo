@@ -971,7 +971,13 @@ export function setupSocketHandlers(io: Server) {
         };
 
         try {
+          const pendingMediaUrls: string[] = [];
           for await (const chunk of registryStreamBotResponse(bot.id, botContent, context)) {
+            // Intercept media markers from BotBridge (OpenClaw strips MEDIA: lines)
+            if (chunk.startsWith('__CLAWCHAT_MEDIA__:')) {
+              pendingMediaUrls.push(chunk.replace('__CLAWCHAT_MEDIA__:', ''));
+              continue;
+            }
             fullContent += chunk;
             // Update tracked content for graceful shutdown
             const tracked = activeBotStreams.get(streamId);
@@ -984,16 +990,23 @@ export function setupSocketHandlers(io: Server) {
             });
           }
 
-          // Parse MEDIA:<path> lines from bot response
+          // Parse MEDIA:<path> lines from bot response (fallback for direct text)
           console.log(`[MEDIA_DEBUG] fullContent length=${fullContent.length} firstChars=${JSON.stringify(fullContent.slice(0, 300))}`);
           const mediaRegex = /^MEDIA:(.+)$/gm;
           const mediaMatches = [...fullContent.matchAll(mediaRegex)];
-          console.log(`[MEDIA_DEBUG] mediaMatches count=${mediaMatches.length} matches=${JSON.stringify(mediaMatches.map(m => m[0]))}`);
+          console.log(`[MEDIA_DEBUG] mediaMatches count=${mediaMatches.length} pendingMediaUrls count=${pendingMediaUrls.length}`);
           const cleanContent = fullContent.replace(/^MEDIA:.+\n?/gm, '').trim();
 
-          // Send file messages for each MEDIA line
-          for (const match of mediaMatches) {
-            const filePath = match[1].trim();
+          // Combine media from both sources: text-parsed + OpenClaw agent events
+          const allMediaPaths = [
+            ...mediaMatches.map(m => m[1].trim()),
+            ...pendingMediaUrls,
+          ];
+          // Deduplicate
+          const uniqueMediaPaths = [...new Set(allMediaPaths)];
+
+          // Send file messages for each media path
+          for (const filePath of uniqueMediaPaths) {
             const attachment = await ingestLocalFile(filePath, bot.id, data.roomId);
             if (attachment) {
               const fileMsg = createMessage({
