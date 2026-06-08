@@ -18,6 +18,7 @@ import { downloadToTemp } from '../services/file-store.js';
 import { updateFileUploadContext } from '../services/file-upload-db.js';
 import { getUser, setOnline, getOnlineUsers, getAllUsers } from '../services/user.js';
 import { verifyToken } from '../services/auth.js';
+import { getRoomAutoThread, setRoomAutoThread } from '../services/room-settings.js';
 import { v4 as uuid } from 'uuid';
 
 interface AuthenticatedSocket extends Socket {
@@ -903,7 +904,7 @@ export function setupSocketHandlers(io: Server) {
       // Auto-thread: if this message is NOT already in a thread, and bots will respond,
       // and the room is a bot room, auto-create a thread for the conversation.
       let autoThreadId = data.threadId;
-      if (!autoThreadId && respondingBots.length > 0 && roomType === 'bot') {
+      if (!autoThreadId && respondingBots.length > 0 && roomType === 'bot' && getRoomAutoThread(data.roomId)) {
         const thread = createThread(data.roomId, message.id);
         autoThreadId = thread.id;
         io.to(data.roomId).emit('thread:created', { thread, parentMessage: message });
@@ -1372,6 +1373,20 @@ export function setupSocketHandlers(io: Server) {
       const users = searchUsersByEmail(data.query);
       // Filter out self
       callback({ users: users.filter(u => u.id !== socket.userId) });
+    });
+
+    // --- Room Settings ---
+    socket.on('room:settings:get', (data: { roomId: string }, callback) => {
+      if (!socket.userId) return callback?.({ autoThread: true });
+      const autoThread = getRoomAutoThread(data.roomId);
+      callback?.({ autoThread });
+    });
+
+    socket.on('room:settings:update', (data: { roomId: string; autoThread: boolean }, callback?) => {
+      if (!socket.userId) return callback?.({ error: 'Not authenticated' });
+      setRoomAutoThread(data.roomId, data.autoThread);
+      io.to(data.roomId).emit('room:settings:updated', { roomId: data.roomId, autoThread: data.autoThread });
+      callback?.({ success: true });
     });
 
     // --- Typing ---

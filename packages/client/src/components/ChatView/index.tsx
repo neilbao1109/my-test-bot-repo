@@ -480,12 +480,23 @@ function RoomNameHeader({ room, userId }: { room: Room; userId?: string }) {
 function RoomMenu({ room, userId, memberCount }: { room: Room; userId?: string; memberCount: number }) {
   const [open, setOpen] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [autoThread, setAutoThread] = useState(true);
   const menuRef = useRef<HTMLDivElement>(null);
   const t = useT();
   const toggleMembers = useAppStore((s) => s.toggleMembers);
   const setShowThreadList = useAppStore((s) => s.setShowThreadList);
   const setShowFilesPanel = useAppStore((s) => s.setShowFilesPanel);
+  const setRoomSettings = useAppStore((s) => s.setRoomSettings);
   const canDelete = !room.createdBy || room.createdBy === userId;
+  const isBotRoom = room.type === 'bot';
+
+  // Fetch room settings when menu opens for bot rooms
+  useEffect(() => {
+    if (!open || !isBotRoom) return;
+    socketService.getRoomSettings(room.id).then((settings) => {
+      setAutoThread(settings.autoThread);
+    });
+  }, [open, isBotRoom, room.id]);
 
   useEffect(() => {
     if (!open) return;
@@ -551,6 +562,31 @@ function RoomMenu({ room, userId, memberCount }: { room: Room; userId?: string; 
               </svg>
               {t('chat.sharedFiles')}
             </button>
+            {/* Auto Thread toggle (bot rooms only) */}
+            {isBotRoom && (
+            <button
+              onClick={() => {
+                const newValue = !autoThread;
+                setAutoThread(newValue);
+                socketService.updateRoomSettings(room.id, { autoThread: newValue });
+                setRoomSettings(room.id, { autoThread: newValue });
+              }}
+              className="w-full text-left px-3 py-2 text-sm text-dark-text hover:bg-dark-hover transition flex items-center gap-2"
+              title={autoThread ? t('chat.autoThreadOn') : t('chat.autoThreadOff')}
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+              </svg>
+              <span className="flex-1">{t('chat.autoThread')}</span>
+              <span className={`w-8 h-4 rounded-full relative transition-colors ${
+                autoThread ? 'bg-blue-500' : 'bg-dark-border'
+              }`}>
+                <span className={`absolute top-0.5 w-3 h-3 rounded-full bg-white transition-transform ${
+                  autoThread ? 'translate-x-4' : 'translate-x-0.5'
+                }`} />
+              </span>
+            </button>
+            )}
             {/* Delete Room */}
             {canDelete && (
             <button

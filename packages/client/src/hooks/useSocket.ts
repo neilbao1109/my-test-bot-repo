@@ -242,6 +242,10 @@ export function useSocket() {
       });
     });
 
+    socket.on('room:settings:updated', (data: { roomId: string; autoThread: boolean }) => {
+      store.setRoomSettings(data.roomId, { autoThread: data.autoThread });
+    });
+
     // Re-auth and rejoin room on reconnect
     const handleReconnect = () => {
       console.log('[Socket] Reconnected, re-authing...');
@@ -303,6 +307,7 @@ export function useSocket() {
       socket.off('bot:registered');
       socket.off('bot:status-changed');
       socket.off('bot:deregistered');
+      socket.off('room:settings:updated');
       socket.io.off('reconnect', handleReconnect);
     };
   }, [user]);

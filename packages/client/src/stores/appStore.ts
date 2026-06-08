@@ -195,6 +195,10 @@ interface AppState {
   // Capabilities
   capabilities: { stt: boolean; tts: boolean };
   setCapabilities: (caps: { stt: boolean; tts: boolean }) => void;
+
+  // Room Settings
+  roomSettings: Record<string, { autoThread: boolean }>;
+  setRoomSettings: (roomId: string, settings: { autoThread: boolean }) => void;
 }
 
 export const useAppStore = create<AppState>((set, get) => ({
@@ -644,6 +648,12 @@ export const useAppStore = create<AppState>((set, get) => ({
   // Capabilities
   capabilities: { stt: false, tts: false },
   setCapabilities: (caps) => set({ capabilities: caps }),
+
+  // Room Settings
+  roomSettings: {},
+  setRoomSettings: (roomId, settings) => set((s) => ({
+    roomSettings: { ...s.roomSettings, [roomId]: settings },
+  })),
 }));
 
 // Sync image quality on load

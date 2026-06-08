@@ -427,6 +427,19 @@ function initSchema(db: Database.Database) {
     console.log('[Migration] v10: file_uploads table created');
   }
 
+  if (version < 11) {
+    db.transaction(() => {
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS room_settings (
+          room_id TEXT PRIMARY KEY REFERENCES rooms(id) ON DELETE CASCADE,
+          auto_thread INTEGER NOT NULL DEFAULT 1
+        );
+      `);
+      db.exec('PRAGMA user_version = 11');
+    })();
+    console.log('[Migration] v11: room_settings table created');
+  }
+
   // Ensure system user exists (for system messages)
   db.prepare(`
     INSERT OR IGNORE INTO users (id, username, avatar_url, is_bot, is_online)

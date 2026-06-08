@@ -405,6 +405,19 @@ class SocketService {
   off(event: string, callback?: (...args: any[]) => void) {
     this.socket?.off(event, callback);
   }
+
+  // Room Settings
+  getRoomSettings(roomId: string): Promise<{ autoThread: boolean }> {
+    return new Promise((resolve) => {
+      this.socket?.emit('room:settings:get', { roomId }, resolve);
+    });
+  }
+
+  updateRoomSettings(roomId: string, settings: { autoThread: boolean }): Promise<void> {
+    return new Promise((resolve) => {
+      this.socket?.emit('room:settings:update', { roomId, ...settings }, resolve);
+    });
+  }
 }
 
 export const socketService = new SocketService();
