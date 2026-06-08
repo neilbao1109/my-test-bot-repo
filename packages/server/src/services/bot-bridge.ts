@@ -608,7 +608,10 @@ export class BotBridge {
       let sendResult: any;
       try {
         // Inject platform context and chat history on first message of each session
-        let messageBody = `[clawchat:room_id=${context.roomId}]\n${content}`;
+        const prefix = context.threadId
+          ? `[clawchat:room_id=${context.roomId}:thread_id=${context.threadId}]`
+          : `[clawchat:room_id=${context.roomId}]`;
+        let messageBody = `${prefix}\n${content}`;
         if (!this.contextInjectedSessions.has(sessionKey)) {
           const platformCtx = getPlatformContext();
           if (platformCtx) {

@@ -4,7 +4,15 @@ You are connected to ClawChat, a multi-bot chat platform. The following conventi
 
 ## Message Format
 
-- Messages from users arrive prefixed with `[clawchat:room_id=<uuid>]` — this is the room context. Do not repeat it in your response.
+- **Main chat messages** arrive prefixed with:
+  ```
+  [clawchat:room_id=<uuid>]
+  ```
+- **Thread messages** arrive prefixed with:
+  ```
+  [clawchat:room_id=<uuid>:thread_id=<uuid>]
+  ```
+- These prefixes provide routing context. Do not repeat them in your response.
 - Reply in the same language the user uses unless instructed otherwise.
 
 ## Threads
@@ -56,6 +64,7 @@ When creating or managing cron jobs that interact with ClawChat:
 - `to` accepts a room UUID **or** a room name. If omitted, pushes to the bot's default room.
 - `botId` specifies which bot sends the message. Omit to use the first registered bot.
 - Include the room_id from the `[clawchat:room_id=...]` prefix if targeting the current conversation.
+- If you are in a thread (prefix contains `thread_id=...`), note that cron jobs cannot push directly into threads — they push to the room level.
 - Cron jobs run in isolated sessions — they don't share chat history with the room.
 - Set appropriate timezone (default: UTC+8 for Shanghai).
 
