@@ -46,7 +46,19 @@ export default function CommandBar({ roomId, threadId, onExport }: CommandBarPro
   const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
   const speechSupported = !!SpeechRecognition;
 
-  const { rooms, roomMembers, activeRoomId, replyContext, clearReplyContext, removeReplyContext, setContextSelectionMode, mobileView, user, botSkillsCache, setBotSkillsCache } = useAppStore();
+  const { rooms, roomMembers, activeRoomId, mobileView, user, botSkillsCache, setBotSkillsCache } = useAppStore();
+  // Always call all hooks unconditionally (Zustand rule)
+  const mainReplyContext = useAppStore(s => s.replyContext);
+  const threadReplyContext = useAppStore(s => s.threadReplyContext);
+  const mainClearReplyContext = useAppStore(s => s.clearReplyContext);
+  const threadClearReplyContext = useAppStore(s => s.clearThreadReplyContext);
+  const mainRemoveReplyContext = useAppStore(s => s.removeReplyContext);
+  const threadRemoveReplyContext = useAppStore(s => s.removeThreadReplyContext);
+  const setContextSelectionMode = useAppStore(s => s.setContextSelectionMode);
+  // Pick the correct context based on threadId
+  const replyContext = threadId ? threadReplyContext : mainReplyContext;
+  const clearReplyContext = threadId ? threadClearReplyContext : mainClearReplyContext;
+  const removeReplyContext = threadId ? threadRemoveReplyContext : mainRemoveReplyContext;
   const { stt: sttEnabled } = useAppStore(s => s.capabilities);
   const members = activeRoomId ? roomMembers[activeRoomId] || [] : [];
   const currentRoom = rooms.find(r => r.id === roomId);

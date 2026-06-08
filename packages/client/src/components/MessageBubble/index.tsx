@@ -130,7 +130,7 @@ function VoiceBubble({ attachment }: { attachment: FileAttachment }) {
 }
 
 export default function MessageBubble({ message, isStreaming, streamContent, highlight, isSearchActive, hideThreadIndicator }: MessageBubbleProps) {
-  const { user, roomMembers, activeRoomId, threadInfo, setReplyContext, addReplyContext, removeReplyContext, contextSelectionMode: ctxSelectMode, replyContext, messages: allMessages } = useAppStore();
+  const { user, roomMembers, activeRoomId, threadInfo, setReplyContext, setThreadReplyContext, addReplyContext, removeReplyContext, contextSelectionMode: ctxSelectMode, replyContext, messages: allMessages, threadMessages: storeThreadMessages } = useAppStore();
   const isPinned = useAppStore((s) => activeRoomId ? (s.pinnedMessages[activeRoomId] || []).some((p) => p.messageId === message.id) : false);
   const selectionMode = useAppStore((s) => s.selectionMode);
   const isSelected = useAppStore((s) => s.selectedMessages.has(message.id));
@@ -345,12 +345,13 @@ export default function MessageBubble({ message, isStreaming, streamContent, hig
         {/* Reply quote blocks (multi-context or single replyTo) */}
         {(() => {
           const roomMsgs = activeRoomId ? allMessages[activeRoomId] || [] : [];
+          const tMsgs = storeThreadMessages;
           const contextIds = message.contextIds && message.contextIds.length > 0 ? message.contextIds : (message.replyTo ? [message.replyTo] : []);
           if (contextIds.length === 0) return null;
           return (
             <div className="space-y-0.5">
               {contextIds.map(cid => {
-                const quoted = roomMsgs.find(m => m.id === cid);
+                const quoted = roomMsgs.find(m => m.id === cid) || tMsgs.find(m => m.id === cid);
                 if (!quoted) return null;
                 const quotedSender = members.find(m => m.id === quoted.userId);
                 return (
@@ -619,7 +620,11 @@ export default function MessageBubble({ message, isStreaming, streamContent, hig
                 break;
               }
               case 'reply':
-                setReplyContext([message]);
+                if (message.threadId) {
+                  setThreadReplyContext([message]);
+                } else {
+                  setReplyContext([message]);
+                }
                 setTimeout(() => document.querySelector<HTMLTextAreaElement>('.command-bar-input')?.focus(), 50);
                 break;
               case 'thread':

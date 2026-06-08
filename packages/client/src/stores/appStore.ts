@@ -103,6 +103,12 @@ interface AppState {
   clearReplyContext: () => void;
   setReplyContext: (msgs: Message[]) => void;
   setContextSelectionMode: (mode: boolean) => void;
+  // Thread-scoped reply context
+  threadReplyContext: Message[];
+  setThreadReplyContext: (msgs: Message[]) => void;
+  addThreadReplyContext: (msg: Message) => void;
+  removeThreadReplyContext: (id: string) => void;
+  clearThreadReplyContext: () => void;
   // Backward compat aliases
   replyToMessage: Message | null;
   setReplyTo: (message: Message | null) => void;
@@ -378,7 +384,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   threadInfo: {},
   roomThreads: {},
   showThreadList: false,
-  setActiveThread: (thread) => set({ activeThread: thread, showThread: !!thread }),
+  setActiveThread: (thread) => set({ activeThread: thread, showThread: !!thread, ...(thread === null ? { threadReplyContext: [] } : {}) }),
   setThreadMessages: (messages) => set({ threadMessages: messages }),
   addThreadMessage: (message) =>
     set((s) => {
@@ -485,6 +491,17 @@ export const useAppStore = create<AppState>((set, get) => ({
   clearReplyContext: () => set({ replyContext: [], contextSelectionMode: false }),
   setReplyContext: (msgs) => set({ replyContext: msgs.slice(0, 5).sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()) }),
   setContextSelectionMode: (mode) => set({ contextSelectionMode: mode }),
+  // Thread-scoped reply context
+  threadReplyContext: [],
+  setThreadReplyContext: (msgs) => set({ threadReplyContext: msgs.slice(0, 5).sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()) }),
+  addThreadReplyContext: (msg) => set((s) => {
+    if (s.threadReplyContext.length >= 5) return s;
+    if (s.threadReplyContext.some(m => m.id === msg.id)) return s;
+    const updated = [...s.threadReplyContext, msg].sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+    return { threadReplyContext: updated };
+  }),
+  removeThreadReplyContext: (id) => set((s) => ({ threadReplyContext: s.threadReplyContext.filter(m => m.id !== id) })),
+  clearThreadReplyContext: () => set({ threadReplyContext: [] }),
   // Backward compat
   get replyToMessage() { return get().replyContext[0] || null; },
   setReplyTo: (message) => set({ replyContext: message ? [message] : [] }),
