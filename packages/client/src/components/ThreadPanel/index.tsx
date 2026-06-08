@@ -7,7 +7,7 @@ import CommandBar from '../CommandBar';
 import UserAvatar from '../UserAvatar';
 import { useT } from '../../hooks/useT';
 
-export default function ThreadPanel() {
+export default function ThreadPanel({ className }: { className?: string }) {
   const {
     activeThread, threadMessages, setActiveThread,
     activeRoomId, messages, streamingMessages, typingUsers,
@@ -76,7 +76,7 @@ export default function ThreadPanel() {
 
   return (
     <div
-      className="flex-1 flex flex-col h-full min-h-0 min-w-0 bg-dark-bg relative overflow-hidden"
+      className={`flex flex-col h-full min-h-0 min-w-0 bg-dark-bg relative overflow-hidden ${className || 'flex-1'}`}
       onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
       onDragLeave={() => setDragOver(false)}
       onDrop={handleDrop}

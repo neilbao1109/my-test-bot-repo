@@ -138,6 +138,11 @@ export function useSocket() {
         replyCount: data.thread.replyCount,
         lastReplyAt: data.thread.lastReplyAt,
       });
+      // Add new thread to roomThreads
+      const currentThreads = useAppStore.getState().roomThreads[data.thread.roomId] || [];
+      if (!currentThreads.some(t => t.id === data.thread.id)) {
+        store.setRoomThreads(data.thread.roomId, [data.thread, ...currentThreads]);
+      }
     });
 
     socket.on('thread:updated', (data: { threadId: string; parentMessageId: string; replyCount: number; lastReplyAt: string }) => {

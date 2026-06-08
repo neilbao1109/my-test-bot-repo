@@ -16,12 +16,24 @@ import FriendProfile from './components/FriendProfile';
 import FilesPanel from './components/FilesPanel';
 import type { User } from './types';
 
-function MainContent() {
-  const { showThread, activeThread } = useAppStore();
-  if (showThread && activeThread) {
+function MainContent({ isMobile }: { isMobile: boolean }) {
+  const showThread = useAppStore((s) => s.showThread);
+  const activeThread = useAppStore((s) => s.activeThread);
+
+  // Mobile: thread replaces chat view entirely
+  if (isMobile && showThread && activeThread) {
     return <ThreadPanel />;
   }
-  return <ChatView />;
+
+  // Desktop: side-by-side layout
+  return (
+    <div className="flex flex-1 overflow-hidden min-w-0">
+      <ChatView />
+      {!isMobile && showThread && activeThread && (
+        <ThreadPanel className="w-96 border-l border-dark-border flex-shrink-0" />
+      )}
+    </div>
+  );
 }
 
 function useIsMobile() {
@@ -131,7 +143,7 @@ export default function App() {
           <Sidebar />
         </div>
         <div style={{ display: isMobile && mobileView !== 'chat' ? 'none' : undefined }} className={isMobile ? 'w-full h-full flex' : 'contents'}>
-          <MainContent />
+          <MainContent isMobile={isMobile} />
           <FilesPanel />
           <ThreadListPanel />
           <MemberPanel />

@@ -900,9 +900,18 @@ export function setupSocketHandlers(io: Server) {
       const roomType = currentRoom?.type as 'dm' | 'group' | 'bot' | undefined;
       const respondingBots = getRespondingBots(data.content, data.roomId, socket.userId, roomType);
 
+      // Auto-thread: if this message is NOT already in a thread, and bots will respond,
+      // and the room is a bot room, auto-create a thread for the conversation.
+      let autoThreadId = data.threadId;
+      if (!autoThreadId && respondingBots.length > 0 && roomType === 'bot') {
+        const thread = createThread(data.roomId, message.id);
+        autoThreadId = thread.id;
+        io.to(data.roomId).emit('thread:created', { thread, parentMessage: message });
+      }
+
       // In group rooms, prepend recent chat history so the bot has context
       // Skip group history injection for thread messages — thread context is handled by bot-bridge
-      if (roomType === 'group' && respondingBots.length > 0 && !data.threadId) {
+      if (roomType === 'group' && respondingBots.length > 0 && !autoThreadId) {
         const MAX_GROUP_HISTORY = 50;
         const FALLBACK_HISTORY = 30;
 
@@ -943,12 +952,12 @@ export function setupSocketHandlers(io: Server) {
 
       // For thread messages, prepend thread context (parent message + recent replies)
       // This ensures the bot has thread context even within the message payload
-      if (data.threadId && respondingBots.length > 0) {
+      if (autoThreadId && respondingBots.length > 0) {
         try {
           const { buildThreadHistoryContext } = await import('../services/message.js');
           const members = getRoomMembers(data.roomId);
           const userMap = new Map(members.map(m => [m.id, m.username]));
-          const threadCtx = buildThreadHistoryContext(data.roomId, data.threadId, userMap);
+          const threadCtx = buildThreadHistoryContext(data.roomId, autoThreadId, userMap);
           if (threadCtx) {
             botContent = `--- Thread Context ---\n${threadCtx}\n--- End Thread Context ---\n\n[${getUser(socket.userId)?.username || socket.userId}]: ${data.content}`;
           }
@@ -970,20 +979,20 @@ export function setupSocketHandlers(io: Server) {
           roomId: data.roomId,
           botId: bot.id,
           content: '',
-          threadId: data.threadId,
+          threadId: autoThreadId,
         });
 
         io.to(data.roomId).emit('bot:stream:start', {
           messageId: botMessageId,
           roomId: data.roomId,
-          threadId: data.threadId || null,
+          threadId: autoThreadId || null,
           botId: bot.id,
         });
 
         const context = {
           roomId: data.roomId,
           userId: socket.userId,
-          threadId: data.threadId,
+          threadId: autoThreadId,
           history: [],
         };
 
@@ -1031,7 +1040,7 @@ export function setupSocketHandlers(io: Server) {
                 userId: bot.id,
                 content: JSON.stringify(attachment),
                 type: 'file',
-                threadId: data.threadId,
+                threadId: autoThreadId,
               });
               io.to(data.roomId).emit('message:new', fileMsg);
               updateFileUploadContext(attachment.id, data.roomId, fileMsg.id);
@@ -1043,7 +1052,7 @@ export function setupSocketHandlers(io: Server) {
             roomId: data.roomId,
             userId: bot.id,
             content: cleanContent,
-            threadId: data.threadId,
+            threadId: autoThreadId,
           }) : null;
 
           io.to(data.roomId).emit('bot:stream', {
@@ -1054,12 +1063,12 @@ export function setupSocketHandlers(io: Server) {
               roomId: data.roomId,
               userId: bot.id,
               content: fullContent,
-              threadId: data.threadId,
+              threadId: autoThreadId,
             }) : undefined),
           });
 
-          if (data.threadId) {
-            updateThreadReplyCount(data.threadId, io, data.roomId);
+          if (autoThreadId) {
+            updateThreadReplyCount(autoThreadId, io, data.roomId);
           }
 
           // L3: If user sent a voice message, also reply with TTS audio (async, non-blocking)
@@ -1079,7 +1088,7 @@ export function setupSocketHandlers(io: Server) {
                       userId: bot.id,
                       content: JSON.stringify(attachment),
                       type: 'file',
-                      threadId: data.threadId,
+                      threadId: autoThreadId,
                     });
                     io.to(data.roomId).emit('message:new', voiceReply);
                     updateFileUploadContext(attachment.id, data.roomId, voiceReply.id);
