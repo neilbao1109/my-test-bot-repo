@@ -901,7 +901,8 @@ export function setupSocketHandlers(io: Server) {
       const respondingBots = getRespondingBots(data.content, data.roomId, socket.userId, roomType);
 
       // In group rooms, prepend recent chat history so the bot has context
-      if (roomType === 'group' && respondingBots.length > 0) {
+      // Skip group history injection for thread messages — thread context is handled by bot-bridge
+      if (roomType === 'group' && respondingBots.length > 0 && !data.threadId) {
         const MAX_GROUP_HISTORY = 50;
         const FALLBACK_HISTORY = 30;
 
@@ -937,6 +938,22 @@ export function setupSocketHandlers(io: Server) {
 
         if (historyLines.length > 0) {
           botContent = `--- Group Chat History (${historyLabel}) ---\n${historyLines.join('\n')}\n--- End History ---\n\n[${getUser(socket.userId)?.username || socket.userId}]: ${data.content}`;
+        }
+      }
+
+      // For thread messages, prepend thread context (parent message + recent replies)
+      // This ensures the bot has thread context even within the message payload
+      if (data.threadId && respondingBots.length > 0) {
+        try {
+          const { buildThreadHistoryContext } = await import('../services/message.js');
+          const members = getRoomMembers(data.roomId);
+          const userMap = new Map(members.map(m => [m.id, m.username]));
+          const threadCtx = buildThreadHistoryContext(data.roomId, data.threadId, userMap);
+          if (threadCtx) {
+            botContent = `--- Thread Context ---\n${threadCtx}\n--- End Thread Context ---\n\n[${getUser(socket.userId)?.username || socket.userId}]: ${data.content}`;
+          }
+        } catch (err: any) {
+          console.warn(`[handlers] Thread context build failed:`, err.message);
         }
       }
 

@@ -303,6 +303,78 @@ export function buildChatHistoryContext(
   return { context: header + lines.join('\n'), totalCount };
 }
 
+/**
+ * Build thread context for injection into a thread session.
+ * Includes the parent message and all thread replies.
+ */
+export function buildThreadHistoryContext(
+  roomId: string,
+  threadId: string,
+  userMap: Map<string, string>,
+  maxCharsPerMessage = 500,
+  maxTotalChars = 8000
+): string {
+  const db = getDb();
+
+  // Get the thread info to find the parent message
+  const threadRow = db.prepare('SELECT * FROM threads WHERE id = ?').get(threadId) as any;
+  if (!threadRow) return '';
+
+  const parentMessageId = threadRow.parent_message_id;
+
+  // Get the parent message
+  const parentRow = db.prepare(
+    'SELECT * FROM messages WHERE id = ? AND is_deleted = 0'
+  ).get(parentMessageId) as any;
+
+  // Get thread replies (chronological order)
+  const replyRows = db.prepare(`
+    SELECT * FROM messages
+    WHERE room_id = ? AND thread_id = ? AND is_deleted = 0
+    ORDER BY created_at ASC
+  `).all(roomId, threadId) as any[];
+
+  if (!parentRow && replyRows.length === 0) return '';
+
+  const lines: string[] = [];
+  let totalChars = 0;
+
+  // Format the parent message first
+  if (parentRow) {
+    const parentMsg = rowToMessage(parentRow);
+    const name = userMap.get(parentMsg.userId) || parentMsg.userId;
+    const ts = parentMsg.createdAt.replace('T', ' ').replace(/\.\d+Z$/, '');
+    let content = parentMsg.content;
+    if (content.length > maxCharsPerMessage) {
+      content = content.slice(0, maxCharsPerMessage) + '... [truncated]';
+    }
+    const line = `[PARENT MESSAGE] [${ts}] ${name}: ${content}`;
+    lines.push(line);
+    totalChars += line.length;
+    lines.push('--- Thread Replies ---');
+  }
+
+  // Format thread replies
+  const replies = replyRows.map(rowToMessage);
+  for (const msg of replies) {
+    const name = userMap.get(msg.userId) || msg.userId;
+    const ts = msg.createdAt.replace('T', ' ').replace(/\.\d+Z$/, '');
+    let content = msg.content;
+    if (content.length > maxCharsPerMessage) {
+      content = content.slice(0, maxCharsPerMessage) + '... [truncated]';
+    }
+    const line = `[${ts}] ${name}: ${content}`;
+    if (totalChars + line.length > maxTotalChars && lines.length >= 4) {
+      lines.push(`... (${replies.length - (lines.length - 2)} earlier replies omitted due to length)`);
+      break;
+    }
+    lines.push(line);
+    totalChars += line.length;
+  }
+
+  return lines.join('\n');
+}
+
 export function getLastMessage(roomId: string): Message | null {
   const db = getDb();
   const row = db.prepare(

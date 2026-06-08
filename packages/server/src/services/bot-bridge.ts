@@ -29,7 +29,9 @@ export class BotBridge {
   private tunnel: SshTunnel | null = null;
   private initPromise: Promise<void> | null = null;
   private roomSessions = new Map<string, string>();
+  private threadSessions = new Map<string, string>(); // `${roomId}:${threadId}` → sessionKey
   private sessionRooms = new Map<string, string>(); // reverse: sessionKey → roomId
+  private sessionThreads = new Map<string, string>(); // reverse: sessionKey → `${roomId}:${threadId}`
   private activeStreams = new Map<string, ActiveStream>();
   private subscribedSessions = new Set<string>();
   private activeResponseSessions = new Set<string>();
@@ -506,6 +508,68 @@ export class BotBridge {
     return { sessionKey, isNew };
   }
 
+  /**
+   * Get or create a dedicated session for a thread.
+   * Thread sessions are isolated from the room session so the AI can maintain
+   * separate context per thread.
+   */
+  private async getSessionForThread(roomId: string, threadId: string): Promise<{ sessionKey: string; isNew: boolean }> {
+    const threadKey = `${roomId}:${threadId}`;
+    if (this.threadSessions.has(threadKey)) {
+      const sessionKey = this.threadSessions.get(threadKey)!;
+      return { sessionKey, isNew: false };
+    }
+
+    const gw = await this.ensureClient();
+    const label = `ClawChat thread: ${threadId} [room:${roomId}] [bot:${this.config.id}]`;
+
+    let sessionKey: string | undefined;
+    let isNew = false;
+    try {
+      const list = await gw.rpc('sessions.list', { label });
+      const sessions = list?.sessions || list || [];
+      if (Array.isArray(sessions) && sessions.length > 0) {
+        sessionKey = sessions[0].sessionKey || sessions[0].key || sessions[0].id;
+        const sessionId = sessions[0].sessionId;
+        if (sessionKey && sessionId) {
+          this.knownSessionIds.set(sessionKey, sessionId);
+        }
+      }
+    } catch (err: any) {
+      console.warn(`[BotBridge:${this.config.id}] thread sessions.list failed: ${err.message}`);
+    }
+
+    if (!sessionKey) {
+      const result = await gw.rpc('sessions.create', {
+        label,
+        agentId: this.config.gateway.agentId,
+      });
+      sessionKey = result.sessionKey || result.key || result.id;
+      if (!sessionKey) throw new Error('No sessionKey in sessions.create response for thread');
+      isNew = true;
+      const sessionId = result.sessionId;
+      if (sessionId) {
+        this.knownSessionIds.set(sessionKey, sessionId);
+      }
+      console.log(`[BotBridge:${this.config.id}] Created thread session: thread=${threadId} room=${roomId} key=${sessionKey}`);
+    }
+
+    this.threadSessions.set(threadKey, sessionKey);
+    this.sessionRooms.set(sessionKey, roomId);
+    this.sessionThreads.set(sessionKey, threadKey);
+
+    if (!this.subscribedSessions.has(sessionKey)) {
+      try {
+        await gw.rpc('sessions.messages.subscribe', { key: sessionKey });
+        this.subscribedSessions.add(sessionKey);
+      } catch (err: any) {
+        console.warn(`[BotBridge:${this.config.id}] Thread subscribe failed: ${err.message}`);
+      }
+    }
+
+    return { sessionKey, isNew };
+  }
+
   /** Stream bot response */
   async *streamResponse(content: string, context: BotContext): AsyncGenerator<string> {
     let gw: OpenClawClient;
@@ -517,11 +581,18 @@ export class BotBridge {
     }
 
     let sessionKey: string;
+    let isThreadSession = false;
     try {
-      const result = await this.getSessionForRoom(context.roomId);
-      sessionKey = result.sessionKey;
+      if (context.threadId) {
+        const result = await this.getSessionForThread(context.roomId, context.threadId);
+        sessionKey = result.sessionKey;
+        isThreadSession = true;
+      } else {
+        const result = await this.getSessionForRoom(context.roomId);
+        sessionKey = result.sessionKey;
+      }
     } catch (err: any) {
-      console.error(`[BotBridge:${this.config.id}] getSessionForRoom failed:`, err.message);
+      console.error(`[BotBridge:${this.config.id}] getSession failed:`, err.message);
       yield '⚠️ Failed to create session';
       return;
     }
@@ -544,23 +615,35 @@ export class BotBridge {
             messageBody = `[PLATFORM_CONTEXT]\n${platformCtx}\n[/PLATFORM_CONTEXT]\n\n${messageBody}`;
           }
 
-          // Inject chat history for context recovery
-          // This fires on the first message of each bot-bridge lifetime per session,
-          // covering: new sessions, bot-bridge restarts, and session resets.
-          // For daily-reset scenarios where bot-bridge stays running, we also clear
-          // contextInjectedSessions periodically (see clearContextCache).
+          // Inject context for recovery.
+          // For thread sessions: inject parent message + thread history.
+          // For room sessions: inject room chat history.
           try {
-            const { buildChatHistoryContext } = await import('./message.js');
-            const { getRoomMembers } = await import('./room.js');
-            const members = getRoomMembers(context.roomId);
-            const userMap = new Map(members.map(m => [m.id, m.username]));
-            const { context: historyCtx, totalCount } = buildChatHistoryContext(context.roomId, userMap, 30);
-            if (historyCtx) {
-              messageBody = `[CHAT_HISTORY]\nThe following is the recent chat history of this room (${totalCount} messages total). Use it to maintain conversation continuity.\n\n${historyCtx}\n[/CHAT_HISTORY]\n\n${messageBody}`;
-              console.log(`[BotBridge:${this.config.id}] Injected chat history: ${totalCount} total, recent batch for room ${context.roomId}`);
+            if (isThreadSession && context.threadId) {
+              // Thread session: inject parent message + thread messages as context
+              const { buildThreadHistoryContext } = await import('./message.js');
+              const { getRoomMembers } = await import('./room.js');
+              const members = getRoomMembers(context.roomId);
+              const userMap = new Map(members.map(m => [m.id, m.username]));
+              const threadCtx = buildThreadHistoryContext(context.roomId, context.threadId, userMap);
+              if (threadCtx) {
+                messageBody = `[THREAD_CONTEXT]\nThis is a thread conversation. Below is the parent message and thread history.\n\n${threadCtx}\n[/THREAD_CONTEXT]\n\n${messageBody}`;
+                console.log(`[BotBridge:${this.config.id}] Injected thread context for thread ${context.threadId} in room ${context.roomId}`);
+              }
+            } else {
+              // Room session: inject room chat history
+              const { buildChatHistoryContext } = await import('./message.js');
+              const { getRoomMembers } = await import('./room.js');
+              const members = getRoomMembers(context.roomId);
+              const userMap = new Map(members.map(m => [m.id, m.username]));
+              const { context: historyCtx, totalCount } = buildChatHistoryContext(context.roomId, userMap, 30);
+              if (historyCtx) {
+                messageBody = `[CHAT_HISTORY]\nThe following is the recent chat history of this room (${totalCount} messages total). Use it to maintain conversation continuity.\n\n${historyCtx}\n[/CHAT_HISTORY]\n\n${messageBody}`;
+                console.log(`[BotBridge:${this.config.id}] Injected chat history: ${totalCount} total, recent batch for room ${context.roomId}`);
+              }
             }
           } catch (err: any) {
-            console.warn(`[BotBridge:${this.config.id}] Chat history injection failed:`, err.message);
+            console.warn(`[BotBridge:${this.config.id}] Context injection failed:`, err.message);
           }
 
           this.contextInjectedSessions.add(sessionKey);
