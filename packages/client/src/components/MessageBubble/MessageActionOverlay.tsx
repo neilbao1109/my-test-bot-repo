@@ -33,6 +33,8 @@ export default function MessageActionOverlay({
   onAction,
 }: MessageActionOverlayProps) {
   const t = useT();
+  const activeThread = useAppStore(s => s.activeThread);
+  const isInThread = !!message.threadId || !!activeThread;
   const { tts: ttsEnabled } = useAppStore(s => s.capabilities);
   const [visible, setVisible] = useState(false);
 
@@ -163,6 +165,7 @@ export default function MessageActionOverlay({
           <div className="h-px bg-dark-border mx-2 my-1" />
 
           {/* Extended group */}
+          {!isInThread && (
           <button
             onClick={() => handleAction('thread')}
             className="w-full flex items-center gap-3 px-3 py-3 md:py-2.5 text-dark-muted hover:text-dark-text hover:bg-dark-hover rounded-xl transition text-sm"
@@ -170,6 +173,7 @@ export default function MessageActionOverlay({
             <span className="text-base w-5 text-center">🧵</span>
             <span>{t('message.thread')}</span>
           </button>
+          )}
           <button
             onClick={() => handleAction('pin')}
             className={clsx(
