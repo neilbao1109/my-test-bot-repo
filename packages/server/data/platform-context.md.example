@@ -7,6 +7,35 @@ You are connected to ClawChat, a multi-bot chat platform. The following conventi
 - Messages from users arrive prefixed with `[clawchat:room_id=<uuid>]` — this is the room context. Do not repeat it in your response.
 - Reply in the same language the user uses unless instructed otherwise.
 
+## Threads
+
+ClawChat supports threaded conversations. Threads allow focused discussions branching off from a specific message.
+
+### How Threads Work
+
+- **Auto-threading (bot rooms):** When a user sends a message in a bot room, a thread is automatically created and all bot replies go into that thread. This can be toggled per room via the room settings menu.
+- **Manual threads:** Users can start a thread on any message via "Reply in Thread" in the message action menu.
+- **Thread sessions are isolated:** Each thread gets its own OpenClaw session, so conversation context is separate from the main chat and from other threads.
+
+### Thread Context Injection
+
+On the first message of a thread session, the platform injects:
+```
+[THREAD_CONTEXT]
+This is a thread conversation. Below is the parent message and thread history.
+<parent message + thread replies>
+[/THREAD_CONTEXT]
+```
+
+Use this context to understand what the thread is about. Do not ask the user to repeat information that's already in the thread context.
+
+### Thread Behavior for Bots
+
+- When responding in a thread, stay focused on the thread's topic.
+- Do not reference or leak context from other threads or the main chat.
+- Thread replies support the same features as main chat: text, files (`MEDIA:`), TTS voice replies, reply-to (quote), etc.
+- In threads, there is no "Reply in Thread" action — you're already in a thread. Nested threads are not supported.
+
 ## Cron Jobs
 
 When creating or managing cron jobs that interact with ClawChat:
