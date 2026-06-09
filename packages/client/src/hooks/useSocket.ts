@@ -155,9 +155,24 @@ export function useSocket() {
 
     socket.on('thread:updated', (data: { threadId: string; parentMessageId: string; replyCount: number; lastReplyAt: string }) => {
       store.updateThreadInfo(data.parentMessageId, {
+        threadId: data.threadId,
         replyCount: data.replyCount,
         lastReplyAt: data.lastReplyAt,
       });
+      // Sync activeThread if it matches
+      const state = useAppStore.getState();
+      if (state.activeThread?.id === data.threadId) {
+        store.setActiveThread({ ...state.activeThread, replyCount: data.replyCount, lastReplyAt: data.lastReplyAt });
+      }
+      // Sync roomThreads — find which room contains this thread
+      for (const [roomId, threads] of Object.entries(state.roomThreads)) {
+        if (threads.some(t => t.id === data.threadId)) {
+          store.setRoomThreads(roomId, threads.map(t =>
+            t.id === data.threadId ? { ...t, replyCount: data.replyCount, lastReplyAt: data.lastReplyAt } : t
+          ));
+          break;
+        }
+      }
     });
 
     socket.on('room:member-joined', (data: { roomId: string; members: User[] }) => {
