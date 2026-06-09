@@ -42,7 +42,7 @@ export class BotBridge {
   private mgmtSessionKey: string | null = null;
 
   /** Callback for push messages (cron, heartbeat, etc.) */
-  onPushMessage?: (roomId: string, botId: string, content: string) => void;
+  onPushMessage?: (roomId: string, botId: string, content: string, threadId?: string) => void;
 
   constructor(config: BotConfig) {
     this.config = config;
@@ -333,7 +333,9 @@ export class BotBridge {
             return;
           }
           console.log(`[BotBridge:${this.config.id}] Chat announce push (final): room=${roomId}`);
-          this.onPushMessage(roomId, this.config.id, text);
+          const threadKey = this.sessionThreads.get(sessionKey);
+          const threadId = threadKey ? threadKey.split(':')[1] : undefined;
+          this.onPushMessage(roomId, this.config.id, text, threadId);
           return;
         }
       }
@@ -351,8 +353,10 @@ export class BotBridge {
     if (!text || !this.onPushMessage) return;
     if (/^(NO_REPLY|NO|HEARTBEAT_OK)\s*$/i.test(text.trim())) return;
 
+    const threadKey = buf.sessionKey ? this.sessionThreads.get(buf.sessionKey) : undefined;
+    const threadId = threadKey ? threadKey.split(':')[1] : undefined;
     console.log(`[BotBridge:${this.config.id}] Chat announce push (debounce): room=${roomId} text=${text.slice(0, 80)}...`);
-    this.onPushMessage(roomId, this.config.id, text);
+    this.onPushMessage(roomId, this.config.id, text, threadId);
   }
 
   private handleSessionMessage(payload: any) {
@@ -384,11 +388,13 @@ export class BotBridge {
 
       // Fallback: try to recover mapping from session label
       if (!roomId) {
+        const threadKeyR = this.sessionThreads.get(sessionKey);
+        const threadIdR = threadKeyR ? threadKeyR.split(':')[1] : undefined;
         this.tryRecoverRoomFromSession(sessionKey).then(recoveredRoomId => {
           if (recoveredRoomId && this.onPushMessage) {
             // Re-fetch the message content since we're in async recovery
             this.fetchLatestAssistantMessage(sessionKey).then(msg => {
-              if (msg) this.onPushMessage?.(recoveredRoomId, this.config.id, msg);
+              if (msg) this.onPushMessage?.(recoveredRoomId, this.config.id, msg, threadIdR);
             }).catch(() => {});
           }
         }).catch(() => {});
@@ -396,6 +402,8 @@ export class BotBridge {
       }
 
       if (roomId && this.onPushMessage) {
+        const threadKeyS = this.sessionThreads.get(sessionKey);
+        const threadIdS = threadKeyS ? threadKeyS.split(':')[1] : undefined;
         // Extract text from the content or delta
         let text = '';
         if (typeof content === 'string') {
@@ -410,10 +418,10 @@ export class BotBridge {
         if (!text) {
           // Try to get from chat.history
           this.fetchLatestAssistantMessage(sessionKey).then(msg => {
-            if (msg && roomId) this.onPushMessage?.(roomId, this.config.id, msg);
+            if (msg && roomId) this.onPushMessage?.(roomId, this.config.id, msg, threadIdS);
           }).catch(() => {});
         } else {
-          this.onPushMessage(roomId, this.config.id, text);
+          this.onPushMessage(roomId, this.config.id, text, threadIdS);
         }
       }
     }

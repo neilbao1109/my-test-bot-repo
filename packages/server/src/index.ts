@@ -72,14 +72,30 @@ async function setupPushNotifications() {
     if (!bridge) continue;
 
     // Set up push message handler
-    bridge.onPushMessage = (roomId: string, botId: string, content: string) => {
-      console.log(`[Push] Bot ${botId} push to room ${roomId}: ${content.slice(0, 80)}...`);
+    bridge.onPushMessage = (roomId: string, botId: string, content: string, threadId?: string) => {
+      console.log(`[Push] Bot ${botId} push to room ${roomId}${threadId ? ` thread ${threadId}` : ''}: ${content.slice(0, 80)}...`);
       const msg = createMessage({
         roomId,
         userId: botId,
         content,
+        threadId,
       });
       io.to(roomId).emit('message:new', msg);
+
+      // Update thread reply count if message was sent into a thread
+      if (threadId) {
+        import('./services/thread.js').then(({ getThread }) => {
+          const thread = getThread(threadId);
+          if (thread) {
+            io.to(roomId).emit('thread:updated', {
+              threadId: thread.id,
+              parentMessageId: thread.parentMessageId,
+              replyCount: thread.replyCount,
+              lastReplyAt: thread.lastReplyAt,
+            });
+          }
+        }).catch(() => {});
+      }
     };
 
     // Restore session mappings for all rooms this bot is a member of

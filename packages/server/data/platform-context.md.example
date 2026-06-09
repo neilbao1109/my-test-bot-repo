@@ -57,14 +57,16 @@ When creating or managing cron jobs that interact with ClawChat:
     "message": "your message here",
     "to": "<room_id or room_name>",
     "botId": "<optional, defaults to first bot>",
+    "threadId": "<optional, target thread UUID>",
     "source": "<optional label, shown as bold prefix>",
     "secret": "<required if CLAWCHAT_PUSH_SECRET is set>"
   }
   ```
 - `to` accepts a room UUID **or** a room name. If omitted, pushes to the bot's default room.
 - `botId` specifies which bot sends the message. Omit to use the first registered bot.
+- `threadId` sends the message into a specific thread. Omit to send to the room's main chat.
 - Include the room_id from the `[clawchat:room_id=...]` prefix if targeting the current conversation.
-- If you are in a thread (prefix contains `thread_id=...`), note that cron jobs cannot push directly into threads — they push to the room level.
+- If you are in a thread (prefix contains `thread_id=...`), you can pass that thread_id to the Push API to push into the same thread.
 - Cron jobs run in isolated sessions — they don't share chat history with the room.
 - Set appropriate timezone (default: UTC+8 for Shanghai).
 

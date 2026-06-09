@@ -4,6 +4,7 @@ import { createMessage } from '../services/message.js';
 import { getAllBots } from '../services/bot-registry.js';
 import { getRooms } from '../services/room.js';
 import { getIo } from '../services/io.js';
+import { getThread } from '../services/thread.js';
 
 const router = Router();
 
@@ -53,8 +54,8 @@ router.post('/push', (req, res) => {
     return;
   }
 
-  const { message, source, to, botId: reqBotId } = req.body as {
-    message?: string; source?: string; to?: string; botId?: string;
+  const { message, source, to, botId: reqBotId, threadId } = req.body as {
+    message?: string; source?: string; to?: string; botId?: string; threadId?: string;
   };
   if (!message || typeof message !== 'string' || !message.trim()) {
     res.status(400).json({ error: 'message is required' });
@@ -74,19 +75,46 @@ router.post('/push', (req, res) => {
       return;
     }
 
+    // Validate threadId if provided
+    if (threadId) {
+      const thread = getThread(threadId);
+      if (!thread) {
+        res.status(404).json({ error: `Thread not found: ${threadId}` });
+        return;
+      }
+      if (thread.roomId !== roomId) {
+        res.status(400).json({ error: `Thread ${threadId} does not belong to room ${roomId}` });
+        return;
+      }
+    }
+
     const content = source ? `**[${source}]**\n\n${message}` : message;
 
     const msg = createMessage({
       roomId,
       userId: botId,
       content,
+      threadId,
     });
 
     const io = getIo();
     io.to(roomId).emit('message:new', msg);
 
-    console.log(`[Push] Bot ${botId} -> room ${roomId}: ${message.slice(0, 80)}...`);
-    res.json({ ok: true, messageId: msg.id, roomId, botId });
+    // Update thread reply count if message was sent into a thread
+    if (threadId) {
+      const updatedThread = getThread(threadId);
+      if (updatedThread) {
+        io.to(roomId).emit('thread:updated', {
+          threadId: updatedThread.id,
+          parentMessageId: updatedThread.parentMessageId,
+          replyCount: updatedThread.replyCount,
+          lastReplyAt: updatedThread.lastReplyAt,
+        });
+      }
+    }
+
+    console.log(`[Push] Bot ${botId} -> room ${roomId}${threadId ? ` thread ${threadId}` : ''}: ${message.slice(0, 80)}...`);
+    res.json({ ok: true, messageId: msg.id, roomId, botId, threadId: threadId || undefined });
   } catch (err: any) {
     console.error('[Push] Error:', err.message);
     res.status(500).json({ error: err.message });
