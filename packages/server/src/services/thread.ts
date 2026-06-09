@@ -41,6 +41,12 @@ export function getThreadByMessage(messageId: string): Thread | null {
   };
 }
 
+export function deleteThread(threadId: string): boolean {
+  const db = getDb();
+  const result = db.prepare('DELETE FROM threads WHERE id = ?').run(threadId);
+  return result.changes > 0;
+}
+
 export function getThreadsForRoom(roomId: string): Thread[] {
   const db = getDb();
   const rows = db.prepare('SELECT * FROM threads WHERE room_id = ? ORDER BY last_reply_at DESC').all(roomId) as any[];

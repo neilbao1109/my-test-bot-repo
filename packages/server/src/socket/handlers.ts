@@ -1,9 +1,9 @@
 import { Server, Socket } from 'socket.io';
 import path from 'path';
-import { createMessage, getMessages, getLastMessage, getLastMessageByUser, getMessagesSince, getMessageById, getMessagesAroundId, editMessage, deleteMessage, addReaction, searchMessages, getReplyChain } from '../services/message.js';
+import { createMessage, getMessages, getLastMessage, getLastMessageByUser, getMessagesSince, getMessageById, getMessagesAroundId, editMessage, deleteMessage, deleteThreadMessages, recountThreadReplies, addReaction, searchMessages, getReplyChain } from '../services/message.js';
 import { createRoom, getRooms, getRoomMembers, addMemberToRoom, removeMemberFromRoom, addBotToRoom, removeBotFromRoom, renameRoom, deleteRoom, searchUsers, getRoom } from '../services/room.js';
 import { getDb } from '../db/schema.js';
-import { createThread, getThread, getThreadByMessage, getThreadsForRoom } from '../services/thread.js';
+import { createThread, getThread, getThreadByMessage, getThreadsForRoom, deleteThread } from '../services/thread.js';
 import { parseCommand, executeCommand } from '../services/command.js';
 import { initBotRegistry, getRespondingBots, isBotUser, getAllBots, getBot, getAvailableBots, streamBotResponse as registryStreamBotResponse, registerBot, updateBot, deleteBot, testBotConnection, pairConnect, pairStatus, tokenPairConnect, pauseBot, resumeBot, deregisterBot, findDeregisteredBot, restoreBot, getBotDbStatus, isOwnerOfBot, checkBotIdAvailable, getBridge, type TriggerType } from '../services/bot-registry.js';
 import { shareBot, acceptBotShare, revokeBotShare, getBotShares, getPublicBots, addPublicBotToUser } from '../services/bot-share.js';
@@ -1117,8 +1117,49 @@ export function setupSocketHandlers(io: Server) {
     });
 
     socket.on('message:delete', (data: { messageId: string; roomId: string }) => {
+      // Check if this message is a thread parent
+      const thread = getThreadByMessage(data.messageId);
+
+      // Get message info before deleting (needed for thread reply count update)
+      const msg = getMessageById(data.messageId);
+
+      // Soft-delete the message itself
       deleteMessage(data.messageId);
       io.to(data.roomId).emit('message:deleted', { messageId: data.messageId });
+
+      // If it's a thread parent, cascade-delete the entire thread
+      if (thread) {
+        // Soft-delete all reply messages in the thread
+        const deletedCount = deleteThreadMessages(thread.id);
+        // Hard-delete the thread record
+        deleteThread(thread.id);
+
+        // Cleanup BotBridge session mappings
+        try {
+          const allBots = getAllBots();
+          for (const bot of allBots) {
+            const bridge = getBridge(bot.id);
+            if (bridge) {
+              bridge.cleanupThreadSession(data.roomId, thread.id);
+            }
+          }
+        } catch (err: any) {
+          console.warn(`[handlers] Thread session cleanup failed:`, err.message);
+        }
+
+        // Notify clients to clean up thread state
+        io.to(data.roomId).emit('thread:deleted', {
+          threadId: thread.id,
+          parentMessageId: data.messageId,
+          roomId: data.roomId,
+        });
+
+        console.log(`[handlers] Cascade-deleted thread ${thread.id}: ${deletedCount} replies removed`);
+      } else if (msg?.threadId) {
+        // Deleting a reply inside a thread — recount and update
+        recountThreadReplies(msg.threadId);
+        updateThreadReplyCount(msg.threadId, io, data.roomId);
+      }
     });
 
     socket.on('message:react', (data: { messageId: string; emoji: string; roomId: string }) => {

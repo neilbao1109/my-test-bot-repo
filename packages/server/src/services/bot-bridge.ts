@@ -578,6 +578,36 @@ export class BotBridge {
     return { sessionKey, isNew };
   }
 
+  /**
+   * Cleanup session mappings for a deleted thread.
+   * Removes threadSessions, sessionThreads, sessionRooms, subscribedSessions entries
+   * and cancels any active streams for the thread session.
+   */
+  cleanupThreadSession(roomId: string, threadId: string): void {
+    const threadKey = `${roomId}:${threadId}`;
+    const sessionKey = this.threadSessions.get(threadKey);
+    if (!sessionKey) return;
+
+    // Cancel any active streams for this session
+    for (const [streamKey, stream] of this.activeStreams) {
+      if (streamKey.includes(sessionKey) || stream.gwRunId === sessionKey) {
+        this.activeStreams.delete(streamKey);
+      }
+    }
+    this.activeResponseSessions.delete(sessionKey);
+
+    // Remove all mappings
+    this.threadSessions.delete(threadKey);
+    this.sessionThreads.delete(sessionKey);
+    this.sessionRooms.delete(sessionKey);
+    this.subscribedSessions.delete(sessionKey);
+    this.contextInjectedSessions.delete(sessionKey);
+    this.lastChatSendTime.delete(sessionKey);
+    this.knownSessionIds.delete(sessionKey);
+
+    console.log(`[BotBridge:${this.config.id}] Cleaned up thread session: thread=${threadId} room=${roomId} key=${sessionKey}`);
+  }
+
   /** Stream bot response */
   async *streamResponse(content: string, context: BotContext): AsyncGenerator<string> {
     let gw: OpenClawClient;

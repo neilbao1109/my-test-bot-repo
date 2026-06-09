@@ -175,6 +175,26 @@ export function useSocket() {
       }
     });
 
+    socket.on('thread:deleted', (data: { threadId: string; parentMessageId: string; roomId: string }) => {
+      // Remove thread info from the parent message
+      store.removeThreadInfo(data.parentMessageId);
+      // Remove from roomThreads
+      store.removeRoomThread(data.roomId, data.threadId);
+      // Close thread panel if viewing this thread
+      const state = useAppStore.getState();
+      if (state.activeThread?.id === data.threadId) {
+        store.setActiveThread(null);
+        store.setThreadMessages([]);
+      }
+      // Clean up any streaming messages for this thread
+      const streams = state.streamingMessages;
+      for (const [msgId, sm] of Object.entries(streams)) {
+        if (sm.threadId === data.threadId) {
+          store.finishStreaming(msgId, undefined);
+        }
+      }
+    });
+
     socket.on('room:member-joined', (data: { roomId: string; members: User[] }) => {
       store.setRoomMembers(data.roomId, data.members);
     });
@@ -314,6 +334,7 @@ export function useSocket() {
       socket.off('presence:snapshot');
       socket.off('thread:created');
       socket.off('thread:updated');
+      socket.off('thread:deleted');
       socket.off('room:member-joined');
       socket.off('room:member-left');
       socket.off('room:updated');

@@ -52,7 +52,9 @@ interface AppState {
   setThreadMessages: (messages: Message[]) => void;
   addThreadMessage: (message: Message) => void;
   updateThreadInfo: (parentMessageId: string, info: ThreadInfo) => void;
+  removeThreadInfo: (parentMessageId: string) => void;
   setRoomThreads: (roomId: string, threads: Thread[]) => void;
+  removeRoomThread: (roomId: string, threadId: string) => void;
   setShowThreadList: (show: boolean) => void;
 
   // Pagination
@@ -400,10 +402,21 @@ export const useAppStore = create<AppState>((set, get) => ({
     set((s) => ({
       threadInfo: { ...s.threadInfo, [parentMessageId]: info },
     })),
+  removeThreadInfo: (parentMessageId) =>
+    set((s) => {
+      const { [parentMessageId]: _, ...rest } = s.threadInfo;
+      return { threadInfo: rest };
+    }),
   setRoomThreads: (roomId, threads) =>
     set((s) => ({
       roomThreads: { ...s.roomThreads, [roomId]: threads },
     })),
+  removeRoomThread: (roomId, threadId) =>
+    set((s) => {
+      const threads = s.roomThreads[roomId];
+      if (!threads) return s;
+      return { roomThreads: { ...s.roomThreads, [roomId]: threads.filter(t => t.id !== threadId) } };
+    }),
   setShowThreadList: (show) => set({ showThreadList: show }),
 
   // Pagination

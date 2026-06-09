@@ -95,6 +95,21 @@ export function deleteMessage(messageId: string): boolean {
   return result.changes > 0;
 }
 
+export function deleteThreadMessages(threadId: string): number {
+  const db = getDb();
+  const result = db.prepare('UPDATE messages SET is_deleted = 1 WHERE thread_id = ?').run(threadId);
+  return result.changes;
+}
+
+export function recountThreadReplies(threadId: string): void {
+  const db = getDb();
+  const row = db.prepare('SELECT COUNT(*) as cnt FROM messages WHERE thread_id = ? AND is_deleted = 0').get(threadId) as any;
+  const count = row?.cnt || 0;
+  const lastReply = db.prepare('SELECT created_at FROM messages WHERE thread_id = ? AND is_deleted = 0 ORDER BY created_at DESC LIMIT 1').get(threadId) as any;
+  const lastReplyAt = lastReply?.created_at || new Date().toISOString();
+  db.prepare('UPDATE threads SET reply_count = ?, last_reply_at = ? WHERE id = ?').run(count, lastReplyAt, threadId);
+}
+
 export function addReaction(messageId: string, emoji: string, userId: string): Record<string, string[]> {
   const db = getDb();
   const row = db.prepare('SELECT reactions FROM messages WHERE id = ?').get(messageId) as any;
