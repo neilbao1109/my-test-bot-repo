@@ -7,6 +7,7 @@ import { setDefaultImageQuality } from '../services/upload';
 import type { SupportedLocale } from '../locales';
 
 interface ThreadInfo {
+  threadId?: string;
   replyCount: number;
   lastReplyAt: string;
 }

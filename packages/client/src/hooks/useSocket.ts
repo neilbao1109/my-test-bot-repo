@@ -36,6 +36,7 @@ export function useSocket() {
       if (data.threads) {
         for (const t of data.threads) {
           store.updateThreadInfo(t.parentMessageId, {
+            threadId: t.id,
             replyCount: t.replyCount,
             lastReplyAt: t.lastReplyAt,
           });
@@ -133,8 +134,9 @@ export function useSocket() {
       store.setOnlineUsers(data.onlineUsers);
     });
 
-    socket.on('thread:created', (data: { thread: Thread }) => {
+    socket.on('thread:created', (data: { thread: Thread; parentMessage?: Message }) => {
       store.updateThreadInfo(data.thread.parentMessageId, {
+        threadId: data.thread.id,
         replyCount: data.thread.replyCount,
         lastReplyAt: data.thread.lastReplyAt,
       });
@@ -142,6 +144,12 @@ export function useSocket() {
       const currentThreads = useAppStore.getState().roomThreads[data.thread.roomId] || [];
       if (!currentThreads.some(t => t.id === data.thread.id)) {
         store.setRoomThreads(data.thread.roomId, [data.thread, ...currentThreads]);
+      }
+      // Auto-open thread panel if this is the current user's message in the active room
+      const state = useAppStore.getState();
+      if (data.thread.roomId === state.activeRoomId && data.parentMessage?.userId === state.user?.id) {
+        store.setActiveThread(data.thread);
+        store.setThreadMessages([]);
       }
     });
 

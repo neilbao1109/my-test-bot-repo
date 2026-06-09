@@ -202,6 +202,7 @@ const zh = {
   'message.reply_one': '{count} 条回复',
   'message.reply_other': '{count} 条回复',
   'message.viewThread': '- 查看话题',
+  'message.threadReplying': '正在回复中...',
   'message.edited': '(已编辑)',
 
   // PinnedBar

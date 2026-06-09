@@ -136,6 +136,12 @@ export default function MessageBubble({ message, isStreaming, streamContent, hig
   const isSelected = useAppStore((s) => s.selectedMessages.has(message.id));
   const toggleMessageSelection = useAppStore((s) => s.toggleMessageSelection);
   const isCtxSelected = ctxSelectMode && replyContext.some(m => m.id === message.id);
+  // Check if there's active streaming in this message's thread
+  const threadStreamActive = useAppStore((s) => {
+    const ti = s.threadInfo[message.id];
+    if (!ti?.threadId) return false;
+    return Object.values(s.streamingMessages).some((sm) => sm.threadId === ti.threadId);
+  });
   const [showActions, setShowActions] = useState(false);
 
   const [showReactions, setShowReactions] = useState(false);
@@ -556,13 +562,17 @@ export default function MessageBubble({ message, isStreaming, streamContent, hig
         )}
 
         {/* Thread info / reply count */}
-        {!hideThreadIndicator && msgThreadInfo && msgThreadInfo.replyCount > 0 && (
+        {!hideThreadIndicator && msgThreadInfo && (msgThreadInfo.replyCount > 0 || threadStreamActive) && (
           <button
             onClick={handleStartThread}
             className="mt-1 text-xs text-primary-400 hover:underline flex items-center gap-1"
           >
             <span>🧵</span>
-            <span>{msgThreadInfo.replyCount === 1 ? t('message.reply_one', { count: msgThreadInfo.replyCount }) : t('message.reply_other', { count: msgThreadInfo.replyCount })}</span>
+            {threadStreamActive && msgThreadInfo.replyCount === 0 ? (
+              <span className="animate-pulse">{t('message.threadReplying')}</span>
+            ) : (
+              <span>{msgThreadInfo.replyCount === 1 ? t('message.reply_one', { count: msgThreadInfo.replyCount }) : t('message.reply_other', { count: msgThreadInfo.replyCount })}</span>
+            )}
             <span className="text-dark-muted">{t('message.viewThread')}</span>
           </button>
         )}

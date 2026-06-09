@@ -204,6 +204,7 @@ const en: Record<LocaleKeys, string> = {
   'message.reply_one': '{count} reply',
   'message.reply_other': '{count} replies',
   'message.viewThread': '- View thread',
+  'message.threadReplying': 'Replying...',
   'message.edited': '(edited)',
 
   // PinnedBar
