@@ -1188,6 +1188,11 @@ export function setupSocketHandlers(io: Server) {
       callback(messages);
     });
 
+    socket.on('thread:get', (data: { threadId: string }, callback) => {
+      const thread = getThread(data.threadId);
+      callback(thread || null);
+    });
+
     socket.on('thread:parents', (data: { messageIds: string[] }, callback) => {
       if (!data.messageIds || data.messageIds.length === 0) {
         if (callback) callback({ messages: [] });
@@ -1200,20 +1205,20 @@ export function setupSocketHandlers(io: Server) {
     });
 
     // --- Search ---
-    socket.on('message:search', (data: { query: string; roomId?: string; global?: boolean; limit?: number }, callback) => {
+    socket.on('message:search', (data: { query: string; roomId?: string; global?: boolean; limit?: number; includeThreads?: boolean }, callback) => {
       if (!socket.userId || !data.query?.trim()) {
         if (callback) callback({ results: [], total: 0 });
         return;
       }
 
-      let searchOpts: { roomId?: string; roomIds?: string[]; limit?: number };
+      let searchOpts: { roomId?: string; roomIds?: string[]; limit?: number; includeThreads?: boolean };
 
       if (data.global) {
         // Search across all rooms the user has joined
         const rooms = getRooms(socket.userId);
-        searchOpts = { roomIds: rooms.map(r => r.id), limit: data.limit };
+        searchOpts = { roomIds: rooms.map(r => r.id), limit: data.limit, includeThreads: data.includeThreads };
       } else if (data.roomId) {
-        searchOpts = { roomId: data.roomId, limit: data.limit };
+        searchOpts = { roomId: data.roomId, limit: data.limit, includeThreads: data.includeThreads };
       } else {
         if (callback) callback({ results: [], total: 0 });
         return;

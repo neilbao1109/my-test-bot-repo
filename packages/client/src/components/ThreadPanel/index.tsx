@@ -15,8 +15,12 @@ export default function ThreadPanel({ className }: { className?: string }) {
   } = useAppStore();
   const threadExpanded = useAppStore((s) => s.threadExpanded);
   const toggleThreadExpanded = useAppStore((s) => s.toggleThreadExpanded);
+  const scrollToMessageId = useAppStore((s) => s.scrollToMessageId);
+  const setScrollToMessageId = useAppStore((s) => s.setScrollToMessageId);
   const bottomRef = useRef<HTMLDivElement>(null);
   const [dragOver, setDragOver] = useState(false);
+  const [flashMessageId, setFlashMessageId] = useState<string | null>(null);
+  const threadMsgRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const t = useT();
 
   const activeRoom = rooms.find((r) => r.id === activeRoomId);
@@ -38,8 +42,25 @@ export default function ThreadPanel({ className }: { className?: string }) {
 
   // Auto-scroll
   useEffect(() => {
+    // Don't auto-scroll if we're about to scroll to a specific message
+    if (scrollToMessageId) return;
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [threadMessages, threadStreamingMsgs]);
+  }, [threadMessages, threadStreamingMsgs, scrollToMessageId]);
+
+  // Scroll to specific message (from search)
+  useEffect(() => {
+    if (!scrollToMessageId || !activeThread) return;
+    // Check if the target message is in this thread
+    const isInThread = threadMessages.some(m => m.id === scrollToMessageId);
+    if (!isInThread) return;
+    const el = threadMsgRefs.current[scrollToMessageId];
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      setFlashMessageId(scrollToMessageId);
+      setScrollToMessageId(null);
+      setTimeout(() => setFlashMessageId(null), 2000);
+    }
+  }, [scrollToMessageId, threadMessages, activeThread]);
 
   // Mobile keyboard: scroll to bottom when viewport resizes
   useEffect(() => {
@@ -157,7 +178,13 @@ export default function ThreadPanel({ className }: { className?: string }) {
         )}
 
         {threadMessages.map((msg) => (
-          <MessageBubble key={msg.id} message={msg} />
+          <div
+            key={msg.id}
+            ref={(el) => { threadMsgRefs.current[msg.id] = el; }}
+            className={flashMessageId === msg.id ? 'bg-yellow-500/20 transition-colors duration-1000' : ''}
+          >
+            <MessageBubble message={msg} />
+          </div>
         ))}
 
         {threadStreamingMsgs.map((stream) => {

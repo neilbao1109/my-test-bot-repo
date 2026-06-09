@@ -130,10 +130,16 @@ class SocketService {
     });
   }
 
-  // Search
-  searchMessages(query: string, roomId?: string, global?: boolean, limit?: number): Promise<{ results: Message[]; total: number }> {
+  getThread(threadId: string): Promise<Thread | null> {
     return new Promise((resolve) => {
-      this.socket?.emit('message:search', { query, roomId, global, limit }, resolve);
+      this.socket?.emit('thread:get', { threadId }, resolve);
+    });
+  }
+
+  // Search
+  searchMessages(query: string, roomId?: string, global?: boolean, limit?: number, includeThreads?: boolean): Promise<{ results: Message[]; total: number }> {
+    return new Promise((resolve) => {
+      this.socket?.emit('message:search', { query, roomId, global, limit, includeThreads }, resolve);
     });
   }
 

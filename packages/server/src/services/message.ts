@@ -134,23 +134,25 @@ export function searchMessages(query: string, options: {
   roomId?: string;
   roomIds?: string[];
   limit?: number;
+  includeThreads?: boolean;
 }): { results: Message[]; total: number } {
   const db = getDb();
   const limit = options.limit || 50;
   const searchTerm = `%${query}%`;
+  const threadFilter = options.includeThreads ? '' : 'AND thread_id IS NULL ';
 
   let countQuery: string;
   let dataQuery: string;
   const params: any[] = [];
 
   if (options.roomId) {
-    countQuery = `SELECT COUNT(*) as total FROM messages WHERE room_id = ? AND is_deleted = 0 AND type = 'text' AND thread_id IS NULL AND content LIKE ? COLLATE NOCASE`;
-    dataQuery = `SELECT * FROM messages WHERE room_id = ? AND is_deleted = 0 AND type = 'text' AND thread_id IS NULL AND content LIKE ? COLLATE NOCASE ORDER BY created_at DESC LIMIT ?`;
+    countQuery = `SELECT COUNT(*) as total FROM messages WHERE room_id = ? AND is_deleted = 0 AND type = 'text' ${threadFilter}AND content LIKE ? COLLATE NOCASE`;
+    dataQuery = `SELECT * FROM messages WHERE room_id = ? AND is_deleted = 0 AND type = 'text' ${threadFilter}AND content LIKE ? COLLATE NOCASE ORDER BY created_at DESC LIMIT ?`;
     params.push(options.roomId, searchTerm);
   } else if (options.roomIds && options.roomIds.length > 0) {
     const placeholders = options.roomIds.map(() => '?').join(',');
-    countQuery = `SELECT COUNT(*) as total FROM messages WHERE room_id IN (${placeholders}) AND is_deleted = 0 AND type = 'text' AND thread_id IS NULL AND content LIKE ? COLLATE NOCASE`;
-    dataQuery = `SELECT * FROM messages WHERE room_id IN (${placeholders}) AND is_deleted = 0 AND type = 'text' AND thread_id IS NULL AND content LIKE ? COLLATE NOCASE ORDER BY created_at DESC LIMIT ?`;
+    countQuery = `SELECT COUNT(*) as total FROM messages WHERE room_id IN (${placeholders}) AND is_deleted = 0 AND type = 'text' ${threadFilter}AND content LIKE ? COLLATE NOCASE`;
+    dataQuery = `SELECT * FROM messages WHERE room_id IN (${placeholders}) AND is_deleted = 0 AND type = 'text' ${threadFilter}AND content LIKE ? COLLATE NOCASE ORDER BY created_at DESC LIMIT ?`;
     params.push(...options.roomIds, searchTerm);
   } else {
     return { results: [], total: 0 };

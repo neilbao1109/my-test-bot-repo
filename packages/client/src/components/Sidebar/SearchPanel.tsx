@@ -80,7 +80,7 @@ export default function SearchPanel({ onClose }: { onClose: () => void }) {
     // Room-scoped: search only that room; global: search all
     const roomId = isRoomScoped ? searchRoomId! : undefined;
     const global = !isRoomScoped;
-    socketService.searchMessages(q, roomId, global, 100).then(({ results }) => {
+    socketService.searchMessages(q, roomId, global, 100, true).then(({ results }) => {
       setResults(results);
       setLoading(false);
     });
@@ -97,8 +97,21 @@ export default function SearchPanel({ onClose }: { onClose: () => void }) {
     onClose();
   };
 
-  const handleMessageClick = (msg: Message) => {
+  const handleMessageClick = async (msg: Message) => {
     setActiveRoom(msg.roomId);
+    if (msg.threadId) {
+      // Thread message: open the thread panel and scroll to the message inside it
+      try {
+        const thread = await socketService.getThread(msg.threadId);
+        if (thread) {
+          useAppStore.getState().setActiveThread(thread);
+          const msgs = await socketService.getThreadMessages(thread.id, msg.roomId);
+          useAppStore.getState().setThreadMessages(msgs);
+        }
+      } catch (err) {
+        console.warn('[SearchPanel] Failed to load thread:', err);
+      }
+    }
     useAppStore.getState().setScrollToMessageId(msg.id);
     useAppStore.setState({ mobileView: 'chat' });
     useAppStore.getState().setSearchRoomId(null);
@@ -237,6 +250,7 @@ export default function SearchPanel({ onClose }: { onClose: () => void }) {
           >
             <div className="flex items-center justify-between gap-2">
               <span className="text-xs font-medium text-primary-400 truncate">
+                {msg.threadId && <span className="mr-1" title="Thread message">🧵</span>}
                 {getSenderName(msg)}
               </span>
               <span className="text-[10px] text-dark-muted flex-shrink-0">
