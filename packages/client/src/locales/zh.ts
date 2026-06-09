@@ -351,6 +351,8 @@ const zh = {
   'thread.repliesCount': '{count} 条回复',
   'thread.lastReply': '最后回复',
   'thread.botThinking': 'ClawBot 正在思考...',
+  'thread.expand': '最大化',
+  'thread.collapse': '还原',
 
   // SearchPanel
   'searchPanel.searching': '搜索中...',

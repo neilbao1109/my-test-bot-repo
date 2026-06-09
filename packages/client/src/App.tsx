@@ -19,18 +19,22 @@ import type { User } from './types';
 function MainContent({ isMobile }: { isMobile: boolean }) {
   const showThread = useAppStore((s) => s.showThread);
   const activeThread = useAppStore((s) => s.activeThread);
+  const threadExpanded = useAppStore((s) => s.threadExpanded);
 
   // Mobile: thread replaces chat view entirely
   if (isMobile && showThread && activeThread) {
     return <ThreadPanel />;
   }
 
-  // Desktop: side-by-side layout
+  // Desktop: side-by-side layout (or expanded thread fills space)
   return (
     <div className="flex flex-1 overflow-hidden min-w-0">
-      <ChatView />
+      {!(threadExpanded && showThread && activeThread) && <ChatView />}
       {!isMobile && showThread && activeThread && (
-        <ThreadPanel className="w-96 border-l border-dark-border flex-shrink-0" />
+        <ThreadPanel className={threadExpanded
+          ? "flex-1"
+          : "w-96 border-l border-dark-border flex-shrink-0"
+        } />
       )}
     </div>
   );

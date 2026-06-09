@@ -13,6 +13,8 @@ export default function ThreadPanel({ className }: { className?: string }) {
     activeRoomId, messages, streamingMessages, typingUsers,
     rooms, roomMembers, onlineUsers,
   } = useAppStore();
+  const threadExpanded = useAppStore((s) => s.threadExpanded);
+  const toggleThreadExpanded = useAppStore((s) => s.toggleThreadExpanded);
   const bottomRef = useRef<HTMLDivElement>(null);
   const [dragOver, setDragOver] = useState(false);
   const t = useT();
@@ -120,6 +122,23 @@ export default function ThreadPanel({ className }: { className?: string }) {
             {activeRoom.name}
           </span>
         )}
+
+        {/* Expand/collapse button - desktop only */}
+        <button
+          onClick={toggleThreadExpanded}
+          className="hidden md:flex w-8 h-8 items-center justify-center rounded-lg text-dark-muted hover:text-dark-text hover:bg-dark-hover transition"
+          title={threadExpanded ? t('thread.collapse') : t('thread.expand')}
+        >
+          {threadExpanded ? (
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 3H5a2 2 0 00-2 2v3m18 0V5a2 2 0 00-2-2h-3m0 18h3a2 2 0 002-2v-3M3 16v3a2 2 0 002 2h3" />
+            </svg>
+          ) : (
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
+            </svg>
+          )}
+        </button>
       </div>
 
       {/* Thread messages (parent + replies in one scrollable area) */}

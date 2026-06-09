@@ -351,6 +351,8 @@ const en: Record<LocaleKeys, string> = {
   'thread.repliesCount': '{count} replies',
   'thread.lastReply': 'Last reply',
   'thread.botThinking': 'ClawBot is thinking...',
+  'thread.expand': 'Expand',
+  'thread.collapse': 'Collapse',
 
   // SearchPanel
   'searchPanel.searching': 'Searching...',

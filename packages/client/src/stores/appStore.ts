@@ -136,6 +136,10 @@ interface AppState {
   isContextMode: Record<string, boolean>;
   setContextMode: (roomId: string, mode: boolean) => void;
 
+  // Thread expand
+  threadExpanded: boolean;
+  toggleThreadExpanded: () => void;
+
   // UI
   showSidebar: boolean;
   showThread: boolean;
@@ -384,7 +388,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   threadInfo: {},
   roomThreads: {},
   showThreadList: false,
-  setActiveThread: (thread) => set({ activeThread: thread, showThread: !!thread, ...(thread === null ? { threadReplyContext: [] } : {}) }),
+  setActiveThread: (thread) => set({ activeThread: thread, showThread: !!thread, ...(thread === null ? { threadReplyContext: [], threadExpanded: false } : {}) }),
   setThreadMessages: (messages) => set({ threadMessages: messages }),
   addThreadMessage: (message) =>
     set((s) => {
@@ -571,6 +575,10 @@ export const useAppStore = create<AppState>((set, get) => ({
   // Context mode
   isContextMode: {},
   setContextMode: (roomId, mode) => set((s) => ({ isContextMode: { ...s.isContextMode, [roomId]: mode } })),
+
+  // Thread expand
+  threadExpanded: false,
+  toggleThreadExpanded: () => set((s) => ({ threadExpanded: !s.threadExpanded })),
 
   // UI
   showSidebar: localStorage.getItem('clawchat-sidebar') !== 'collapsed' && window.innerWidth >= 768,
