@@ -4,7 +4,9 @@ import { useT } from '../../hooks/useT';
 import ReactMarkdown from 'react-markdown';
 import remarkGfmSafe from '../../utils/remarkGfmSafe';
 import remarkBreaks from 'remark-breaks';
+import remarkMath from 'remark-math';
 import rehypeHighlight from 'rehype-highlight';
+import rehypeKatex from 'rehype-katex';
 import rehypeAutolink from '../../utils/rehypeAutolink';
 import { formatDistanceToNow } from 'date-fns';
 import type { Message, FileAttachment } from '../../types';
@@ -476,8 +478,8 @@ export default function MessageBubble({ message, isStreaming, streamContent, hig
               )}
             >
               <ReactMarkdown
-                remarkPlugins={[remarkGfmSafe, remarkBreaks]}
-                rehypePlugins={[rehypeHighlight, rehypeAutolink]}
+                remarkPlugins={[remarkGfmSafe, remarkBreaks, remarkMath]}
+                rehypePlugins={[rehypeHighlight, rehypeKatex, rehypeAutolink]}
                 components={{
                   pre: ({ children }) => {
                     const textContent = (() => {
